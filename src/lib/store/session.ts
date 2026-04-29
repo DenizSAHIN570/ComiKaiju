@@ -19,7 +19,8 @@ export const viewSettings = writable({
 	fitMode: 'fit-width' as 'fit-width' | 'fit-height' | 'original',
 	singlePageMode: true,
 	showThumbnails: false,
-	readingMode: 'horizontal' as 'horizontal' | 'vertical'
+	readingMode: 'horizontal' as 'horizontal' | 'vertical',
+	zoomLevel: 1
 });
 
 // Error state
