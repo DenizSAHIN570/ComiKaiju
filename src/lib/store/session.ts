@@ -18,7 +18,9 @@ export const loadingMessage = writable<string>('');
 export const viewSettings = writable({
 	fitMode: 'fit-width' as 'fit-width' | 'fit-height' | 'original',
 	singlePageMode: true,
-	showThumbnails: false
+	showThumbnails: false,
+	readingMode: 'horizontal' as 'horizontal' | 'vertical',
+	zoomLevel: 1
 });
 
 // Error state

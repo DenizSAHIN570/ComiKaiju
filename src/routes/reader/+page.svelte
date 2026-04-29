@@ -5,7 +5,7 @@
 	import { get } from 'svelte/store';
 	import { currentComic, currentPageIndex, isLoading, error, currentFile, setError } from '$lib/store/session.js';
 	import ArchiveManager from '$lib/archive/archiveManager.js';
-	import Viewer from '$lib/ui/Viewer.svelte';
+	import ReaderShell from '$lib/ui/ReaderShell.svelte';
 	import type { ComicBook } from '../../types/comic.js';
 	import { comicStorage } from '$lib/storage/comicStorage.js';
 	import { logger } from '$lib/services/logger';
@@ -218,7 +218,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 {/if}
 
 {#if comic && file && archiveReady}
-	<Viewer {comic} {onExtractPage} onExit={exitReader} />
+	<ReaderShell {comic} {onExtractPage} onExit={exitReader} />
 {:else if comic && file && !archiveReady}
 	<div class="loading-overlay">
 		<div class="loading-content">
