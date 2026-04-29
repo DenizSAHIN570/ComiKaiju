@@ -1,22 +1,24 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
 	import { currentPageIndex, viewSettings } from '../store/session.js';
 	import { filterStore, type Filter } from '$lib/store/filterStore';
 	import type { ComicBook } from '../../types/comic.js';
-	import FilterButton from './FilterButton.svelte';
 	import { applyMonochrome } from '$lib/filters/monochrome';
 	import { applyColorCorrection } from '$lib/filters/colorCorrection';
 	import { applyVintage } from '$lib/filters/vintage';
 	import { applyVibrant } from '$lib/filters/vibrant';
 	import { logger } from '$lib/services/logger';
 
-	const UI_HIDE_DELAY = 2200;
 	const MAX_ZOOM = 5;
 	const MIN_ZOOM = 0.1;
 
 	export let comic: ComicBook;
 	export let onExtractPage: (index: number) => Promise<Blob>;
-	export let onExit: (() => Promise<void> | void) | undefined;
+	// Controls help-overlay visibility only; the shell owns its own overlay visibility state
+	export let isUiVisible: boolean;
+	export let onShowUi: (autoHide: boolean) => void;
+	export let onHideUi: () => void;
 
 	let canvas: HTMLCanvasElement;
 	let ctx: CanvasRenderingContext2D | null = null;
@@ -25,9 +27,7 @@
 	let currentImageUrl: string | null = null;
 
 	let isImageLoading = false;
-	let isUiVisible = true;
 	let isUiPinned = false;
-	let isExiting = false;
 
 	let zoomLevel = 1;
 	let panX = 0;
@@ -36,7 +36,6 @@
 	let lastPointerX = 0;
 	let lastPointerY = 0;
 
-	let hideUiTimer: ReturnType<typeof setTimeout> | null = null;
 	let ignoreNextTap = false;
 
 	const activePointers = new Map<number, { x: number; y: number }>();
@@ -46,6 +45,7 @@
 
 	let hasAppliedInitialView = false;
 	let activeFilter: Filter = 'none';
+	let prevFitMode = get(viewSettings).fitMode;
 
 	$: if (comic && $currentPageIndex !== undefined) {
 		loadCurrentPage();
@@ -54,6 +54,18 @@
 	$: if (comic && $filterStore[comic.id]) {
 		activeFilter = $filterStore[comic.id];
 		drawCurrentImage();
+	}
+
+	$: {
+		const sv = $viewSettings.zoomLevel;
+		if (sv !== zoomLevel && canvas) {
+			updateZoom(sv, canvas.clientWidth / 2, canvas.clientHeight / 2);
+		}
+	}
+
+	$: if ($viewSettings.fitMode !== prevFitMode && hasAppliedInitialView) {
+		prevFitMode = $viewSettings.fitMode;
+		applyViewMode();
 	}
 
 	onMount(() => {
@@ -67,7 +79,7 @@
 		canvas.addEventListener('pointercancel', handlePointerUp);
 		canvas.addEventListener('wheel', handleWheel, { passive: false });
 
-		showUi(true);
+		onShowUi(true);
 	});
 
 	onDestroy(() => {
@@ -80,10 +92,6 @@
 
 		activePointers.clear();
 
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
 		if (currentImageUrl) {
 			URL.revokeObjectURL(currentImageUrl);
 			currentImageUrl = null;
@@ -116,12 +124,12 @@
 				isImageLoading = false;
 			};
 			img.onerror = () => {
-				logger.error('Viewer', 'Failed to load image');
+				logger.error('CanvasViewer', 'Failed to load image');
 				isImageLoading = false;
 			};
 			img.src = currentImageUrl;
 		} catch (error) {
-			logger.error('Viewer', 'Failed to extract page', error);
+			logger.error('CanvasViewer', 'Failed to extract page', error);
 			isImageLoading = false;
 		}
 	}
@@ -131,14 +139,14 @@
 			case 'ArrowLeft':
 			case 'PageUp':
 				goToPreviousPage();
-				hideUi();
+				onHideUi();
 				break;
 			case 'ArrowRight':
 			case 'PageDown':
 			case ' ':
 				event.preventDefault();
 				goToNextPage();
-				hideUi();
+				onHideUi();
 				break;
 			case 'Home':
 				goToPage(0);
@@ -179,7 +187,7 @@
 		lastPointerY = event.clientY;
 		ignoreNextTap = false;
 
-		showUi(true);
+		onShowUi(true);
 	}
 
 	function handlePointerMove(event: PointerEvent) {
@@ -231,7 +239,7 @@
 
 	function handleWheel(event: WheelEvent) {
 		event.preventDefault();
-		showUi(true);
+		onShowUi(true);
 
 		if (event.ctrlKey || event.metaKey) {
 			const factor = event.deltaY > 0 ? 0.9 : 1.1;
@@ -258,31 +266,32 @@
 		const leftZone = rect.width / 3;
 		const rightZone = rect.width * (2 / 3);
 
-		showUi(true);
+		onShowUi(true);
 
 		if (relativeX < leftZone) {
 			goToPreviousPage();
-			hideUi();
+			onHideUi();
 			return;
 		}
 
 		if (relativeX > rightZone) {
 			goToNextPage();
-			hideUi();
+			onHideUi();
 			return;
 		}
 
 		isUiPinned = !isUiPinned;
 		if (isUiPinned) {
-			showUi(false);
+			onShowUi(false);
 		} else {
-			hideUi();
+			onHideUi();
 		}
 	}
 
 	function handleContentKey(event: KeyboardEvent) {
 		if (event.key !== 'Enter' && event.key !== ' ') return;
 		event.preventDefault();
+		// cast is safe: only clientX, clientY, currentTarget are used, which exist on both types
 		handleTap(event as unknown as MouseEvent);
 	}
 
@@ -304,12 +313,21 @@
 		}
 	}
 
+	export function triggerFitApply() {
+		if (hasAppliedInitialView) applyViewMode();
+	}
+
+	function syncZoomToStore() {
+		viewSettings.update((s) => ({ ...s, zoomLevel }));
+	}
+
 	function resetZoom() {
 		zoomLevel = 1;
 		panX = 0;
 		panY = 0;
 		clampPan();
 		drawCurrentImage();
+		syncZoomToStore();
 	}
 
 	function clampZoom(value: number) {
@@ -338,6 +356,7 @@
 		panY = 0;
 		clampPan();
 		drawCurrentImage();
+		syncZoomToStore();
 	}
 
 	function updateZoom(targetZoom: number, focusClientX: number, focusClientY: number) {
@@ -368,6 +387,7 @@
 
 		clampPan();
 		drawCurrentImage();
+		syncZoomToStore();
 	}
 
 	function startPinch() {
@@ -424,14 +444,14 @@
 	}
 
 	function drawCurrentImage() {
-	if (!ctx || !currentImage || !canvas) return;
+		if (!ctx || !currentImage || !canvas) return;
 
-	const rect = canvas.getBoundingClientRect();
-	const dpr = window.devicePixelRatio || 1;
-	const displayWidth = rect.width;
-	const displayHeight = rect.height;
+		const rect = canvas.getBoundingClientRect();
+		const dpr = window.devicePixelRatio || 1;
+		const displayWidth = rect.width;
+		const displayHeight = rect.height;
 
-	clampPan();
+		clampPan();
 
 		const width = Math.round(displayWidth * dpr);
 		const height = Math.round(displayHeight * dpr);
@@ -464,52 +484,11 @@
 
 		ctx.restore();
 	}
-
-	function handleViewModeChange() {
-		if (!currentImage) return;
-		applyViewMode();
-		showUi(true);
-	}
-
-	function showUi(autoHide: boolean) {
-		isUiVisible = true;
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-
-		if (autoHide && !isUiPinned) {
-			hideUiTimer = setTimeout(() => {
-				isUiVisible = false;
-				hideUiTimer = null;
-			}, UI_HIDE_DELAY);
-		}
-	}
-
-	function hideUi() {
-		if (isUiPinned) return;
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-		isUiVisible = false;
-	}
-
-	async function handleExit() {
-		if (!onExit || isExiting) return;
-		isExiting = true;
-		try {
-			await onExit();
-		} finally {
-			isExiting = false;
-		}
-	}
 </script>
 
 <svelte:window on:resize={drawCurrentImage} />
 
-<div class="viewer" class:ui-visible={isUiVisible || isUiPinned}>
-	<FilterButton {comic} />
+<div class="viewer">
 	<div
 		class="canvas-layer"
 		class:dragging={isDragging}
@@ -535,46 +514,6 @@
 				<strong>Zoom:</strong> pinch or scroll •
 				<strong>Pan:</strong> drag the page
 			</small>
-		</div>
-	</div>
-
-	<div class="overlay overlay-top" class:hidden={!isUiVisible && !isUiPinned}>
-		{#if onExit}
-			<button class="back-button" on:click={handleExit} disabled={isExiting} aria-label="Go back">
-				<span class="arrow">←</span>
-				<span>{isExiting ? 'Saving…' : 'Back'}</span>
-			</button>
-		{/if}
-
-		<div class="header">
-			<div class="title-block">
-				<h2>{comic.title}</h2>
-				<div class="page-info">
-					Page {$currentPageIndex + 1} of {comic.totalPages}
-				</div>
-			</div>
-
-			<div class="controls">
-				<button on:click={goToPreviousPage} disabled={$currentPageIndex <= 0} aria-label="Previous page">←</button>
-
-				<div class="zoom-controls">
-					<button on:click={() => updateZoom(zoomLevel * 0.9, canvas.clientWidth / 2, canvas.clientHeight / 2)} aria-label="Zoom out">−</button>
-					<span class="zoom-level">{Math.round(zoomLevel * 100)}%</span>
-					<button on:click={() => updateZoom(zoomLevel * 1.1, canvas.clientWidth / 2, canvas.clientHeight / 2)} aria-label="Zoom in">+</button>
-					<button on:click={resetZoom} aria-label="Reset zoom">⌂</button>
-					<button on:click={handleViewModeChange} aria-label="Apply fit mode">⟳</button>
-				</div>
-
-				<select bind:value={$viewSettings.fitMode} on:change={handleViewModeChange} aria-label="View mode">
-					<option value="fit-width">Fit Width</option>
-					<option value="fit-height">Fit Height</option>
-					<option value="original">Original Size</option>
-				</select>
-
-				<button on:click={goToNextPage} disabled={$currentPageIndex >= comic.totalPages - 1} aria-label="Next page">
-					Next →
-				</button>
-			</div>
 		</div>
 	</div>
 </div>
@@ -620,152 +559,6 @@
 
 	canvas.loading {
 		filter: blur(2px);
-	}
-
-	.overlay {
-		position: absolute;
-		left: 0;
-		right: 0;
-		z-index: 10;
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		padding: 1rem 1.5rem;
-		pointer-events: none;
-		transition: opacity 0.25s ease;
-		opacity: 1;
-	}
-
-	.overlay.hidden {
-		opacity: 0;
-	}
-
-	.overlay-top {
-		top: 0;
-		background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
-		gap: 1rem;
-	}
-
-	.overlay-top > * {
-		pointer-events: auto;
-	}
-
-	.back-button {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.5rem;
-		padding: 0.5rem 1.25rem;
-		background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
-		color: #fff;
-		border: none;
-		border-radius: 999px;
-		font-weight: 600;
-		letter-spacing: 0.02em;
-		cursor: pointer;
-		box-shadow: 0 6px 18px rgba(255, 102, 0, 0.35);
-		transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
-	}
-
-	.back-button .arrow {
-		font-size: 1.1rem;
-		line-height: 1;
-	}
-
-	.back-button:not(:disabled):hover {
-		transform: translateY(-1px);
-		box-shadow: 0 10px 24px rgba(255, 102, 0, 0.45);
-	}
-
-	.back-button:disabled {
-		opacity: 0.7;
-		cursor: progress;
-		box-shadow: none;
-	}
-
-	.header {
-		display: flex;
-		align-items: center;
-		gap: 1.5rem;
-		width: 100%;
-		justify-content: space-between;
-	}
-
-	.title-block {
-		display: flex;
-		flex-direction: column;
-		gap: 0.3rem;
-		min-width: 0;
-	}
-
-	.title-block h2 {
-		margin: 0;
-		font-size: 1.1rem;
-		font-weight: 600;
-		color: #ff8533;
-		white-space: nowrap;
-		overflow: hidden;
-		text-overflow: ellipsis;
-	}
-
-	.page-info {
-		font-size: 0.9rem;
-		color: #d1d1d1;
-	}
-
-	.controls {
-		display: flex;
-		align-items: center;
-		gap: 1rem;
-		flex-wrap: wrap;
-	}
-
-	.controls button {
-		padding: 0.5rem 1rem;
-		background: #1f1f1f;
-		color: #f5f5f5;
-		border: 1px solid #2f2f2f;
-		border-radius: 6px;
-		cursor: pointer;
-		transition: background 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
-	}
-
-	.controls button:hover:not(:disabled) {
-		background: #292929;
-		border-color: #3a3a3a;
-		transform: translateY(-1px);
-	}
-
-	.controls button:disabled {
-		opacity: 0.4;
-		cursor: not-allowed;
-		transform: none;
-	}
-
-	.controls select {
-		padding: 0.5rem;
-		background: #1f1f1f;
-		color: #f5f5f5;
-		border: 1px solid #2f2f2f;
-		border-radius: 6px;
-	}
-
-	.zoom-controls {
-		display: inline-flex;
-		align-items: center;
-		gap: 0.25rem;
-		background: #151515;
-		border-radius: 8px;
-		border: 1px solid #1f1f1f;
-		padding: 0.25rem;
-		box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.05);
-	}
-
-	.zoom-level {
-		color: #ff8533;
-		font-size: 0.85rem;
-		font-weight: 600;
-		min-width: 50px;
-		text-align: center;
 	}
 
 	.canvas-layer .loading-overlay {
@@ -818,20 +611,6 @@
 		}
 		100% {
 			transform: rotate(360deg);
-		}
-	}
-
-	@media (max-width: 768px) {
-		.controls {
-			gap: 0.6rem;
-		}
-
-		.controls button {
-			padding: 0.45rem 0.75rem;
-		}
-
-		.zoom-controls {
-			display: none;
 		}
 	}
 </style>

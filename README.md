@@ -1,11 +1,11 @@
-[![Netlify Status](https://api.netlify.com/api/v1/badges/5459d454-7f89-4ff9-aace-36678ab62782/deploy-status)](https://app.netlify.com/projects/onlinecomicbookreader/deploys)
+[![Netlify Status](https://api.netlify.com/api/v1/badges/5459d454-7f89-4ff9-aace-36678ab62782/deploy-status)](https://app.netlify.com/projects/comikaiju/deploys)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![code style: prettier](https://img.shields.io/badge/code_style-prettier-ff69b4.svg?style=flat-square)](https://github.com/prettier/prettier)
 ![Built with Svelte](https://img.shields.io/badge/Svelte-4E4E55?style=for-the-badge&logo=svelte&logoColor=FF3E00)
 ![Powered by Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
 ![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)
 <!-- Replace <OWNER> and <REPO_NAME> with your GitHub username and repository name -->
-[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/<OWNER>/<REPO_NAME>/badge)](https://securityscorecards.dev/viewer/?uri=github.com/<OWNER>/<REPO_NAME>)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/DenizSAHIN570/OnlineComicReader/badge)](https://securityscorecards.dev/viewer/?uri=github.com/DenizSAHIN570/OnlineComicReader)
 
 # ComiKaiju
 
