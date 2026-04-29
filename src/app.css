@@ -1,65 +1,67 @@
 /* Semantic Color System & Global Styles */
-@import 'tailwindcss';
+@import "tailwindcss";
 
 :root {
-	/* Official ComiKaiju Colors - Default (Dark/Amoled) */
-	--color-primary: #ff6600;          /* Neon Orange */
-	--color-primary-hover: #ff8533;    /* Lighter Orange */
-	--color-bg-main: #000000;          /* Amoled Black */
-	--color-bg-surface: #0a0a0a;       /* Deep Black */
-	--color-bg-secondary: #111111;     /* Dark Gray */
-	--color-text-main: #ffffff;        /* White */
-	--color-text-secondary: #a1a1aa;   /* Gray 400 */
-	--color-text-muted: #52525b;       /* Gray 600 */
-	--color-border: #1f1f1f;           /* Very Dark Border */
-	--color-status-error: #ef4444;
-	--color-status-success: #22c55e;
-	--color-status-warning: #eab308;
+  /* Official ComiKaiju Colors - Default (Dark/Amoled) */
+  --color-primary: #ff6600; /* Neon Orange */
+  --color-primary-hover: #ff8533; /* Lighter Orange */
+  --color-bg-main: #000000; /* Amoled Black */
+  --color-bg-surface: #0a0a0a; /* Deep Black */
+  --color-bg-secondary: #111111; /* Dark Gray */
+  --color-text-main: #ffffff; /* White */
+  --color-text-secondary: #a1a1aa; /* Gray 400 */
+  --color-text-muted: #52525b; /* Gray 600 */
+  --color-border: #1f1f1f; /* Very Dark Border */
+  --color-status-error: #ef4444;
+  --color-status-success: #22c55e;
+  --color-status-warning: #eab308;
 }
 
 /* Optional Light Theme Override (Keeping the Brand Orange) */
 :root[class~="light"] {
-	--color-bg-main: #ffffff;
-	--color-bg-surface: #f9fafb;
-	--color-bg-secondary: #f3f4f6;
-	--color-text-main: #000000;
-	--color-text-secondary: #4b5563;
-	--color-text-muted: #9ca3af;
-	--color-border: #e5e7eb;
+  --color-bg-main: #ffffff;
+  --color-bg-surface: #f9fafb;
+  --color-bg-secondary: #f3f4f6;
+  --color-text-main: #000000;
+  --color-text-secondary: #4b5563;
+  --color-text-muted: #9ca3af;
+  --color-border: #e5e7eb;
 }
 
 @theme {
-	/* Map CSS variables to Tailwind utilities */
-	--color-primary: var(--color-primary);
-	--color-primary-hover: var(--color-primary-hover);
-	
-	--color-bg-main: var(--color-bg-main);
-	--color-bg-surface: var(--color-bg-surface);
-	--color-bg-secondary: var(--color-bg-secondary);
-	
-	--color-text-main: var(--color-text-main);
-	--color-text-secondary: var(--color-text-secondary);
-	--color-text-muted: var(--color-text-muted);
-	
-	--color-border: var(--color-border);
-	
-	--color-status-error: var(--color-status-error);
-	--color-status-success: var(--color-status-success);
-	--color-status-warning: var(--color-status-warning);
+  /* Map CSS variables to Tailwind utilities */
+  --color-primary: var(--color-primary);
+  --color-primary-hover: var(--color-primary-hover);
+
+  --color-bg-main: var(--color-bg-main);
+  --color-bg-surface: var(--color-bg-surface);
+  --color-bg-secondary: var(--color-bg-secondary);
+
+  --color-text-main: var(--color-text-main);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+
+  --color-border: var(--color-border);
+
+  --color-status-error: var(--color-status-error);
+  --color-status-success: var(--color-status-success);
+  --color-status-warning: var(--color-status-warning);
 }
 
 body {
-	background-color: var(--color-bg-main);
-	color: var(--color-text-main);
-	transition: background-color 0.3s ease, color 0.3s ease;
+  background-color: var(--color-bg-main);
+  color: var(--color-text-main);
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Mouse user accessibility styling */
 body:not(.mouse-user) *:focus {
-	outline: 2px solid var(--color-primary);
-	outline-offset: 2px;
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
 }
 
 body.mouse-user *:focus {
-	outline: none;
+  outline: none;
 }

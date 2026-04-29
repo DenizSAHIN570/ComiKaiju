@@ -1,4 +1,3 @@
-
 export function applyColorCorrection(ctx: CanvasRenderingContext2D): void {
   const imageData = ctx.getImageData(0, 0, ctx.canvas.width, ctx.canvas.height);
   const data = imageData.data;

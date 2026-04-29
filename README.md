@@ -4,7 +4,9 @@
 ![Built with Svelte](https://img.shields.io/badge/Svelte-4E4E55?style=for-the-badge&logo=svelte&logoColor=FF3E00)
 ![Powered by Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
 ![ESLint](https://img.shields.io/badge/ESLint-4B32C3?style=for-the-badge&logo=eslint&logoColor=white)
+
 <!-- Replace <OWNER> and <REPO_NAME> with your GitHub username and repository name -->
+
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/DenizSAHIN570/OnlineComicReader/badge)](https://securityscorecards.dev/viewer/?uri=github.com/DenizSAHIN570/OnlineComicReader)
 
 # ComiKaiju
