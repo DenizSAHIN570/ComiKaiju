@@ -834,11 +834,11 @@
 		background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
 		color: white; padding: 1rem; text-align: center;
 	}
-    .placeholder-title { font-size: 0.9rem; font-weight: 600; line-height: 1.3; max-height: 3.9em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+    .placeholder-title { font-size: 0.9rem; font-weight: 600; line-height: 1.3; max-height: 3.9em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; }
 
     .comic-info-container { display: flex; justify-content: space-between; margin-top: 0.75rem; }
     .comic-info { flex: 1; min-width: 0; text-align: left; cursor: pointer; padding-right: 0.5rem; }
-    .comic-info .comic-title { font-size: 0.85rem; font-weight: 600; color: var(--color-text-main); margin-bottom: 0.25rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; height: 2.4em; }
+    .comic-info .comic-title { font-size: 0.85rem; font-weight: 600; color: var(--color-text-main); margin-bottom: 0.25rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; height: 2.4em; }
 	.comic-info .comic-meta { font-size: 0.7rem; color: var(--color-text-muted); display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; }
     
     .menu-container { position: relative; z-index: 10; }
@@ -990,7 +990,7 @@
     /* Features Section */
     .features-section { padding: 5rem 1.5rem; border-top: 1px solid var(--color-border); }
     .features-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 2rem; }
-    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
     .feature-card { background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; }
     .feature-icon { width: 3rem; height: 3rem; background-color: rgba(255, 102, 0, 0.1); color: var(--color-primary); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
     .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
