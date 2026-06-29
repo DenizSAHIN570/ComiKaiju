@@ -592,17 +592,6 @@
                     <h3>Blazing Fast</h3>
                     <p>Powered by WebAssembly and Service Workers. Instant page loads, deduplication, and optimized caching for smooth reading.</p>
                 </div>
-
-                <!-- Feature 4: Open Source -->
-                <div class="feature-card">
-                    <div class="feature-icon">
-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
-                        </svg>
-                    </div>
-                    <h3>Open Source</h3>
-                    <p>Free and open source software. View the source code, contribute, or report issues on our <a href="https://github.com/DenizSAHIN570/OnlineComicReader" target="_blank" rel="noopener noreferrer" style="text-decoration: underline; color: var(--color-primary);">GitHub</a>.</p>
-                </div>
             </div>
         </section>
         
@@ -610,7 +599,6 @@
             <p>&copy; {new Date().getFullYear()} ComiKaiju. Built for readers.</p>
             <p style="margin-top: 0.5rem; font-size: 0.75rem; opacity: 0.7;">
                 Powered by <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">Svelte</a>.
-                <a href="https://github.com/DenizSAHIN570/OnlineComicReader" target="_blank" rel="noopener noreferrer" style="margin-left: 0.5rem; color: var(--color-text-secondary);">View on GitHub</a>
             </p>
         </footer>
     </main>
