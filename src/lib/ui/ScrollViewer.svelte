@@ -10,7 +10,7 @@
 
 	export let comic: ComicBook;
 	export let onExtractPage: (index: number) => Promise<Blob>;
-	export let onShowUi: (autoHide: boolean) => void = () => {};
+	export const onShowUi: (autoHide: boolean) => void = () => {};
 
 	let container: HTMLDivElement;
 
