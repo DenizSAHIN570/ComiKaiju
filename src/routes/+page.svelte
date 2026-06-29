@@ -990,7 +990,7 @@
     /* Features Section */
     .features-section { padding: 5rem 1.5rem; border-top: 1px solid var(--color-border); }
     .features-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 2rem; }
-    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(4, 1fr); } }
+    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
     .feature-card { background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; }
     .feature-icon { width: 3rem; height: 3rem; background-color: rgba(255, 102, 0, 0.1); color: var(--color-primary); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
     .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
