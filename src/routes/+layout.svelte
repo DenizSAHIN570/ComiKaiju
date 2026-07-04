@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
-	import { error, clearError, isLoading, loadingMessage, setError } from '$lib/store/session.js';
+	import { error, clearError, isLoading, loadingMessage, downloadProgress, setError } from '$lib/store/session.js';
+	import { formatBytes } from '$lib/utils/format.js';
 	import { themeStore } from '$lib/services/theme';
 	import { logger } from '$lib/services/logger';
 	import { dev } from '$app/environment';
@@ -77,6 +78,24 @@
 		<div class="loading-content bg-bg-surface text-text-main">
 			<div class="loading-spinner border-border border-t-primary"></div>
 			<p>{$loadingMessage || 'Loading...'}</p>
+			{#if $downloadProgress}
+				{#if $downloadProgress.total}
+					<div class="download-progress-bar">
+						<div
+							class="download-progress-fill"
+							style="width: {Math.min(100, Math.round(($downloadProgress.loaded / $downloadProgress.total) * 100))}%"
+						></div>
+					</div>
+					<p class="download-progress-label">
+						{Math.min(100, Math.round(($downloadProgress.loaded / $downloadProgress.total) * 100))}%
+					</p>
+				{:else}
+					<div class="download-progress-bar indefinite">
+						<div class="download-progress-fill"></div>
+					</div>
+					<p class="download-progress-label">{formatBytes($downloadProgress.loaded)} downloaded</p>
+				{/if}
+			{/if}
 		</div>
 	</div>
 {/if}
@@ -145,6 +164,37 @@
 	@keyframes spin {
 		0% { transform: rotate(0deg); }
 		100% { transform: rotate(360deg); }
+	}
+
+	.download-progress-bar {
+		width: 100%;
+		height: 6px;
+		background-color: var(--color-border);
+		border-radius: 3px;
+		overflow: hidden;
+		margin-top: 0.75rem;
+	}
+
+	.download-progress-fill {
+		height: 100%;
+		background-color: var(--color-primary);
+		transition: width 0.2s ease;
+	}
+
+	.download-progress-bar.indefinite .download-progress-fill {
+		width: 40%;
+		animation: download-indefinite 1.2s ease-in-out infinite;
+	}
+
+	@keyframes download-indefinite {
+		0% { transform: translateX(-100%); }
+		100% { transform: translateX(250%); }
+	}
+
+	.download-progress-label {
+		margin: 0.5rem 0 0;
+		font-size: 0.85rem;
+		color: var(--color-text-main);
 	}
 	
 	.global-error {

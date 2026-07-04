@@ -14,6 +14,14 @@ export const currentPageIndex = writable<number>(0);
 export const isLoading = writable<boolean>(false);
 export const loadingMessage = writable<string>("");
 
+// Download progress
+export interface DownloadProgress {
+  loaded: number;
+  total: number | null;
+}
+
+export const downloadProgress = writable<DownloadProgress | null>(null);
+
 // View settings
 export const viewSettings = writable({
   fitMode: "fit-width" as "fit-width" | "fit-height" | "original",
@@ -50,6 +58,10 @@ export function setPage(index: number) {
     }
     return comic;
   });
+}
+
+export function setDownloadProgress(progress: DownloadProgress | null) {
+  downloadProgress.set(progress);
 }
 
 export function setLoading(loading: boolean, message = "") {

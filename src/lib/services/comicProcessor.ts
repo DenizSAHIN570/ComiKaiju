@@ -6,9 +6,33 @@ import {
   setLoading,
   setError,
   clearError,
+  setDownloadProgress,
 } from "$lib/store/session.js";
 import { logger } from "./logger.js";
 import type { ComicBook } from "../../types/comic.js";
+
+export function isHttpUrl(value: string): boolean {
+  try {
+    const parsed = new URL(value.trim());
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+export function deriveFilenameFromUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    const segments = parsed.pathname.split("/").filter(Boolean);
+    const last = segments[segments.length - 1];
+    if (last) {
+      return decodeURIComponent(last);
+    }
+  } catch {
+    // fall through to default below
+  }
+  return "comic.cbz";
+}
 
 let archiveManager: ArchiveManager | null = null;
 
@@ -87,6 +111,7 @@ export async function handleFile(file: File, loadComics: () => Promise<void>) {
   const isSupported = await archiveManager.isSupported(file);
   if (!isSupported) {
     setError("Please select a CBZ, ZIP, CBR, or RAR file.");
+    setLoading(false);
     return;
   }
 
@@ -179,6 +204,70 @@ export async function handleFile(file: File, loadComics: () => Promise<void>) {
     logger.error("ComicProcessor", "Failed to process file", error);
     setError(error instanceof Error ? error.message : "Failed to process file");
   } finally {
+    setLoading(false);
+  }
+}
+
+export async function handleUrlImport(
+  url: string,
+  loadComics: () => Promise<void>,
+) {
+  clearError();
+  setLoading(true, "Downloading...");
+  setDownloadProgress(null);
+
+  let response: Response;
+  try {
+    response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Request failed with status ${response.status}`);
+    }
+  } catch (err) {
+    logger.error("ComicProcessor", "Failed to download from URL", err);
+    setError(
+      "Couldn't download from that link. The site may not allow direct downloads.",
+    );
+    setDownloadProgress(null);
+    setLoading(false);
+    return;
+  }
+
+  try {
+    const contentLengthHeader = response.headers.get("Content-Length");
+    const total = contentLengthHeader ? Number(contentLengthHeader) : null;
+    const contentType = response.headers.get("Content-Type") || "";
+
+    const reader = response.body?.getReader();
+    const chunks: Uint8Array<ArrayBuffer>[] = [];
+    let loaded = 0;
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value) {
+          chunks.push(Uint8Array.from(value));
+          loaded += value.length;
+          setDownloadProgress({
+            loaded,
+            total: total && !Number.isNaN(total) ? total : null,
+          });
+        }
+      }
+    }
+
+    const blob = reader
+      ? new Blob(chunks, { type: contentType })
+      : await response.blob();
+    const filename = deriveFilenameFromUrl(url);
+    const file = new File([blob], filename, { type: blob.type });
+
+    setDownloadProgress(null);
+    await handleFile(file, loadComics);
+  } catch (err) {
+    logger.error("ComicProcessor", "Failed to read downloaded file", err);
+    setError("Couldn't read the downloaded file.");
+    setDownloadProgress(null);
     setLoading(false);
   }
 }

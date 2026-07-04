@@ -2,9 +2,15 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { comicStorage } from '$lib/storage/comicStorage.js';
 	import { setLoading, setError, setComic } from '$lib/store/session.js';
-	import { handleFile, cleanupComicProcessor } from '$lib/services/comicProcessor.js';
+	import {
+		handleFile,
+		cleanupComicProcessor,
+		handleUrlImport,
+		isHttpUrl
+	} from '$lib/services/comicProcessor.js';
 	import { directoryService, type DirectoryFile } from '$lib/services/directoryService';
 	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
+	import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
 	import { logger } from '$lib/services/logger';
     import ArchiveManager from '$lib/archive/archiveManager.js';
     import { goto } from '$app/navigation';
@@ -12,6 +18,7 @@
 
 	let fileInput = $state<HTMLInputElement>();
 	let dragActive = $state(false);
+	let pendingImportUrl = $state<string | null>(null);
 	let recentComics = $state<(FileSystemItem & { metadata?: ComicBook })[]>([]);
     let localFiles = $state<(DirectoryFile & { metadata?: ComicBook })[]>([]);
     let localFolderHandle = $state<FileSystemDirectoryHandle | null>(null);
@@ -20,6 +27,14 @@
     let fileSystemSupported = $state(false);
 
 	onMount(async () => {
+		const urlParam = new URL(window.location.href).searchParams.get('url');
+		if (urlParam && isHttpUrl(urlParam)) {
+			pendingImportUrl = urlParam;
+			const cleanUrl = new URL(window.location.href);
+			cleanUrl.searchParams.delete('url');
+			window.history.replaceState({}, '', cleanUrl.toString());
+		}
+
 		try {
             fileSystemSupported = 'showDirectoryPicker' in window;
 
@@ -224,9 +239,45 @@
 		const files = event.dataTransfer?.files;
 		if (files && files.length > 0) {
 			await handleFile(files[0], loadComics);
+			return;
+		}
+
+		const droppedText =
+			event.dataTransfer?.getData('text/uri-list') ||
+			event.dataTransfer?.getData('text/plain') ||
+			'';
+		if (droppedText && isHttpUrl(droppedText)) {
+			pendingImportUrl = droppedText.trim();
 		}
 	}
-	
+
+	async function confirmUrlImport() {
+		const url = pendingImportUrl;
+		pendingImportUrl = null;
+		if (url) {
+			await handleUrlImport(url, loadComics);
+		}
+	}
+
+	function cancelUrlImport() {
+		pendingImportUrl = null;
+	}
+
+	let urlInputValue = $state('');
+
+	function submitUrlInput() {
+		const trimmed = urlInputValue.trim();
+		if (!trimmed) return;
+
+		if (!isHttpUrl(trimmed)) {
+			setError('Please enter a valid http:// or https:// URL.');
+			return;
+		}
+
+		pendingImportUrl = trimmed;
+		urlInputValue = '';
+	}
+
 	async function deleteComic(item: FileSystemItem, event: MouseEvent) {
 		event.stopPropagation();
         event.preventDefault();
@@ -520,7 +571,26 @@
                             onchange={handleFileInput}
                             style="display: none;"
                         />
+
+                        <div class="url-input-row">
+                            <input
+                                type="text"
+                                class="url-input"
+                                placeholder="Paste a comic download link..."
+                                bind:value={urlInputValue}
+                                onkeydown={(e) => e.key === 'Enter' && submitUrlInput()}
+                            />
+                            <button class="url-input-submit" onclick={submitUrlInput}>Add</button>
+                        </div>
                     </div>
+
+                    {#if pendingImportUrl}
+                        <UrlImportConfirm
+                            url={pendingImportUrl}
+                            onConfirm={confirmUrlImport}
+                            onCancel={cancelUrlImport}
+                        />
+                    {/if}
 
                     <div class="or-divider">OR</div>
 
@@ -913,14 +983,39 @@
         }
     }
 
-    .drop-zone { position: relative; border: 2px dashed var(--color-border); border-radius: 1rem; padding: 1.5rem; background-color: var(--color-bg-surface); cursor: pointer; transition: all 0.3s ease; overflow: hidden; height: 100%; box-sizing: border-box; }
+    .drop-zone { position: relative; border: 2px dashed var(--color-border); border-radius: 1rem; padding: 1.5rem; background-color: var(--color-bg-surface); cursor: pointer; transition: all 0.3s ease; overflow: hidden; flex: 1; box-sizing: border-box; }
     .drop-zone:hover { border-color: var(--color-primary); transform: translateY(-2px); }
     .drop-content { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; }
     .upload-icon-circle { width: 3rem; height: 3rem; background-color: var(--color-bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; color: var(--color-primary); transition: transform 0.3s; }
     .drop-zone:hover .upload-icon-circle { transform: scale(1.1); }
     .drop-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; margin-top: 0; }
     .drop-content p { font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; }
-    
+
+    .url-input-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+    .url-input {
+        flex: 1;
+        min-width: 0;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        border: 1px solid var(--color-border);
+        background-color: var(--color-bg-surface);
+        color: var(--color-text-main);
+        font-size: 0.85rem;
+    }
+    .url-input:focus { outline: none; border-color: var(--color-primary); }
+    .url-input-submit {
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        border: none;
+        background-color: var(--color-primary);
+        color: white;
+        font-size: 0.85rem;
+        font-weight: 600;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .url-input-submit:hover { opacity: 0.9; }
+
     .or-divider {
         font-size: 0.8rem;
         font-weight: 700;

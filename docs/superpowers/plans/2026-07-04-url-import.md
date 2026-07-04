@@ -21,9 +21,11 @@
 ## Task 1: URL helpers and `handleUrlImport` in `comicProcessor.ts`
 
 **Files:**
+
 - Modify: `src/lib/services/comicProcessor.ts`
 
 **Interfaces:**
+
 - Produces: `export function isHttpUrl(value: string): boolean`
 - Produces: `export function deriveFilenameFromUrl(url: string): string`
 - Produces: `export async function handleUrlImport(url: string, loadComics: () => Promise<void>): Promise<void>`
@@ -105,12 +107,12 @@ Expected: both exit with no errors.
 Run: `npm run dev`, then open `http://localhost:5173` in a browser and open the devtools console. Run:
 
 ```js
-const m = await import('/src/lib/services/comicProcessor.ts');
-m.isHttpUrl('https://example.com/comic.cbz'); // true
-m.isHttpUrl('not a url');                     // false
-m.isHttpUrl('ftp://example.com/x');           // false
-m.deriveFilenameFromUrl('https://example.com/comics/Batman%20001.cbz'); // "Batman 001.cbz"
-m.deriveFilenameFromUrl('https://example.com/');                        // "comic.cbz"
+const m = await import("/src/lib/services/comicProcessor.ts");
+m.isHttpUrl("https://example.com/comic.cbz"); // true
+m.isHttpUrl("not a url"); // false
+m.isHttpUrl("ftp://example.com/x"); // false
+m.deriveFilenameFromUrl("https://example.com/comics/Batman%20001.cbz"); // "Batman 001.cbz"
+m.deriveFilenameFromUrl("https://example.com/"); // "comic.cbz"
 ```
 
 Expected: results match the comments above.
@@ -127,9 +129,11 @@ git commit -m "feat: add handleUrlImport for downloading comics from a URL"
 ## Task 2: `UrlImportConfirm.svelte` component
 
 **Files:**
+
 - Create: `src/lib/ui/UrlImportConfirm.svelte`
 
 **Interfaces:**
+
 - Produces: a component with props `{ url: string; onConfirm: () => void; onCancel: () => void }`, rendered as a fixed-position overlay card (same visual family as the existing `.loading-overlay` / `.global-error` overlays in `src/routes/+layout.svelte`).
 - Consumes: none (pure presentational component).
 
@@ -244,9 +248,11 @@ git commit -m "feat: add UrlImportConfirm confirmation card component"
 ## Task 3: Wire drop-a-link and `?url=` into `src/routes/+page.svelte`
 
 **Files:**
+
 - Modify: `src/routes/+page.svelte`
 
 **Interfaces:**
+
 - Consumes: `isHttpUrl`, `handleUrlImport` from `$lib/services/comicProcessor.js` (Task 1); `UrlImportConfirm` from `$lib/ui/UrlImportConfirm.svelte` (Task 2); existing `handleFile`, `loadComics`, `dragActive` in this file.
 
 - [ ] **Step 1: Import the new helpers and component**
@@ -254,8 +260,13 @@ git commit -m "feat: add UrlImportConfirm confirmation card component"
 At the top of the `<script>` block in `src/routes/+page.svelte`, alongside the existing imports:
 
 ```ts
-import { handleFile, cleanupComicProcessor, handleUrlImport, isHttpUrl } from '$lib/services/comicProcessor.js';
-import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
+import {
+  handleFile,
+  cleanupComicProcessor,
+  handleUrlImport,
+  isHttpUrl,
+} from "$lib/services/comicProcessor.js";
+import UrlImportConfirm from "$lib/ui/UrlImportConfirm.svelte";
 ```
 
 (This replaces the existing `import { handleFile, cleanupComicProcessor } from '$lib/services/comicProcessor.js';` line — add the two new named imports to it rather than duplicating the import statement.)
@@ -300,9 +311,9 @@ async function handleDrop(event: DragEvent) {
   }
 
   const droppedText =
-    event.dataTransfer?.getData('text/uri-list') ||
-    event.dataTransfer?.getData('text/plain') ||
-    '';
+    event.dataTransfer?.getData("text/uri-list") ||
+    event.dataTransfer?.getData("text/plain") ||
+    "";
   if (droppedText && isHttpUrl(droppedText)) {
     pendingImportUrl = droppedText.trim();
   }
@@ -314,12 +325,12 @@ async function handleDrop(event: DragEvent) {
 In the existing `onMount(async () => { ... })` block, add at the top (before the existing `try` block, or as the first statement inside it — place it before the `try` so it runs even if the rest of init fails):
 
 ```ts
-const urlParam = new URL(window.location.href).searchParams.get('url');
+const urlParam = new URL(window.location.href).searchParams.get("url");
 if (urlParam && isHttpUrl(urlParam)) {
   pendingImportUrl = urlParam;
   const cleanUrl = new URL(window.location.href);
-  cleanUrl.searchParams.delete('url');
-  window.history.replaceState({}, '', cleanUrl.toString());
+  cleanUrl.searchParams.delete("url");
+  window.history.replaceState({}, "", cleanUrl.toString());
 }
 ```
 
@@ -369,6 +380,7 @@ Run: `npm run dev`, then visit:
 `http://localhost:5173/?url=http://localhost:5173/test-fixtures/sample.cbz`
 
 Expected:
+
 - The confirm card appears showing that URL, before any network request happens.
 - The address bar no longer shows `?url=...` (stripped via `replaceState`).
 - Clicking "Download & Open" shows the "Downloading..." loading state, then "Processing archive...", then navigates to `/reader` with the 2-page comic loaded.

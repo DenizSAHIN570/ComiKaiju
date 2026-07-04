@@ -3,6 +3,7 @@
 ## Purpose
 
 Let users add a comic without a local file, by either:
+
 - Dragging/dropping a download link (URL) onto the home page dropzone.
 - Visiting `comikaiju.com/?url=<downloadUrl>`.
 
@@ -22,10 +23,14 @@ No new services beyond one small UI component; everything else extends existing 
 Add:
 
 ```ts
-export async function handleUrlImport(url: string, loadComics: () => Promise<void>)
+export async function handleUrlImport(
+  url: string,
+  loadComics: () => Promise<void>,
+);
 ```
 
 Behavior:
+
 1. `setLoading(true, "Downloading...")`.
 2. `fetch(url)`. On failure (network error, CORS rejection, non-2xx status), `setError(...)` with a message explaining the link may not allow direct downloads, then return.
 3. Read the response as a `Blob`.
@@ -38,6 +43,7 @@ Behavior:
 ### `UrlImportConfirm.svelte` (new component)
 
 A small confirmation card rendered on the home page:
+
 - Shows the pending URL (truncated if long).
 - "Download & Open" button → calls `handleUrlImport(url, loadComics)`.
 - "Cancel" button → clears the pending URL, dismisses the card.
@@ -74,6 +80,7 @@ Reuses the existing `setError()` / toast mechanism — no new UI for errors.
 ## Loading State
 
 Reuses the existing `isLoading` / `loadingMessage` stores:
+
 - `"Downloading..."` while `fetch` is in flight.
 - Switches to the existing `"Processing archive..."` message once `handleFile` takes over (already set inside `handleFile`).
 
