@@ -91,7 +91,7 @@
 }
 
 .filter-toggle {
-  background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
   color: white;
   border: none;
   border-radius: 50%;
@@ -101,23 +101,23 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 6px 18px rgba(255, 102, 0, 0.35);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 35%, transparent);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .filter-toggle:hover {
   transform: translateY(-2px) scale(1.05);
-  box-shadow: 0 10px 24px rgba(255, 102, 0, 0.45);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 45%, transparent);
 }
 
 .filter-menu {
   position: absolute;
   bottom: 68px;
   right: 0;
-  background: #2a2a2a;
+  background: var(--color-bg-secondary);
   border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px color-mix(in srgb, var(--color-bg-main) 40%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-text-main) 10%, transparent);
   width: 230px;
   max-height: 70vh;
   overflow-y: auto;
@@ -133,7 +133,7 @@
   width: 100%;
   padding: 0.6rem 1rem;
   background: transparent;
-  color: #f5f5f5;
+  color: var(--color-text-main);
   border: none;
   text-align: left;
   cursor: pointer;
@@ -143,11 +143,11 @@
 }
 
 .filter-menu li button:hover {
-  background: #3a3a3a;
+  background: var(--color-border);
 }
 
 .filter-menu li button.active {
-  background: #ff6600;
+  background: var(--color-primary);
   color: white;
   font-weight: 600;
 }
@@ -157,7 +157,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #888;
+  color: var(--color-text-muted);
 }
 
 .filter-menu .custom-row {
@@ -181,7 +181,7 @@
 
 .filter-menu .divider {
   height: 1px;
-  background: #444;
+  background: var(--color-border);
   margin: 0.5rem 0;
 }
 </style>

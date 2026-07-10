@@ -24,7 +24,36 @@
 	let lazyObserver: IntersectionObserver;
 	let progressObserver: IntersectionObserver;
 
-	$: overflowX = $viewSettings.zoomLevel > 1 ? 'auto' : 'hidden';
+	// fit-height / original pages can exceed the viewport width, so allow
+	// horizontal scroll for them (and whenever zoomed past 1).
+	$: overflowX =
+		$viewSettings.zoomLevel > 1 || $viewSettings.fitMode !== 'fit-width'
+			? 'auto'
+			: 'hidden';
+
+	// Per-page image sizing for the webtoon viewer, mirroring the page-mode fit
+	// options: fit-width fills the container width, fit-height sizes each page to
+	// one viewport height, original is native pixels — all scaled by zoom.
+	$: imgStyle = (() => {
+		const z = $viewSettings.zoomLevel;
+		switch ($viewSettings.fitMode) {
+			case 'fit-height':
+				return `height:${z * 100}vh;width:auto;max-width:none;`;
+			case 'original':
+				return `width:auto;height:auto;max-width:none;zoom:${z};`;
+			default:
+				return `width:${z * 100}%;height:auto;`;
+		}
+	})();
+
+	// Zoom is a manual adjustment on top of the fit baseline (zoom = 1 = exact
+	// fit). Reset it when the fit mode changes so the new fit is exact, and so a
+	// leftover page-mode zoom scale doesn't carry into the webtoon viewer.
+	let prevFitReset = $viewSettings.fitMode;
+	$: if ($viewSettings.fitMode !== prevFitReset) {
+		prevFitReset = $viewSettings.fitMode;
+		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
+	}
 
 	// Re-render already-loaded pages when the active filter changes.
 	$: if (customFilterConfig !== undefined) applyFilterToLoaded();
@@ -210,6 +239,10 @@
 	}
 
 	onMount(() => {
+		// Entering scroll mode: clear any absolute zoom scale left by page mode
+		// so fit-width/fit-height start as an exact viewport fit.
+		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
+
 		const ratioMap = new Map<number, number>();
 
 		lazyObserver = new IntersectionObserver(
@@ -297,11 +330,11 @@
 	bind:this={container}
 	style="overflow-x: {overflowX};"
 >
-	<div class="pages" style="width: {$viewSettings.zoomLevel * 100}%;">
+	<div class="pages">
 		{#each Array(comic.totalPages) as _, i}
 			<div class="page-wrapper" data-index={i}>
 				{#if pageUrls[i] && pageUrls[i] !== 'loading' && pageUrls[i] !== 'error'}
-					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" />
+					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" style={imgStyle} />
 				{:else if pageUrls[i] === 'error'}
 					<div class="page-placeholder error"><span>!</span></div>
 				{:else}
@@ -324,24 +357,25 @@
 		overflow-y: auto;
 		height: 100vh;
 		width: 100vw;
-		background: #000;
-		color: #f5f5f5;
+		background: var(--color-bg-main);
+		color: var(--color-text-main);
 		position: relative;
 		touch-action: pan-y;
 	}
 
 	.pages {
+		width: 100%;
 		margin: 0 auto;
 	}
 
 	.page-wrapper {
 		width: 100%;
+		display: flex;
+		justify-content: center;
 	}
 
 	.page-wrapper img {
 		display: block;
-		width: 100%;
-		height: auto;
 	}
 
 	.page-placeholder {
@@ -351,14 +385,14 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		background: #111;
-		color: #555;
+		background: var(--color-bg-secondary);
+		color: var(--color-text-muted);
 		gap: 0.75rem;
-		border-bottom: 1px solid #1a1a1a;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.page-placeholder.error {
-		color: #c0392b;
+		color: var(--color-status-error);
 	}
 
 	.page-number {
@@ -370,8 +404,8 @@
 	.loading-spinner {
 		width: 36px;
 		height: 36px;
-		border: 4px solid rgba(255, 255, 255, 0.15);
-		border-top-color: #ff6600;
+		border: 4px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+		border-top-color: var(--color-primary);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 	}

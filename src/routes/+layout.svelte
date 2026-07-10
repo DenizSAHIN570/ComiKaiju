@@ -3,7 +3,8 @@
 	import { onMount } from 'svelte';
 	import { error, clearError, isLoading, loadingMessage, downloadProgress, setError } from '$lib/store/session.js';
 	import { formatBytes } from '$lib/utils/format.js';
-	import { themeStore } from '$lib/services/theme';
+	import { themeStore } from '$lib/theme/themeStore';
+	import { readerSettings } from '$lib/reader/readerSettings';
 	import { logger } from '$lib/services/logger';
 	import { initShortcuts } from '$lib/services/keyboardShortcuts';
 	import { dev } from '$app/environment';
@@ -11,6 +12,7 @@
 	onMount(() => {
 	  // Initialize services
 	  themeStore.init();
+	  readerSettings.init();
 	  initShortcuts();
 
 		// Register Service Worker for offline support (Production only)
@@ -135,7 +137,7 @@
 		left: 0;
 		width: 100vw;
 		height: 100vh;
-		background: rgba(0, 0, 0, 0.7);
+		background: color-mix(in srgb, #000 70%, transparent);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -147,7 +149,7 @@
 		text-align: center;
 		padding: 2rem;
 		border-radius: 12px;
-		box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 10px 25px -5px color-mix(in srgb, #000 10%, transparent), 0 8px 10px -6px color-mix(in srgb, #000 10%, transparent);
 		min-width: 200px;
 		background-color: var(--color-bg-surface);
 		color: var(--color-text-main);
@@ -207,12 +209,12 @@
 		width: 90%;
 		max-width: 400px;
 		border-radius: 6px;
-		box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+		box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
 		animation: slideIn 0.3s ease-out;
 		overflow: hidden;
 	}
 
-	.global-error.critical { background: #991b1b; color: white; }
+	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 60%, #000); color: white; }
 	.global-error.error { background: var(--color-status-error); color: white; }
 	.global-error.warning { background: var(--color-status-warning); color: black; }
 	.global-error.info { background: var(--color-primary); color: white; }
