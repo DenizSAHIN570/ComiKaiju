@@ -78,6 +78,9 @@ One roadmap listed "single/double page + continuous webtoon scroll" as already s
 - ComicInfo.xml parsing (in progress / to be wired up properly)
 - Full touch + keyboard support (ctrl+scroll zoom, etc.)
 - Config-driven image filters: premade one-click filters (monochrome, color correction, vintage/sepia, vibrant) plus colorblind **assist** (protanopia/deuteranopia/tritanopia daltonize), and a custom filter builder — RGB channels, gamma, vibrance, white balance — saved to a reusable library with keyboard cycling and per-comic persistence. Numeric-schema based (no raw CSS/SVG), doubling as accessibility tooling (light sensitivity, reading fatigue, color-blindness accommodation)
+- Theme Builder: color + font theme builder (typed schema, light + dark palette per theme), built-in presets + editable user library with live editing, JSON export/import; all app colors/fonts globalized onto CSS variables (see "Theme Builder" below)
+- Dedicated `/settings` page (sidebar layout): Themes, Reader (reading layout LTR/RTL/vertical-scroll + page fit, persisted globally), and Filters management
+- RTL (right-to-left) reading direction for the page viewer; fit-width/fit-height/original honored in both page and webtoon-scroll modes
 - PWA support
 - File Manager: hierarchical folders, bulk uploads, OS-like navigation
 - Deduplication: content-addressable storage (SHA-256) to minimize disk usage
@@ -87,7 +90,9 @@ One roadmap listed "single/double page + continuous webtoon scroll" as already s
 
 ---
 
-## Theme Builder
+## Theme Builder ✅ SHIPPED
+
+Shipped as a standard color + font theme builder (a color picker per semantic role + a font picker), **not** a filter-schema extension. Delivered: a typed theme schema (light + dark palette per theme, driven by the Light/Dark/System toggle), built-in presets (Default/Sepia/High Contrast) plus an editable user library with live inline editing, JSON export/import, and full globalization of color/font usage onto CSS custom properties (with a pre-paint boot script to avoid FOUC). Lives in a dedicated `/settings` page alongside Reader and Filters sections. Original planning notes below.
 
 Extends the config-driven schema already shipping for image filters (see "Already shipped") to **themes**.
 
