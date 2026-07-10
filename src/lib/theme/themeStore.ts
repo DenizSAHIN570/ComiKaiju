@@ -26,8 +26,18 @@ interface State {
 
 const BOOT_KEY = "ck-theme-boot";
 
+export const PRESET_IDS = new Set(PRESETS.map((p) => p.id));
+
+/**
+ * Presets are editable: a saved user theme whose id matches a preset id is an
+ * override that shadows the built-in constant. Merge so overrides replace the
+ * matching preset (keeping preset order), then append genuinely custom themes.
+ */
 export function allThemesFrom(userThemes: Theme[]): Theme[] {
-  return [...PRESETS, ...userThemes];
+  const overrides = new Map(userThemes.map((t) => [t.id, t]));
+  const merged = PRESETS.map((p) => overrides.get(p.id) ?? p);
+  const customs = userThemes.filter((t) => !PRESET_IDS.has(t.id));
+  return [...merged, ...customs];
 }
 
 export function getActiveTheme(state: State): Theme {
@@ -125,15 +135,36 @@ function createThemeStore() {
         return ns;
       });
     },
+    // Deletes a custom theme, or (for a preset id) drops the override so the
+    // built-in default is restored. A deleted preset id stays active because
+    // the constant still resolves; a deleted custom active theme falls back.
     deleteTheme(id: string) {
       update((s) => {
         const userThemes = s.userThemes.filter((t) => t.id !== id);
         const activeThemeId =
-          s.activeThemeId === id ? DEFAULT_THEME_ID : s.activeThemeId;
+          s.activeThemeId === id && !PRESET_IDS.has(id)
+            ? DEFAULT_THEME_ID
+            : s.activeThemeId;
         const ns = { ...s, userThemes, activeThemeId };
         render(ns);
         void themeStorage.saveThemes(userThemes);
         void themeStorage.setActiveThemeId(activeThemeId);
+        return ns;
+      });
+    },
+    // Persist an edit to the active theme WITHOUT re-rendering (the editor
+    // drives the live preview itself via preview()). Upserts by id, so editing
+    // a preset stores an override.
+    commitTheme(theme: Theme) {
+      themeValidator.validateOrThrow(theme);
+      update((s) => {
+        const userThemes = s.userThemes.some((t) => t.id === theme.id)
+          ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
+          : [...s.userThemes, theme];
+        const ns = { ...s, userThemes, activeThemeId: theme.id };
+        writeBoot(ns);
+        void themeStorage.saveThemes(userThemes);
+        void themeStorage.setActiveThemeId(theme.id);
         return ns;
       });
     },

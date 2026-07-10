@@ -1,8 +1,15 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { themeStore, allThemesFrom, getActiveTheme } from '$lib/theme/themeStore';
-	import { type Theme, type ThemeMode, type Palette } from '$lib/theme/themeSchema';
-	import ThemeBuilder from '$lib/ui/ThemeBuilder.svelte';
+	import { onMount, onDestroy } from 'svelte';
+	import { get } from 'svelte/store';
+	import { themeStore, allThemesFrom, getActiveTheme, PRESET_IDS } from '$lib/theme/themeStore';
+	import { themeValidator } from '$lib/theme/themeValidator';
+	import {
+		FONT_STACKS,
+		type Theme,
+		type ThemeMode,
+		type Palette,
+		type FontId
+	} from '$lib/theme/themeSchema';
 	import FilterEditor from '$lib/ui/FilterEditor.svelte';
 	import {
 		customFilterStore,
@@ -13,19 +20,10 @@
 	type Section = 'themes' | 'filters';
 	let section = $state<Section>('themes');
 
-	// --- Themes ---
-	let themeBuilderOpen = $state(false);
-	let themeBuilderInitial = $state<Theme | null>(null);
-
+	// ---------- Themes ----------
 	const themeState = $derived($themeStore);
 	const activeTheme = $derived(getActiveTheme(themeState));
 	const themes = $derived(allThemesFrom(themeState.userThemes));
-
-	const MODES: { id: ThemeMode; label: string }[] = [
-		{ id: 'light', label: 'Light' },
-		{ id: 'dark', label: 'Dark' },
-		{ id: 'system', label: 'System' }
-	];
 
 	function isDarkNow(mode: ThemeMode): boolean {
 		if (mode === 'dark') return true;
@@ -34,16 +32,141 @@
 	}
 	const swatchKeys: (keyof Palette)[] = ['primary', 'secondary', 'bgMain', 'bgSurface', 'textMain'];
 
-	function createTheme() {
-		themeBuilderInitial = null;
-		themeBuilderOpen = true;
+	const GROUPS: { title: string; keys: (keyof Palette)[] }[] = [
+		{ title: 'Brand', keys: ['primary', 'secondary'] },
+		{ title: 'Surfaces', keys: ['bgMain', 'bgSurface', 'bgSecondary'] },
+		{ title: 'Text', keys: ['textMain', 'textSecondary', 'textMuted'] },
+		{ title: 'Lines', keys: ['border'] },
+		{ title: 'Semantic', keys: ['error', 'success', 'warning'] }
+	];
+	const LABELS: Record<keyof Palette, string> = {
+		primary: 'Primary (main)',
+		secondary: 'Secondary (side)',
+		bgMain: 'Background',
+		bgSurface: 'Surface',
+		bgSecondary: 'Inset',
+		textMain: 'Text',
+		textSecondary: 'Text (secondary)',
+		textMuted: 'Text (muted)',
+		border: 'Border',
+		error: 'Error / delete',
+		success: 'Success / accept',
+		warning: 'Warning'
+	};
+	const FONTS: { id: FontId; label: string }[] = [
+		{ id: 'system-sans', label: 'System Sans' },
+		{ id: 'system-serif', label: 'System Serif' },
+		{ id: 'mono', label: 'Monospace' },
+		{ id: 'rounded', label: 'Rounded' },
+		{ id: 'humanist', label: 'Humanist' }
+	];
+
+	let draft = $state<Theme | null>(null);
+	let editMode = $state<'light' | 'dark'>('dark');
+	let importInput = $state<HTMLInputElement>();
+
+	const isPreset = $derived(!!draft && PRESET_IDS.has(draft.id));
+	const isOverridden = $derived(
+		!!draft && isPreset && themeState.userThemes.some((t) => t.id === draft!.id)
+	);
+
+	function clone(t: Theme): Theme {
+		return JSON.parse(JSON.stringify(t));
 	}
-	function editTheme(theme: Theme) {
-		themeBuilderInitial = theme;
-		themeBuilderOpen = true;
+	function reseed() {
+		draft = clone(getActiveTheme(get(themeStore)));
+	}
+	function previewNow() {
+		if (draft) themeStore.preview(draft, editMode);
 	}
 
-	// --- Filters ---
+	onMount(() => {
+		editMode = isDarkNow(get(themeStore).mode) ? 'dark' : 'light';
+		reseed();
+		previewNow();
+	});
+	// Leaving settings: restore the active theme in the app's real mode.
+	onDestroy(() => themeStore.restore());
+
+	function selectTheme(t: Theme) {
+		themeStore.setActiveTheme(t.id);
+		reseed();
+		previewNow();
+	}
+	function newTheme() {
+		const base = clone(themes.find((t) => t.id === 'preset-default') ?? themes[0]);
+		const cfg: Theme = {
+			...base,
+			id: `custom-${crypto.randomUUID()}`,
+			name: 'My Theme',
+			builtIn: false
+		};
+		themeStore.commitTheme(cfg);
+		reseed();
+		previewNow();
+	}
+
+	const HEX = /^#[0-9a-fA-F]{6}$/;
+	function setColor(key: keyof Palette, value: string) {
+		if (!draft || !HEX.test(value)) return;
+		draft = { ...draft, [editMode]: { ...draft[editMode], [key]: value } };
+		previewNow();
+	}
+	function commit() {
+		if (!draft) return;
+		if (!draft.name.trim()) draft = { ...draft, name: 'Untitled' };
+		themeStore.commitTheme(clone(draft));
+	}
+	function switchMode(mode: 'light' | 'dark') {
+		editMode = mode;
+		previewNow();
+	}
+
+	function resetPreset() {
+		if (!draft) return;
+		themeStore.deleteTheme(draft.id);
+		reseed();
+		previewNow();
+	}
+	function deleteCustom() {
+		if (!draft) return;
+		themeStore.deleteTheme(draft.id);
+		reseed();
+		previewNow();
+	}
+
+	function exportTheme() {
+		if (!draft) return;
+		const json = JSON.stringify({ ...draft, builtIn: false }, null, 2);
+		const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = `theme-${draft.name.replace(/\s+/g, '-').toLowerCase()}.json`;
+		a.click();
+		URL.revokeObjectURL(url);
+	}
+	let importError = $state('');
+	async function importFile(e: Event) {
+		const file = (e.target as HTMLInputElement).files?.[0];
+		if (!file) return;
+		try {
+			const parsed = JSON.parse(await file.text());
+			const r = themeValidator.validate({ ...parsed, id: 'tmp', builtIn: false });
+			if (!r.valid) {
+				importError = `Import failed: ${r.errors[0]}`;
+				return;
+			}
+			themeStore.importTheme(JSON.stringify(parsed));
+			importError = '';
+			reseed();
+			previewNow();
+		} catch {
+			importError = 'Import failed: not valid JSON';
+		}
+		(e.target as HTMLInputElement).value = '';
+	}
+
+	// ---------- Filters ----------
 	let filterEditorOpen = $state(false);
 	let filterEditorInitial = $state<FilterConfig | null>(null);
 	const customFilters = $derived($customFilterStore);
@@ -70,12 +193,6 @@
 <svelte:head>
 	<title>Settings — ComiKaiju</title>
 </svelte:head>
-
-<ThemeBuilder
-	open={themeBuilderOpen}
-	initial={themeBuilderInitial}
-	onClose={() => (themeBuilderOpen = false)}
-/>
 
 <FilterEditor
 	open={filterEditorOpen}
@@ -116,58 +233,119 @@
 					<div>
 						<h2>Themes</h2>
 						<p class="hint">
-							Pick a theme or build your own. Each theme defines a light and a dark palette.
+							Pick a theme to edit it below. Changes apply live; presets can be edited and reset.
 						</p>
 					</div>
-					<button class="btn-primary" onclick={createTheme}>+ Create theme</button>
 				</div>
 
-				<div class="mode-inline">
-					<span class="mode-inline-label">Mode</span>
-					<div class="segmented">
-						{#each MODES as m (m.id)}
-							<button
-								class:selected={themeState.mode === m.id}
-								onclick={() => themeStore.setMode(m.id)}
-							>
-								{m.label}
-							</button>
-						{/each}
-					</div>
-				</div>
-
-				<div class="grid">
+				<!-- Top: theme options -->
+				<div class="chips">
 					{#each themes as t (t.id)}
 						{@const palette = isDarkNow(themeState.mode) ? t.dark : t.light}
-						<div class="card" class:active={activeTheme.id === t.id}>
-							<button
-								class="select"
-								onclick={() => themeStore.setActiveTheme(t.id)}
-								aria-label="Use {t.name}"
-							>
-								<span class="swatches">
-									{#each swatchKeys as k (k)}
-										<span class="swatch" style="background:{palette[k]}"></span>
-									{/each}
-								</span>
-								<span class="card-name">
-									{t.name}
-									{#if activeTheme.id === t.id}<span class="badge">Active</span>{/if}
-								</span>
-							</button>
-							<div class="card-actions">
-								<button class="link" onclick={() => editTheme(t)}>
-									{t.builtIn ? 'Duplicate' : 'Edit'}
-								</button>
-								{#if !t.builtIn}
-									<button class="link danger" onclick={() => themeStore.deleteTheme(t.id)}>
-										Delete
-									</button>
-								{/if}
+						<button
+							class="chip"
+							class:active={activeTheme.id === t.id}
+							onclick={() => selectTheme(t)}
+						>
+							<span class="chip-swatches">
+								{#each swatchKeys as k (k)}
+									<span class="dot" style="background:{palette[k]}"></span>
+								{/each}
+							</span>
+							<span class="chip-name">{t.name}</span>
+						</button>
+					{/each}
+					<button class="chip new" onclick={newTheme}>+ New</button>
+				</div>
+
+				<!-- Bottom: always-visible editor for the selected theme -->
+				{#if draft}
+					<div class="editor">
+						<div class="editor-top">
+							<input
+								class="name-input"
+								value={draft.name}
+								maxlength="60"
+								placeholder="Theme name"
+								oninput={(e) => (draft = { ...draft!, name: e.currentTarget.value })}
+								onchange={commit}
+							/>
+							<div class="mode-tabs">
+								<button class:sel={editMode === 'light'} onclick={() => switchMode('light')}>Light</button>
+								<button class:sel={editMode === 'dark'} onclick={() => switchMode('dark')}>Dark</button>
 							</div>
 						</div>
-					{/each}
-				</div>
+
+						<div class="groups">
+							{#each GROUPS as g (g.title)}
+								<div class="group">
+									<div class="group-title">{g.title}</div>
+									{#each g.keys as key (key)}
+										<label class="picker">
+											<span>{LABELS[key]}</span>
+											<input
+												type="color"
+												value={draft[editMode][key]}
+												oninput={(e) => setColor(key, e.currentTarget.value)}
+												onchange={commit}
+											/>
+											<input
+												class="hex"
+												value={draft[editMode][key]}
+												maxlength="7"
+												onchange={(e) => {
+													setColor(key, e.currentTarget.value);
+													commit();
+												}}
+											/>
+										</label>
+									{/each}
+								</div>
+							{/each}
+
+							<div class="group">
+								<div class="group-title">Font</div>
+								<select
+									value={draft.font}
+									onchange={(e) => {
+										draft = { ...draft!, font: e.currentTarget.value as FontId };
+										previewNow();
+										commit();
+									}}
+								>
+									{#each FONTS as f (f.id)}
+										<option value={f.id}>{f.label}</option>
+									{/each}
+								</select>
+								<p class="font-sample" style="font-family:{FONT_STACKS[draft.font]}">
+									The quick brown fox jumps over the lazy dog
+								</p>
+							</div>
+						</div>
+
+						{#if importError}<p class="err">{importError}</p>{/if}
+
+						<div class="editor-actions">
+							<button class="ghost" onclick={() => importInput?.click()}>Import</button>
+							<input
+								type="file"
+								accept="application/json"
+								bind:this={importInput}
+								onchange={importFile}
+								hidden
+							/>
+							<button class="ghost" onclick={exportTheme}>Export</button>
+							<span class="spacer"></span>
+							{#if isPreset}
+								{#if isOverridden}
+									<button class="danger" onclick={resetPreset}>Reset to default</button>
+								{/if}
+							{:else}
+								<button class="danger" onclick={deleteCustom}>Delete theme</button>
+							{/if}
+						</div>
+					</div>
+				{/if}
 			{:else if section === 'filters'}
 				<div class="content-head">
 					<div>
@@ -207,7 +385,7 @@
 								</div>
 								<div class="card-actions">
 									<button class="link" onclick={() => editFilter(f)}>Edit</button>
-									<button class="link danger" onclick={() => void customFilterStore.remove(f.id)}>
+									<button class="link danger-link" onclick={() => void customFilterStore.remove(f.id)}>
 										Delete
 									</button>
 								</div>
@@ -226,7 +404,6 @@
 		min-height: 100vh;
 		align-items: stretch;
 	}
-
 	.sidebar {
 		width: 15rem;
 		flex-shrink: 0;
@@ -305,7 +482,7 @@
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 		margin: 0;
-		max-width: 34rem;
+		max-width: 36rem;
 	}
 	.btn-primary {
 		flex-shrink: 0;
@@ -321,24 +498,160 @@
 		background: var(--color-primary-hover);
 	}
 
-	.mode-inline {
+	/* Theme chips */
+	.chips {
 		display: flex;
-		align-items: center;
-		gap: 0.75rem;
+		flex-wrap: wrap;
+		gap: 0.6rem;
 		margin-bottom: 1.5rem;
 	}
-	.mode-inline-label {
-		font-size: 0.8rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--color-text-muted);
+	.chip {
+		display: flex;
+		align-items: center;
+		gap: 0.55rem;
+		padding: 0.5rem 0.75rem;
+		border-radius: 9999px;
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-surface);
+		color: var(--color-text-main);
+		cursor: pointer;
+		font-size: 0.9rem;
 	}
-	.segmented {
+	.chip:hover {
+		border-color: var(--color-text-secondary);
+	}
+	.chip.active {
+		border-color: var(--color-primary);
+		box-shadow: 0 0 0 1px var(--color-primary);
+	}
+	.chip.new {
+		color: var(--color-text-secondary);
+		border-style: dashed;
+	}
+	.chip.new:hover {
+		color: var(--color-primary);
+		border-color: var(--color-primary);
+	}
+	.chip-swatches {
+		display: flex;
+		gap: 3px;
+	}
+	.dot {
+		width: 0.85rem;
+		height: 0.85rem;
+		border-radius: 3px;
+		border: 1px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+	}
+
+	/* Inline editor */
+	.editor {
+		border: 1px solid var(--color-border);
+		border-radius: 12px;
+		background: var(--color-bg-surface);
+		padding: 1.25rem;
+	}
+	.editor-top {
+		display: flex;
+		gap: 0.75rem;
+		align-items: center;
+		margin-bottom: 1.25rem;
+	}
+	.name-input {
+		flex: 1;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 8px;
+		padding: 0.55rem 0.75rem;
+		color: var(--color-text-main);
+		font-size: 1rem;
+	}
+	.mode-tabs {
 		display: flex;
 		gap: 0.25rem;
 	}
-	.segmented button {
-		padding: 0.4rem 0.9rem;
+	.mode-tabs button {
+		padding: 0.5rem 1rem;
+		border-radius: 8px;
+		border: 1px solid var(--color-border);
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.mode-tabs button.sel {
+		background: var(--color-primary);
+		color: #fff;
+		border-color: var(--color-primary);
+	}
+	.groups {
+		display: grid;
+		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+		gap: 1.25rem;
+	}
+	.group-title {
+		font-size: 0.75rem;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
+		margin-bottom: 0.5rem;
+	}
+	.picker {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		padding: 0.25rem 0;
+	}
+	.picker span {
+		flex: 1;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.picker input[type='color'] {
+		width: 2.5rem;
+		height: 2rem;
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		background: transparent;
+		cursor: pointer;
+		padding: 0;
+	}
+	.hex {
+		width: 5.5rem;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		padding: 0.35rem;
+		color: var(--color-text-main);
+	}
+	select {
+		width: 100%;
+		background: var(--color-bg-secondary);
+		border: 1px solid var(--color-border);
+		border-radius: 6px;
+		padding: 0.5rem;
+		color: var(--color-text-main);
+	}
+	.font-sample {
+		margin: 0.5rem 0 0;
+		color: var(--color-text-secondary);
+		font-size: 0.9rem;
+	}
+	.err {
+		color: var(--color-status-error);
+		font-size: 0.85rem;
+		margin: 0.75rem 0 0;
+	}
+	.editor-actions {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		margin-top: 1.25rem;
+		padding-top: 1rem;
+		border-top: 1px solid var(--color-border);
+	}
+	.spacer {
+		flex: 1;
+	}
+	.ghost {
+		padding: 0.45rem 0.9rem;
 		border-radius: 8px;
 		border: 1px solid var(--color-border);
 		background: transparent;
@@ -346,12 +659,24 @@
 		cursor: pointer;
 		font-size: 0.85rem;
 	}
-	.segmented button.selected {
-		background: var(--color-primary);
+	.ghost:hover {
+		color: var(--color-text-main);
+		border-color: var(--color-text-secondary);
+	}
+	.danger {
+		padding: 0.45rem 0.9rem;
+		border-radius: 8px;
+		border: 1px solid var(--color-status-error);
+		background: var(--color-status-error);
 		color: #fff;
-		border-color: var(--color-primary);
+		cursor: pointer;
+		font-size: 0.85rem;
+	}
+	.danger:hover {
+		background: color-mix(in srgb, var(--color-status-error) 85%, #000);
 	}
 
+	/* Filters + shared cards */
 	.group-label {
 		font-size: 0.8rem;
 		text-transform: uppercase;
@@ -366,7 +691,6 @@
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
 	}
-
 	.grid {
 		display: grid;
 		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
@@ -380,30 +704,6 @@
 		display: flex;
 		flex-direction: column;
 	}
-	.card.active {
-		border-color: var(--color-primary);
-		box-shadow: 0 0 0 1px var(--color-primary);
-	}
-	.select {
-		display: block;
-		width: 100%;
-		text-align: left;
-		background: transparent;
-		border: 0;
-		padding: 0.9rem;
-		cursor: pointer;
-	}
-	.swatches {
-		display: flex;
-		gap: 5px;
-		margin-bottom: 0.7rem;
-	}
-	.swatch {
-		width: 1.6rem;
-		height: 1.6rem;
-		border-radius: 5px;
-		border: 1px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
-	}
 	.filter-body {
 		display: flex;
 		flex-direction: column;
@@ -412,24 +712,12 @@
 		flex: 1;
 	}
 	.card-name {
-		display: flex;
-		align-items: center;
-		gap: 0.5rem;
 		color: var(--color-text-main);
 		font-weight: 500;
 	}
 	.card-desc {
 		color: var(--color-text-secondary);
 		font-size: 0.8rem;
-	}
-	.badge {
-		font-size: 0.65rem;
-		text-transform: uppercase;
-		letter-spacing: 0.03em;
-		color: var(--color-primary);
-		border: 1px solid var(--color-primary);
-		border-radius: 9999px;
-		padding: 0.05rem 0.45rem;
 	}
 	.card-actions {
 		display: flex;
@@ -447,7 +735,10 @@
 	.link:hover {
 		color: var(--color-primary);
 	}
-	.link.danger:hover {
+	.danger-link {
+		color: var(--color-status-error);
+	}
+	.danger-link:hover {
 		color: var(--color-status-error);
 	}
 
