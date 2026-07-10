@@ -3,7 +3,7 @@
 	import { onMount } from 'svelte';
 	import { error, clearError, isLoading, loadingMessage, downloadProgress, setError } from '$lib/store/session.js';
 	import { formatBytes } from '$lib/utils/format.js';
-	import { themeStore } from '$lib/services/theme';
+	import { themeStore } from '$lib/theme/themeStore';
 	import { logger } from '$lib/services/logger';
 	import { initShortcuts } from '$lib/services/keyboardShortcuts';
 	import { dev } from '$app/environment';
