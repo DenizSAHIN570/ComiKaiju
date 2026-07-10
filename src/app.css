@@ -1,10 +1,17 @@
 /* Semantic Color System & Global Styles */
 @import "tailwindcss";
 
+/*
+ * Default theme fallback (Dark/Amoled). These values match the "Default" preset
+ * in src/lib/theme/themeSchema.ts and act as the pre-hydration default; the
+ * theme engine overrides them at runtime via inline custom properties on :root.
+ */
 :root {
   /* Official ComiKaiju Colors - Default (Dark/Amoled) */
   --color-primary: #ff6600; /* Neon Orange */
   --color-primary-hover: #ff8533; /* Lighter Orange */
+  --color-secondary: #4f9cf9; /* Side accent */
+  --color-secondary-hover: #6bb0fb;
   --color-bg-main: #000000; /* Amoled Black */
   --color-bg-surface: #0a0a0a; /* Deep Black */
   --color-bg-secondary: #111111; /* Dark Gray */
@@ -15,10 +22,15 @@
   --color-status-error: #ef4444;
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
+  --font-base:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 }
 
 /* Optional Light Theme Override (Keeping the Brand Orange) */
 :root[class~="light"] {
+  --color-secondary: #2563eb;
+  --color-secondary-hover: #1d4ed8;
   --color-bg-main: #ffffff;
   --color-bg-surface: #f9fafb;
   --color-bg-secondary: #f3f4f6;
@@ -32,6 +44,8 @@
   /* Map CSS variables to Tailwind utilities */
   --color-primary: var(--color-primary);
   --color-primary-hover: var(--color-primary-hover);
+  --color-secondary: var(--color-secondary);
+  --color-secondary-hover: var(--color-secondary-hover);
 
   --color-bg-main: var(--color-bg-main);
   --color-bg-surface: var(--color-bg-surface);
@@ -51,6 +65,7 @@
 body {
   background-color: var(--color-bg-main);
   color: var(--color-text-main);
+  font-family: var(--font-base);
   transition:
     background-color 0.3s ease,
     color 0.3s ease;

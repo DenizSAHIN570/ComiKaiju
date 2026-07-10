@@ -20,6 +20,52 @@
     <meta name="author" content="ComiKaiju" />
     <meta name="theme-color" content="#1a1a1a" />
 
+    <!-- Theme boot: apply the active theme before first paint (avoids FOUC).
+         Keys must match PALETTE_KEYS/CSS_VAR in src/lib/theme/themeSchema.ts -->
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem("ck-theme-boot");
+          if (!raw) return;
+          var boot = JSON.parse(raw);
+          var isDark =
+            boot.mode === "dark" ||
+            (boot.mode === "system" &&
+              matchMedia("(prefers-color-scheme: dark)").matches);
+          var p = isDark ? boot.dark : boot.light;
+          if (!p) return;
+          var map = {
+            primary: "--color-primary",
+            secondary: "--color-secondary",
+            bgMain: "--color-bg-main",
+            bgSurface: "--color-bg-surface",
+            bgSecondary: "--color-bg-secondary",
+            textMain: "--color-text-main",
+            textSecondary: "--color-text-secondary",
+            textMuted: "--color-text-muted",
+            border: "--color-border",
+            error: "--color-status-error",
+            success: "--color-status-success",
+            warning: "--color-status-warning",
+          };
+          var root = document.documentElement;
+          for (var k in map) if (p[k]) root.style.setProperty(map[k], p[k]);
+          if (boot.hovers) {
+            root.style.setProperty("--color-primary-hover", boot.hovers.primary);
+            root.style.setProperty(
+              "--color-secondary-hover",
+              boot.hovers.secondary,
+            );
+          }
+          if (boot.font) root.style.setProperty("--font-base", boot.font);
+          root.classList.toggle("dark", isDark);
+          root.classList.toggle("light", !isDark);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta && p.bgMain) meta.setAttribute("content", p.bgMain);
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://comikaiju.com" />

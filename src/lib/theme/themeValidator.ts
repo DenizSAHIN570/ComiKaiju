@@ -1,9 +1,4 @@
-import {
-  PALETTE_KEYS,
-  FONT_STACKS,
-  type Palette,
-  type Theme,
-} from "./themeSchema";
+import { PALETTE_KEYS, FONT_STACKS, type Theme } from "./themeSchema";
 
 export interface ValidationResult {
   valid: boolean;
@@ -35,7 +30,7 @@ class ThemeValidator {
       errors.push(`Invalid font: ${String(t.font)}`);
 
     for (const mode of ["light", "dark"] as const) {
-      const p = t[mode] as Palette | undefined;
+      const p = t[mode];
       if (typeof p !== "object" || p === null) {
         errors.push(`Missing ${mode} palette`);
         continue;
