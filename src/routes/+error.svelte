@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { resolve } from '$app/paths';
 	import ThemeMenu from '$lib/ui/ThemeMenu.svelte';
 </script>
 
@@ -25,8 +26,8 @@
 					{$page.error?.message || "The comic you're looking for seems to be in another dimension."}
 				</p>
 				
-				<a 
-					href="/"
+				<a
+					href={resolve('/')}
 					class="inline-flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-hover transition-colors font-bold shadow-lg shadow-primary/20"
 				>
 					<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

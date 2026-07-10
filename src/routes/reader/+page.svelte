@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { get } from 'svelte/store';
 	import { currentComic, currentPageIndex, isLoading, error, currentFile, setError } from '$lib/store/session.js';
 	import ArchiveManager from '$lib/archive/archiveManager.js';
@@ -41,7 +42,7 @@
 		await comicStorage.init();
 
 		if (!comic) {
-			await goto('/');
+			await goto(resolve('/'));
 			return;
 		}
 
@@ -189,7 +190,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 
 	async function exitReader() {
 		await saveProgress();
-		await goto('/');
+		await goto(resolve('/'));
 	}
 </script>
 

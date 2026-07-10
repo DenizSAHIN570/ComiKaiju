@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
+	import { resolve } from '$app/paths';
 	import { themeStore, allThemesFrom, getActiveTheme, PRESET_IDS } from '$lib/theme/themeStore';
 	import { themeValidator } from '$lib/theme/themeValidator';
 	import {
@@ -234,7 +235,7 @@
 
 <div class="settings-layout">
 	<aside class="sidebar">
-		<a class="back" href="/">← ComiKaiju</a>
+		<a class="back" href={resolve('/')}>← ComiKaiju</a>
 		<h1>Settings</h1>
 		<nav>
 			{#each NAV as item (item.id)}

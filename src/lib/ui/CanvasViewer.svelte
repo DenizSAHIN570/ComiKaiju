@@ -36,6 +36,9 @@
 
 	let ignoreNextTap = false;
 
+	// Internal pointer bookkeeping for pinch handling — never read reactively, so
+	// a plain Map is intentional (no need for svelte/reactivity's SvelteMap).
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const activePointers = new Map<number, { x: number; y: number }>();
 	let isPinching = false;
 	let pinchStartDistance = 0;
@@ -70,6 +73,9 @@
 	}
 
 	$: if ($viewSettings.fitMode !== prevFitMode && hasAppliedInitialView) {
+		// Tracks the last-seen fit mode across reactive runs; the write is read on
+		// the next run, which the linter's single-pass flow analysis can't see.
+		// eslint-disable-next-line no-useless-assignment
 		prevFitMode = $viewSettings.fitMode;
 		applyViewMode();
 	}

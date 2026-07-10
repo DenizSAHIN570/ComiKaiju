@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { comicStorage } from '$lib/storage/comicStorage';
 	import type { FileSystemItem } from '../../types/comic';
 	import { setComic, setLoading, setError } from '$lib/store/session';
@@ -53,7 +54,7 @@
 				folderFiles = await directoryService.listComics(handle);
 				folderLoading = false;
 			}
-		} catch (err) {
+		} catch {
 			setError('Failed to open folder', 'error');
 		}
 	}
@@ -79,7 +80,7 @@
 			};
 
 			setComic(comic, fileData);
-			await goto('/reader');
+			await goto(resolve('/reader'));
 		} catch (err) {
 			logger.error('Library', 'Failed to open local file', err);
 			setError('Failed to open local comic', 'error');
@@ -134,7 +135,7 @@
 			});
 
 			setComic(comic, file);
-			await goto('/reader');
+			await goto(resolve('/reader'));
 		} catch (error) {
 			logger.error('Library', 'Error opening comic', error);
 			setError('Failed to open comic', 'error');
@@ -174,7 +175,7 @@
 <div class="library-container">
     <header class="library-header">
         <div class="header-left">
-            <a href="/" class="back-link">
+            <a href={resolve('/')} class="back-link">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                 </svg>
@@ -207,7 +208,7 @@
                      <div class="empty-folder">No comic files found in this folder.</div>
                 {:else}
                     <div class="comic-grid">
-                        {#each folderFiles as file}
+                        {#each folderFiles as file (file.name)}
                              <div class="comic-card local" onclick={() => openLocalFile(file)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && openLocalFile(file)}>
                                 <div class="card-cover">
                                     <div class="placeholder local-placeholder">
@@ -235,7 +236,7 @@
         {:else if items.length === 0}
             <div class="empty">
                 <p>No comics found.</p>
-                <a href="/">Go upload some!</a>
+                <a href={resolve('/')}>Go upload some!</a>
             </div>
         {:else}
             <div class="comic-grid">

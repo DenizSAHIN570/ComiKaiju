@@ -23,8 +23,11 @@ class ArchiveManager {
 
         this.isInitialized = true;
         logger.info("ArchiveManager", "libarchive.js initialized");
-      } catch (error: any) {
-        throw new Error(`Failed to initialize libarchive.js: ${error.message}`);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to initialize libarchive.js: ${message}`, {
+          cause: error,
+        });
       }
     })();
 
@@ -40,67 +43,65 @@ class ArchiveManager {
   async openArchive(file: File): Promise<ComicPage[]> {
     await this.initialize();
 
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Open the archive
-        const archive = await Archive.open(file);
-        logger.info("ArchiveManager", `Opened archive: ${file.name}`);
+    try {
+      // Open the archive
+      const archive = await Archive.open(file);
+      logger.info("ArchiveManager", `Opened archive: ${file.name}`);
 
-        // Get file listing
-        const filesObj = await archive.getFilesObject();
+      // Get file listing
+      const filesObj = await archive.getFilesObject();
 
-        // Flatten and convert to our format
-        const entries: Array<{ name: string; size: number; archiveFile: any }> =
-          [];
+      // Flatten and convert to our format
+      const entries: Array<{ name: string; size: number; archiveFile: any }> =
+        [];
 
-        const processFileObj = (obj: Record<string, any>, basePath = "") => {
-          for (const [name, item] of Object.entries(obj)) {
-            const fullPath = basePath ? `${basePath}/${name}` : name;
+      const processFileObj = (obj: Record<string, any>, basePath = "") => {
+        for (const [name, item] of Object.entries(obj)) {
+          const fullPath = basePath ? `${basePath}/${name}` : name;
 
-            if (item && typeof item === "object" && "extract" in item) {
-              // This is a compressed file
-              if (this.isImageFile(fullPath)) {
-                entries.push({
-                  name: fullPath,
-                  size: (item as any).size || 0,
-                  archiveFile: item,
-                });
-              }
-            } else if (typeof item === "object") {
-              // This is a directory, recurse
-              processFileObj(item as Record<string, any>, fullPath);
+          if (item && typeof item === "object" && "extract" in item) {
+            // This is a compressed file
+            if (this.isImageFile(fullPath)) {
+              entries.push({
+                name: fullPath,
+                size: (item as any).size || 0,
+                archiveFile: item,
+              });
             }
+          } else if (typeof item === "object") {
+            // This is a directory, recurse
+            processFileObj(item as Record<string, any>, fullPath);
           }
-        };
+        }
+      };
 
-        processFileObj(filesObj as Record<string, any>);
+      processFileObj(filesObj as Record<string, any>);
 
-        // Sort entries by filename
-        const sortedEntries = entries.sort((a, b) =>
-          a.name.localeCompare(b.name, undefined, {
-            numeric: true,
-            sensitivity: "base",
-          }),
-        );
+      // Sort entries by filename
+      const sortedEntries = entries.sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, {
+          numeric: true,
+          sensitivity: "base",
+        }),
+      );
 
-        logger.info(
-          "ArchiveManager",
-          `Found ${sortedEntries.length} image files`,
-        );
+      logger.info(
+        "ArchiveManager",
+        `Found ${sortedEntries.length} image files`,
+      );
 
-        // Convert entries to ComicPage format
-        const pages: ComicPage[] = sortedEntries.map((entry, index) => ({
-          index,
-          filename: entry.name,
-          entry: entry.archiveFile, // Store the raw entry for later data loading
-        }));
+      // Convert entries to ComicPage format
+      const pages: ComicPage[] = sortedEntries.map((entry, index) => ({
+        index,
+        filename: entry.name,
+        entry: entry.archiveFile, // Store the raw entry for later data loading
+      }));
 
-        resolve(pages);
-      } catch (error) {
-        logger.error("ArchiveManager", "Failed to open archive", error);
-        reject(error);
-      }
-    });
+      return pages;
+    } catch (error) {
+      logger.error("ArchiveManager", "Failed to open archive", error);
+      throw error;
+    }
   }
 
   async loadPage(page: ComicPage): Promise<void> {
@@ -127,6 +128,7 @@ class ArchiveManager {
       );
       throw new Error(
         `Failed to extract page: ${error instanceof Error ? error.message : "Unknown error"}`,
+        { cause: error },
       );
     }
   }

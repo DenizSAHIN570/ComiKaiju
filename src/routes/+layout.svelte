@@ -42,14 +42,11 @@
 		};
 
 		// Track mouse usage for accessibility
-		let isMouseUser = false;
 		function handleMouseDown() {
-			isMouseUser = true;
 			document.body.classList.add('mouse-user');
 		}
 		function handleKeyDown(event: KeyboardEvent) {
 			if (event.key === 'Tab') {
-				isMouseUser = false;
 				document.body.classList.remove('mouse-user');
 			}
 		}

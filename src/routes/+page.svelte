@@ -1,10 +1,9 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount } from 'svelte';
 	import { comicStorage } from '$lib/storage/comicStorage.js';
 	import { setLoading, setError, setComic } from '$lib/store/session.js';
 	import {
 		handleFile,
-		cleanupComicProcessor,
 		handleUrlImport,
 		isHttpUrl
 	} from '$lib/services/comicProcessor.js';
@@ -14,6 +13,7 @@
 	import { logger } from '$lib/services/logger';
     import ArchiveManager from '$lib/archive/archiveManager.js';
     import { goto } from '$app/navigation';
+    import { resolve } from '$app/paths';
     import type { ComicBook, FileSystemItem } from '../types/comic';
 
 	let fileInput = $state<HTMLInputElement>();
@@ -117,7 +117,7 @@
             if (!comic) throw new Error('Failed to initialize comic metadata');
 
             setComic(comic, file);
-            await goto('/reader');
+            await goto(resolve('/reader'));
         } catch (error) {
             logger.error('Home', 'Failed to open local comic', error);
             setError('Failed to open local comic', 'error');
@@ -212,7 +212,7 @@
 
 			setComic(comic, file);
 			logger.info('Home', 'Navigating to reader...');
-			await goto('/reader');
+			await goto(resolve('/reader'));
 			
 		} catch (error) {
 			logger.error('Home', 'Failed to open comic', error);
@@ -358,7 +358,7 @@
 					</div>
 				{/if}
 				<ThemeMenu />
-				<a class="settings-btn" href="/settings" aria-label="Settings" title="Settings">
+				<a class="settings-btn" href={resolve('/settings')} aria-label="Settings" title="Settings">
 					<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 						<circle cx="12" cy="12" r="3" stroke-width="2" />
 						<path
@@ -390,7 +390,7 @@
                     
                     <div class="bookshelf">
                         <div class="shelf-row">
-                            {#each localFiles as item}
+                            {#each localFiles as item (item.name)}
                                 <div class="comic-book">
                                     <div class="comic-cover">
                                         <div 
@@ -448,7 +448,7 @@
                             <span class="pill"></span>
                             Recent Imports
                         </h3>
-                        <a href="/library" class="view-all">
+                        <a href={resolve('/library')} class="view-all">
                             View All <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
                         </a>
                     </div>

@@ -51,6 +51,9 @@
 	// leftover page-mode zoom scale doesn't carry into the webtoon viewer.
 	let prevFitReset = $viewSettings.fitMode;
 	$: if ($viewSettings.fitMode !== prevFitReset) {
+		// Tracks the last-seen fit mode across reactive runs; the write is read on
+		// the next run, which the linter's single-pass flow analysis can't see.
+		// eslint-disable-next-line no-useless-assignment
 		prevFitReset = $viewSettings.fitMode;
 		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
 	}
@@ -58,7 +61,9 @@
 	// Re-render already-loaded pages when the active filter changes.
 	$: if (customFilterConfig !== undefined) applyFilterToLoaded();
 
-	// Pinch-to-zoom state
+	// Pinch-to-zoom state — internal bookkeeping, never read reactively, so a
+	// plain Map is intentional (no need for svelte/reactivity's SvelteMap).
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const pinchPointers = new Map<number, { x: number; y: number }>();
 	let isPinching = false;
 	let pinchStartDistance = 0;
@@ -243,6 +248,8 @@
 		// so fit-width/fit-height start as an exact viewport fit.
 		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
 
+		// Local intersection-ratio bookkeeping, not reactive state.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const ratioMap = new Map<number, number>();
 
 		lazyObserver = new IntersectionObserver(
@@ -331,7 +338,7 @@
 	style="overflow-x: {overflowX};"
 >
 	<div class="pages">
-		{#each Array(comic.totalPages) as _, i}
+		{#each Array.from({ length: comic.totalPages }, (_, i) => i) as i (i)}
 			<div class="page-wrapper" data-index={i}>
 				{#if pageUrls[i] && pageUrls[i] !== 'loading' && pageUrls[i] !== 'error'}
 					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" style={imgStyle} />
