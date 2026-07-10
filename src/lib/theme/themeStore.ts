@@ -74,9 +74,7 @@ function createThemeStore() {
     applyTheme(getActiveTheme(state), state.mode);
     writeBoot(state);
     if (state.mode === "system")
-      startSystemWatch(() =>
-        applyTheme(getActiveTheme(get(store)), "system"),
-      );
+      startSystemWatch(() => applyTheme(getActiveTheme(get(store)), "system"));
     else stopSystemWatch();
   }
 

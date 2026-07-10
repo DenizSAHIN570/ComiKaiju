@@ -9,7 +9,9 @@
 		isHttpUrl
 	} from '$lib/services/comicProcessor.js';
 	import { directoryService, type DirectoryFile } from '$lib/services/directoryService';
-	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
+	import ThemeMenu from '$lib/ui/ThemeMenu.svelte';
+	import ThemeBuilder from '$lib/ui/ThemeBuilder.svelte';
+	import type { Theme } from '$lib/theme/themeSchema';
 	import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
 	import { logger } from '$lib/services/logger';
     import ArchiveManager from '$lib/archive/archiveManager.js';
@@ -25,6 +27,12 @@
 	let storageInfo = $state({ usage: 0, quota: 0, percentage: 0 });
     let openMenuId = $state<string | null>(null);
     let fileSystemSupported = $state(false);
+    let themeBuilderOpen = $state(false);
+    let themeBuilderInitial = $state<Theme | null>(null);
+    function openThemeBuilder(theme: Theme | null) {
+        themeBuilderInitial = theme;
+        themeBuilderOpen = true;
+    }
 
 	onMount(async () => {
 		const urlParam = new URL(window.location.href).searchParams.get('url');
@@ -337,6 +345,12 @@
 
 <svelte:window onclick={closeMenu} />
 
+<ThemeBuilder
+	open={themeBuilderOpen}
+	initial={themeBuilderInitial}
+	onClose={() => (themeBuilderOpen = false)}
+/>
+
 <div class="page-container">
     <!-- Navbar -->
 	<header class="navbar">
@@ -357,7 +371,7 @@
 						</div>
 					</div>
 				{/if}
-				<ThemeToggle />
+				<ThemeMenu onEdit={openThemeBuilder} />
 			</div>
 		</div>
 	</header>

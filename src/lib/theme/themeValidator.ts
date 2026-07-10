@@ -25,7 +25,8 @@ class ThemeValidator {
       errors.push("Name is required");
     else if (t.name.length > 60)
       errors.push("Name must be 60 characters or fewer");
-    if (typeof t.builtIn !== "boolean") errors.push("builtIn must be a boolean");
+    if (typeof t.builtIn !== "boolean")
+      errors.push("builtIn must be a boolean");
     if (typeof t.font !== "string" || !(t.font in FONT_STACKS))
       errors.push(`Invalid font: ${String(t.font)}`);
 

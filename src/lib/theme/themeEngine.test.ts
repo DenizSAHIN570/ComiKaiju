@@ -18,7 +18,9 @@ function stubMatchMediaDark() {
 describe("resolvePalette", () => {
   beforeEach(stubMatchMediaDark);
   it("returns dark half for dark mode", () => {
-    expect(resolvePalette(theme, "dark").palette.bgMain).toBe(theme.dark.bgMain);
+    expect(resolvePalette(theme, "dark").palette.bgMain).toBe(
+      theme.dark.bgMain,
+    );
   });
   it("returns light half for light mode", () => {
     const r = resolvePalette(theme, "light");

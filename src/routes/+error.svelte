@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import ThemeToggle from '$lib/ui/ThemeToggle.svelte';
+	import ThemeMenu from '$lib/ui/ThemeMenu.svelte';
 </script>
 
 <svelte:head>
@@ -39,6 +39,6 @@
 	</div>
 
 	<div class="absolute top-4 right-4">
-		<ThemeToggle />
+		<ThemeMenu />
 	</div>
 </div>

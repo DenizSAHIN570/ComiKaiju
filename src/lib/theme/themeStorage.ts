@@ -16,7 +16,9 @@ export const themeStorage = {
     return comicStorage.saveSetting(K_THEMES, themes);
   },
   async getActiveThemeId(): Promise<string> {
-    return (await comicStorage.getSetting<string>(K_ACTIVE)) ?? DEFAULT_THEME_ID;
+    return (
+      (await comicStorage.getSetting<string>(K_ACTIVE)) ?? DEFAULT_THEME_ID
+    );
   },
   setActiveThemeId(id: string): Promise<void> {
     return comicStorage.saveSetting(K_ACTIVE, id);

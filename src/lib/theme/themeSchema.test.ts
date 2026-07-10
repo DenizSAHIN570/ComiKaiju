@@ -11,9 +11,10 @@ describe("presets", () => {
     for (const t of PRESETS) {
       for (const mode of ["light", "dark"] as const) {
         for (const k of PALETTE_KEYS) {
-          expect(HEX.test(t[mode][k]), `${t.id}.${mode}.${k}=${t[mode][k]}`).toBe(
-            true,
-          );
+          expect(
+            HEX.test(t[mode][k]),
+            `${t.id}.${mode}.${k}=${t[mode][k]}`,
+          ).toBe(true);
         }
       }
     }

@@ -51,7 +51,10 @@
           var root = document.documentElement;
           for (var k in map) if (p[k]) root.style.setProperty(map[k], p[k]);
           if (boot.hovers) {
-            root.style.setProperty("--color-primary-hover", boot.hovers.primary);
+            root.style.setProperty(
+              "--color-primary-hover",
+              boot.hovers.primary,
+            );
             root.style.setProperty(
               "--color-secondary-hover",
               boot.hovers.secondary,

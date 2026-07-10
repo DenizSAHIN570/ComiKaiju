@@ -23,12 +23,14 @@
 ### Task 1: Vitest setup + theme schema & presets
 
 **Files:**
+
 - Modify: `package.json` (add devDeps + `test` script)
 - Create: `vitest.config.ts`
 - Create: `src/lib/theme/themeSchema.ts`
 - Test: `src/lib/theme/themeSchema.test.ts`
 
 **Interfaces:**
+
 - Produces: `ThemeMode`, `FontId`, `Palette`, `Theme` types; `PALETTE_KEYS: (keyof Palette)[]`; `CSS_VAR: Record<keyof Palette,string>`; `FONT_STACKS: Record<FontId,string>`; `PRESETS: Theme[]`; `DEFAULT_THEME_ID = 'preset-default'`.
 
 - [ ] **Step 1: Add Vitest deps and script**
@@ -39,12 +41,12 @@ Then add to `package.json` scripts: `"test": "vitest run"`, `"test:watch": "vite
 - [ ] **Step 2: Create `vitest.config.ts`**
 
 ```ts
-import { defineConfig } from 'vitest/config';
+import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   test: {
-    environment: 'jsdom',
-    include: ['src/**/*.test.ts'],
+    environment: "jsdom",
+    include: ["src/**/*.test.ts"],
     globals: false,
   },
 });
@@ -53,15 +55,23 @@ export default defineConfig({
 - [ ] **Step 3: Write `themeSchema.ts`**
 
 ```ts
-export type ThemeMode = 'light' | 'dark' | 'system';
-export type FontId = 'system-sans' | 'system-serif' | 'mono' | 'rounded' | 'humanist';
+export type ThemeMode = "light" | "dark" | "system";
+export type FontId =
+  "system-sans" | "system-serif" | "mono" | "rounded" | "humanist";
 
 export interface Palette {
-  primary: string; secondary: string;
-  bgMain: string; bgSurface: string; bgSecondary: string;
-  textMain: string; textSecondary: string; textMuted: string;
+  primary: string;
+  secondary: string;
+  bgMain: string;
+  bgSurface: string;
+  bgSecondary: string;
+  textMain: string;
+  textSecondary: string;
+  textMuted: string;
   border: string;
-  error: string; success: string; warning: string;
+  error: string;
+  success: string;
+  warning: string;
 }
 
 export interface Theme {
@@ -74,72 +84,148 @@ export interface Theme {
 }
 
 export const PALETTE_KEYS: (keyof Palette)[] = [
-  'primary', 'secondary', 'bgMain', 'bgSurface', 'bgSecondary',
-  'textMain', 'textSecondary', 'textMuted', 'border', 'error', 'success', 'warning',
+  "primary",
+  "secondary",
+  "bgMain",
+  "bgSurface",
+  "bgSecondary",
+  "textMain",
+  "textSecondary",
+  "textMuted",
+  "border",
+  "error",
+  "success",
+  "warning",
 ];
 
 export const CSS_VAR: Record<keyof Palette, string> = {
-  primary: '--color-primary', secondary: '--color-secondary',
-  bgMain: '--color-bg-main', bgSurface: '--color-bg-surface', bgSecondary: '--color-bg-secondary',
-  textMain: '--color-text-main', textSecondary: '--color-text-secondary', textMuted: '--color-text-muted',
-  border: '--color-border',
-  error: '--color-status-error', success: '--color-status-success', warning: '--color-status-warning',
+  primary: "--color-primary",
+  secondary: "--color-secondary",
+  bgMain: "--color-bg-main",
+  bgSurface: "--color-bg-surface",
+  bgSecondary: "--color-bg-secondary",
+  textMain: "--color-text-main",
+  textSecondary: "--color-text-secondary",
+  textMuted: "--color-text-muted",
+  border: "--color-border",
+  error: "--color-status-error",
+  success: "--color-status-success",
+  warning: "--color-status-warning",
 };
 
 export const FONT_STACKS: Record<FontId, string> = {
-  'system-sans': "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-  'system-serif': "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
-  'mono': "ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace",
-  'rounded': "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif",
-  'humanist': "'Segoe UI', Candara, 'Trebuchet MS', Verdana, system-ui, sans-serif",
+  "system-sans":
+    "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+  "system-serif": "ui-serif, Georgia, Cambria, 'Times New Roman', serif",
+  mono: "ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace",
+  rounded: "ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif",
+  humanist:
+    "'Segoe UI', Candara, 'Trebuchet MS', Verdana, system-ui, sans-serif",
 };
 
-export const DEFAULT_THEME_ID = 'preset-default';
+export const DEFAULT_THEME_ID = "preset-default";
 
 export const PRESETS: Theme[] = [
   {
-    id: DEFAULT_THEME_ID, name: 'Default', builtIn: true, font: 'system-sans',
+    id: DEFAULT_THEME_ID,
+    name: "Default",
+    builtIn: true,
+    font: "system-sans",
     dark: {
-      primary: '#ff6600', secondary: '#4f9cf9',
-      bgMain: '#000000', bgSurface: '#0a0a0a', bgSecondary: '#111111',
-      textMain: '#ffffff', textSecondary: '#a1a1aa', textMuted: '#52525b',
-      border: '#1f1f1f', error: '#ef4444', success: '#22c55e', warning: '#eab308',
+      primary: "#ff6600",
+      secondary: "#4f9cf9",
+      bgMain: "#000000",
+      bgSurface: "#0a0a0a",
+      bgSecondary: "#111111",
+      textMain: "#ffffff",
+      textSecondary: "#a1a1aa",
+      textMuted: "#52525b",
+      border: "#1f1f1f",
+      error: "#ef4444",
+      success: "#22c55e",
+      warning: "#eab308",
     },
     light: {
-      primary: '#ff6600', secondary: '#2563eb',
-      bgMain: '#ffffff', bgSurface: '#f9fafb', bgSecondary: '#f3f4f6',
-      textMain: '#000000', textSecondary: '#4b5563', textMuted: '#9ca3af',
-      border: '#e5e7eb', error: '#ef4444', success: '#22c55e', warning: '#eab308',
+      primary: "#ff6600",
+      secondary: "#2563eb",
+      bgMain: "#ffffff",
+      bgSurface: "#f9fafb",
+      bgSecondary: "#f3f4f6",
+      textMain: "#000000",
+      textSecondary: "#4b5563",
+      textMuted: "#9ca3af",
+      border: "#e5e7eb",
+      error: "#ef4444",
+      success: "#22c55e",
+      warning: "#eab308",
     },
   },
   {
-    id: 'preset-sepia', name: 'Sepia', builtIn: true, font: 'system-serif',
+    id: "preset-sepia",
+    name: "Sepia",
+    builtIn: true,
+    font: "system-serif",
     light: {
-      primary: '#a0522d', secondary: '#8a6d3b',
-      bgMain: '#f4ecd8', bgSurface: '#ede0c8', bgSecondary: '#e4d5b7',
-      textMain: '#3b2f2f', textSecondary: '#5c4a3a', textMuted: '#8a7a63',
-      border: '#d9c7a3', error: '#b23c3c', success: '#5c7a3a', warning: '#b8860b',
+      primary: "#a0522d",
+      secondary: "#8a6d3b",
+      bgMain: "#f4ecd8",
+      bgSurface: "#ede0c8",
+      bgSecondary: "#e4d5b7",
+      textMain: "#3b2f2f",
+      textSecondary: "#5c4a3a",
+      textMuted: "#8a7a63",
+      border: "#d9c7a3",
+      error: "#b23c3c",
+      success: "#5c7a3a",
+      warning: "#b8860b",
     },
     dark: {
-      primary: '#d2894f', secondary: '#b89968',
-      bgMain: '#1c1712', bgSurface: '#241d16', bgSecondary: '#2d251b',
-      textMain: '#ece0cc', textSecondary: '#c4b299', textMuted: '#8a7a63',
-      border: '#3a2f22', error: '#d9736b', success: '#9cae72', warning: '#d9a441',
+      primary: "#d2894f",
+      secondary: "#b89968",
+      bgMain: "#1c1712",
+      bgSurface: "#241d16",
+      bgSecondary: "#2d251b",
+      textMain: "#ece0cc",
+      textSecondary: "#c4b299",
+      textMuted: "#8a7a63",
+      border: "#3a2f22",
+      error: "#d9736b",
+      success: "#9cae72",
+      warning: "#d9a441",
     },
   },
   {
-    id: 'preset-high-contrast', name: 'High Contrast', builtIn: true, font: 'system-sans',
+    id: "preset-high-contrast",
+    name: "High Contrast",
+    builtIn: true,
+    font: "system-sans",
     light: {
-      primary: '#b34700', secondary: '#0033cc',
-      bgMain: '#ffffff', bgSurface: '#ffffff', bgSecondary: '#f0f0f0',
-      textMain: '#000000', textSecondary: '#1a1a1a', textMuted: '#404040',
-      border: '#000000', error: '#cc0000', success: '#006600', warning: '#a65f00',
+      primary: "#b34700",
+      secondary: "#0033cc",
+      bgMain: "#ffffff",
+      bgSurface: "#ffffff",
+      bgSecondary: "#f0f0f0",
+      textMain: "#000000",
+      textSecondary: "#1a1a1a",
+      textMuted: "#404040",
+      border: "#000000",
+      error: "#cc0000",
+      success: "#006600",
+      warning: "#a65f00",
     },
     dark: {
-      primary: '#ff8c1a', secondary: '#66aaff',
-      bgMain: '#000000', bgSurface: '#000000', bgSecondary: '#141414',
-      textMain: '#ffffff', textSecondary: '#e6e6e6', textMuted: '#bfbfbf',
-      border: '#ffffff', error: '#ff5555', success: '#33cc33', warning: '#ffb84d',
+      primary: "#ff8c1a",
+      secondary: "#66aaff",
+      bgMain: "#000000",
+      bgSurface: "#000000",
+      bgSecondary: "#141414",
+      textMain: "#ffffff",
+      textSecondary: "#e6e6e6",
+      textMuted: "#bfbfbf",
+      border: "#ffffff",
+      error: "#ff5555",
+      success: "#33cc33",
+      warning: "#ffb84d",
     },
   },
 ];
@@ -148,25 +234,28 @@ export const PRESETS: Theme[] = [
 - [ ] **Step 4: Write `themeSchema.test.ts`**
 
 ```ts
-import { describe, it, expect } from 'vitest';
-import { PRESETS, PALETTE_KEYS, DEFAULT_THEME_ID } from './themeSchema';
+import { describe, it, expect } from "vitest";
+import { PRESETS, PALETTE_KEYS, DEFAULT_THEME_ID } from "./themeSchema";
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 
-describe('presets', () => {
-  it('includes the default preset first', () => {
+describe("presets", () => {
+  it("includes the default preset first", () => {
     expect(PRESETS[0].id).toBe(DEFAULT_THEME_ID);
   });
-  it('every preset has all palette keys as valid hex in both modes', () => {
+  it("every preset has all palette keys as valid hex in both modes", () => {
     for (const t of PRESETS) {
-      for (const mode of ['light', 'dark'] as const) {
+      for (const mode of ["light", "dark"] as const) {
         for (const k of PALETTE_KEYS) {
-          expect(HEX.test(t[mode][k]), `${t.id}.${mode}.${k}=${t[mode][k]}`).toBe(true);
+          expect(
+            HEX.test(t[mode][k]),
+            `${t.id}.${mode}.${k}=${t[mode][k]}`,
+          ).toBe(true);
         }
       }
     }
   });
-  it('all presets are builtIn', () => {
+  it("all presets are builtIn", () => {
     expect(PRESETS.every((t) => t.builtIn)).toBe(true);
   });
 });
@@ -189,54 +278,56 @@ git commit -m "feat(theme): schema, presets, and vitest setup"
 ### Task 2: Theme validator
 
 **Files:**
+
 - Create: `src/lib/theme/themeValidator.ts`
 - Test: `src/lib/theme/themeValidator.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Theme`, `Palette`, `PALETTE_KEYS`, `FONT_STACKS` from `themeSchema`.
 - Produces: `interface ValidationResult { valid: boolean; errors: string[] }`; `themeValidator.validate(theme: unknown): ValidationResult`; `themeValidator.validateOrThrow(theme: unknown): Theme`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-import { describe, it, expect } from 'vitest';
-import { themeValidator } from './themeValidator';
-import { PRESETS } from './themeSchema';
+import { describe, it, expect } from "vitest";
+import { themeValidator } from "./themeValidator";
+import { PRESETS } from "./themeSchema";
 
 const good = PRESETS[0];
 
-describe('themeValidator', () => {
-  it('accepts a valid theme', () => {
+describe("themeValidator", () => {
+  it("accepts a valid theme", () => {
     expect(themeValidator.validate(good).valid).toBe(true);
   });
-  it('rejects a bad hex value', () => {
+  it("rejects a bad hex value", () => {
     const bad = structuredClone(good);
-    bad.light.primary = 'red';
+    bad.light.primary = "red";
     const r = themeValidator.validate(bad);
     expect(r.valid).toBe(false);
-    expect(r.errors.join(' ')).toContain('primary');
+    expect(r.errors.join(" ")).toContain("primary");
   });
-  it('rejects an out-of-enum font', () => {
+  it("rejects an out-of-enum font", () => {
     const bad = structuredClone(good) as any;
-    bad.font = 'comic-sans';
+    bad.font = "comic-sans";
     expect(themeValidator.validate(bad).valid).toBe(false);
   });
-  it('rejects a missing palette key', () => {
+  it("rejects a missing palette key", () => {
     const bad = structuredClone(good) as any;
     delete bad.dark.border;
     expect(themeValidator.validate(bad).valid).toBe(false);
   });
-  it('rejects empty and overlong names', () => {
-    const empty = { ...structuredClone(good), name: '' };
-    const long = { ...structuredClone(good), name: 'x'.repeat(61) };
+  it("rejects empty and overlong names", () => {
+    const empty = { ...structuredClone(good), name: "" };
+    const long = { ...structuredClone(good), name: "x".repeat(61) };
     expect(themeValidator.validate(empty).valid).toBe(false);
     expect(themeValidator.validate(long).valid).toBe(false);
   });
-  it('rejects non-objects', () => {
+  it("rejects non-objects", () => {
     expect(themeValidator.validate(null).valid).toBe(false);
-    expect(themeValidator.validate('nope').valid).toBe(false);
+    expect(themeValidator.validate("nope").valid).toBe(false);
   });
-  it('validateOrThrow throws on invalid', () => {
+  it("validateOrThrow throws on invalid", () => {
     expect(() => themeValidator.validateOrThrow(null)).toThrow();
   });
 });
@@ -250,7 +341,12 @@ Expected: FAIL (module not found).
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { PALETTE_KEYS, FONT_STACKS, type Palette, type Theme } from './themeSchema';
+import {
+  PALETTE_KEYS,
+  FONT_STACKS,
+  type Palette,
+  type Theme,
+} from "./themeSchema";
 
 export interface ValidationResult {
   valid: boolean;
@@ -262,27 +358,33 @@ const HEX = /^#[0-9a-fA-F]{6}$/;
 class ThemeValidator {
   validate(theme: unknown): ValidationResult {
     const errors: string[] = [];
-    if (typeof theme !== 'object' || theme === null) {
-      return { valid: false, errors: ['Theme must be an object'] };
+    if (typeof theme !== "object" || theme === null) {
+      return { valid: false, errors: ["Theme must be an object"] };
     }
     const t = theme as Record<string, unknown>;
 
-    if (typeof t.id !== 'string' || !t.id) errors.push('Missing id');
-    if (typeof t.name !== 'string' || t.name.trim().length === 0) errors.push('Name is required');
-    else if (t.name.length > 60) errors.push('Name must be 60 characters or fewer');
-    if (typeof t.builtIn !== 'boolean') errors.push('builtIn must be a boolean');
-    if (typeof t.font !== 'string' || !(t.font in FONT_STACKS)) errors.push(`Invalid font: ${String(t.font)}`);
+    if (typeof t.id !== "string" || !t.id) errors.push("Missing id");
+    if (typeof t.name !== "string" || t.name.trim().length === 0)
+      errors.push("Name is required");
+    else if (t.name.length > 60)
+      errors.push("Name must be 60 characters or fewer");
+    if (typeof t.builtIn !== "boolean")
+      errors.push("builtIn must be a boolean");
+    if (typeof t.font !== "string" || !(t.font in FONT_STACKS))
+      errors.push(`Invalid font: ${String(t.font)}`);
 
-    for (const mode of ['light', 'dark'] as const) {
+    for (const mode of ["light", "dark"] as const) {
       const p = t[mode] as Palette | undefined;
-      if (typeof p !== 'object' || p === null) {
+      if (typeof p !== "object" || p === null) {
         errors.push(`Missing ${mode} palette`);
         continue;
       }
       for (const key of PALETTE_KEYS) {
         const v = (p as Record<string, unknown>)[key];
-        if (typeof v !== 'string' || !HEX.test(v)) {
-          errors.push(`${mode}.${key} must be a 6-digit hex color (got ${String(v)})`);
+        if (typeof v !== "string" || !HEX.test(v)) {
+          errors.push(
+            `${mode}.${key} must be a 6-digit hex color (got ${String(v)})`,
+          );
         }
       }
     }
@@ -291,7 +393,7 @@ class ThemeValidator {
 
   validateOrThrow(theme: unknown): Theme {
     const r = this.validate(theme);
-    if (!r.valid) throw new Error(`Invalid theme: ${r.errors.join('; ')}`);
+    if (!r.valid) throw new Error(`Invalid theme: ${r.errors.join("; ")}`);
     return theme as Theme;
   }
 }
@@ -316,34 +418,38 @@ git commit -m "feat(theme): theme validator (typed-only invariant)"
 ### Task 3: Color utilities (hex↔HSL, hover derivation)
 
 **Files:**
+
 - Create: `src/lib/theme/colorUtil.ts`
 - Test: `src/lib/theme/colorUtil.test.ts`
 
 **Interfaces:**
+
 - Produces: `hexToHsl(hex): {h,s,l}`; `hslToHex(h,s,l): string`; `deriveHover(hex: string, isDark: boolean): string` (lighten +12% L in dark, darken -12% L in light, clamped 0..100).
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-import { describe, it, expect } from 'vitest';
-import { hexToHsl, hslToHex, deriveHover } from './colorUtil';
+import { describe, it, expect } from "vitest";
+import { hexToHsl, hslToHex, deriveHover } from "./colorUtil";
 
-describe('colorUtil', () => {
-  it('round-trips hex through hsl (±1 per channel)', () => {
-    const out = hslToHex(...Object.values(hexToHsl('#ff6600')) as [number, number, number]);
+describe("colorUtil", () => {
+  it("round-trips hex through hsl (±1 per channel)", () => {
+    const out = hslToHex(
+      ...(Object.values(hexToHsl("#ff6600")) as [number, number, number]),
+    );
     expect(out).toMatch(/^#[0-9a-f]{6}$/);
     // #ff6600 has L≈50%, round-trip stays close
     expect(hexToHsl(out).h).toBeCloseTo(24, 0);
   });
-  it('deriveHover lightens in dark mode', () => {
-    expect(hexToHsl(deriveHover('#808080', true)).l).toBeGreaterThan(50);
+  it("deriveHover lightens in dark mode", () => {
+    expect(hexToHsl(deriveHover("#808080", true)).l).toBeGreaterThan(50);
   });
-  it('deriveHover darkens in light mode', () => {
-    expect(hexToHsl(deriveHover('#808080', false)).l).toBeLessThan(50);
+  it("deriveHover darkens in light mode", () => {
+    expect(hexToHsl(deriveHover("#808080", false)).l).toBeLessThan(50);
   });
-  it('clamps at bounds', () => {
-    expect(deriveHover('#ffffff', true)).toBe('#ffffff');
-    expect(deriveHover('#000000', false)).toBe('#000000');
+  it("clamps at bounds", () => {
+    expect(deriveHover("#ffffff", true)).toBe("#ffffff");
+    expect(deriveHover("#000000", false)).toBe("#000000");
   });
 });
 ```
@@ -360,16 +466,24 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  let h = 0, s = 0;
+  const max = Math.max(r, g, b),
+    min = Math.min(r, g, b);
+  let h = 0,
+    s = 0;
   const l = (max + min) / 2;
   const d = max - min;
   if (d !== 0) {
     s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
-      case g: h = (b - r) / d + 2; break;
-      default: h = (r - g) / d + 4; break;
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      default:
+        h = (r - g) / d + 4;
+        break;
     }
     h *= 60;
   }
@@ -377,11 +491,16 @@ export function hexToHsl(hex: string): { h: number; s: number; l: number } {
 }
 
 export function hslToHex(h: number, s: number, l: number): string {
-  s /= 100; l /= 100;
+  s /= 100;
+  l /= 100;
   const k = (n: number) => (n + h / 30) % 12;
   const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
-  const toHex = (x: number) => Math.round(x * 255).toString(16).padStart(2, '0');
+  const f = (n: number) =>
+    l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const toHex = (x: number) =>
+    Math.round(x * 255)
+      .toString(16)
+      .padStart(2, "0");
   return `#${toHex(f(0))}${toHex(f(8))}${toHex(f(4))}`;
 }
 
@@ -409,54 +528,76 @@ git commit -m "feat(theme): color utilities and hover derivation"
 ### Task 4: Theme engine (apply + resolve + system watch)
 
 **Files:**
+
 - Create: `src/lib/theme/themeEngine.ts`
 - Test: `src/lib/theme/themeEngine.test.ts`
 
 **Interfaces:**
+
 - Consumes: `Theme`, `ThemeMode`, `Palette`, `PALETTE_KEYS`, `CSS_VAR`, `FONT_STACKS` from schema; `deriveHover` from colorUtil.
 - Produces: `resolvePalette(theme, mode): { palette: Palette; isDark: boolean }`; `applyTheme(theme, mode): void`; `startSystemWatch(onChange: () => void): void`; `stopSystemWatch(): void`.
 
 - [ ] **Step 1: Write the failing test**
 
 ```ts
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { resolvePalette, applyTheme } from './themeEngine';
-import { PRESETS, CSS_VAR } from './themeSchema';
+import { describe, it, expect, beforeEach, vi } from "vitest";
+import { resolvePalette, applyTheme } from "./themeEngine";
+import { PRESETS, CSS_VAR } from "./themeSchema";
 
 const theme = PRESETS[0];
 
-describe('resolvePalette', () => {
+describe("resolvePalette", () => {
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener() {}, removeEventListener() {} }));
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    );
   });
-  it('returns dark half for dark mode', () => {
-    expect(resolvePalette(theme, 'dark').palette.bgMain).toBe(theme.dark.bgMain);
+  it("returns dark half for dark mode", () => {
+    expect(resolvePalette(theme, "dark").palette.bgMain).toBe(
+      theme.dark.bgMain,
+    );
   });
-  it('returns light half for light mode', () => {
-    const r = resolvePalette(theme, 'light');
+  it("returns light half for light mode", () => {
+    const r = resolvePalette(theme, "light");
     expect(r.isDark).toBe(false);
     expect(r.palette.bgMain).toBe(theme.light.bgMain);
   });
-  it('resolves system via matchMedia', () => {
-    expect(resolvePalette(theme, 'system').isDark).toBe(true);
+  it("resolves system via matchMedia", () => {
+    expect(resolvePalette(theme, "system").isDark).toBe(true);
   });
 });
 
-describe('applyTheme', () => {
+describe("applyTheme", () => {
   beforeEach(() => {
-    vi.stubGlobal('matchMedia', vi.fn().mockReturnValue({ matches: true, addEventListener() {}, removeEventListener() {} }));
-    document.documentElement.removeAttribute('style');
-    document.documentElement.className = '';
+    vi.stubGlobal(
+      "matchMedia",
+      vi.fn().mockReturnValue({
+        matches: true,
+        addEventListener() {},
+        removeEventListener() {},
+      }),
+    );
+    document.documentElement.removeAttribute("style");
+    document.documentElement.className = "";
     document.head.innerHTML = '<meta name="theme-color" content="#000">';
   });
-  it('sets every color var + font + hover + class + meta', () => {
-    applyTheme(theme, 'dark');
+  it("sets every color var + font + hover + class + meta", () => {
+    applyTheme(theme, "dark");
     const s = document.documentElement.style;
     expect(s.getPropertyValue(CSS_VAR.bgMain).trim()).toBe(theme.dark.bgMain);
-    expect(s.getPropertyValue('--color-primary-hover')).not.toBe('');
-    expect(s.getPropertyValue('--font-base')).toContain('sans-serif');
-    expect(document.documentElement.classList.contains('dark')).toBe(true);
-    expect(document.querySelector('meta[name="theme-color"]')!.getAttribute('content')).toBe(theme.dark.bgMain);
+    expect(s.getPropertyValue("--color-primary-hover")).not.toBe("");
+    expect(s.getPropertyValue("--font-base")).toContain("sans-serif");
+    expect(document.documentElement.classList.contains("dark")).toBe(true);
+    expect(
+      document
+        .querySelector('meta[name="theme-color"]')!
+        .getAttribute("content"),
+    ).toBe(theme.dark.bgMain);
   });
 });
 ```
@@ -469,50 +610,70 @@ Expected: FAIL (module not found).
 - [ ] **Step 3: Write minimal implementation**
 
 ```ts
-import { CSS_VAR, FONT_STACKS, PALETTE_KEYS, type Palette, type Theme, type ThemeMode } from './themeSchema';
-import { deriveHover } from './colorUtil';
+import {
+  CSS_VAR,
+  FONT_STACKS,
+  PALETTE_KEYS,
+  type Palette,
+  type Theme,
+  type ThemeMode,
+} from "./themeSchema";
+import { deriveHover } from "./colorUtil";
 
 function prefersDark(): boolean {
-  return typeof matchMedia !== 'undefined' && matchMedia('(prefers-color-scheme: dark)').matches;
+  return (
+    typeof matchMedia !== "undefined" &&
+    matchMedia("(prefers-color-scheme: dark)").matches
+  );
 }
 
-export function resolvePalette(theme: Theme, mode: ThemeMode): { palette: Palette; isDark: boolean } {
-  const isDark = mode === 'dark' || (mode === 'system' && prefersDark());
+export function resolvePalette(
+  theme: Theme,
+  mode: ThemeMode,
+): { palette: Palette; isDark: boolean } {
+  const isDark = mode === "dark" || (mode === "system" && prefersDark());
   return { palette: isDark ? theme.dark : theme.light, isDark };
 }
 
 export function applyTheme(theme: Theme, mode: ThemeMode): void {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") return;
   const { palette, isDark } = resolvePalette(theme, mode);
   const root = document.documentElement;
 
   for (const key of PALETTE_KEYS) {
     root.style.setProperty(CSS_VAR[key], palette[key]);
   }
-  root.style.setProperty('--color-primary-hover', deriveHover(palette.primary, isDark));
-  root.style.setProperty('--color-secondary-hover', deriveHover(palette.secondary, isDark));
-  root.style.setProperty('--font-base', FONT_STACKS[theme.font]);
+  root.style.setProperty(
+    "--color-primary-hover",
+    deriveHover(palette.primary, isDark),
+  );
+  root.style.setProperty(
+    "--color-secondary-hover",
+    deriveHover(palette.secondary, isDark),
+  );
+  root.style.setProperty("--font-base", FONT_STACKS[theme.font]);
 
-  root.classList.toggle('dark', isDark);
-  root.classList.toggle('light', !isDark);
+  root.classList.toggle("dark", isDark);
+  root.classList.toggle("light", !isDark);
 
   const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute('content', palette.bgMain);
+  if (meta) meta.setAttribute("content", palette.bgMain);
 }
 
 let mediaQuery: MediaQueryList | null = null;
 let watchHandler: (() => void) | null = null;
 
 export function startSystemWatch(onChange: () => void): void {
-  if (typeof matchMedia === 'undefined') return;
+  if (typeof matchMedia === "undefined") return;
   stopSystemWatch();
-  mediaQuery = matchMedia('(prefers-color-scheme: dark)');
+  mediaQuery = matchMedia("(prefers-color-scheme: dark)");
   watchHandler = () => onChange();
-  mediaQuery.addEventListener('change', watchHandler);
+  mediaQuery.addEventListener("change", watchHandler);
 }
 
 export function stopSystemWatch(): void {
-  if (mediaQuery && watchHandler) mediaQuery.removeEventListener('change', watchHandler);
+  if (mediaQuery && watchHandler)
+    mediaQuery.removeEventListener("change", watchHandler);
   mediaQuery = null;
   watchHandler = null;
 }
@@ -535,10 +696,12 @@ git commit -m "feat(theme): engine applies themes as CSS vars with system watch"
 ### Task 5: `app.css` restructure + `app.html` boot script
 
 **Files:**
+
 - Modify: `src/app.css`
 - Modify: `src/app.html`
 
 **Interfaces:**
+
 - Consumes: nothing at runtime (boot script is self-contained). The boot script reads `localStorage['ck-theme-boot']` written by Task 6's store.
 
 - [ ] **Step 1: Restructure `app.css`** — add `--color-secondary`, `--color-secondary-hover`, `--font-base`; map them in `@theme`; route `body` font through `--font-base`.
@@ -561,7 +724,9 @@ Replace `:root { ... }` block (lines 4–18) to add secondary + font (keep all e
   --color-status-error: #ef4444;
   --color-status-success: #22c55e;
   --color-status-warning: #eab308;
-  --font-base: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-base:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+    Arial, sans-serif;
 }
 ```
 
@@ -584,8 +749,8 @@ Update the light override to include `secondary`:
 Add to `@theme` block (after primary-hover mapping):
 
 ```css
-  --color-secondary: var(--color-secondary);
-  --color-secondary-hover: var(--color-secondary-hover);
+--color-secondary: var(--color-secondary);
+--color-secondary-hover: var(--color-secondary-hover);
 ```
 
 Update `body`:
@@ -604,37 +769,50 @@ body {
 - [ ] **Step 2: Add the pre-paint boot script to `app.html`** — insert immediately after `<meta name="theme-color" content="#1a1a1a" />` (line 21).
 
 ```html
-    <!-- Theme boot: apply active theme before first paint (avoids FOUC). Keys must match PALETTE_KEYS/CSS_VAR in src/lib/theme/themeSchema.ts -->
-    <script>
-      (function () {
-        try {
-          var raw = localStorage.getItem('ck-theme-boot');
-          if (!raw) return;
-          var boot = JSON.parse(raw);
-          var isDark = boot.mode === 'dark' ||
-            (boot.mode === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
-          var p = isDark ? boot.dark : boot.light;
-          if (!p) return;
-          var map = {
-            primary: '--color-primary', secondary: '--color-secondary',
-            bgMain: '--color-bg-main', bgSurface: '--color-bg-surface', bgSecondary: '--color-bg-secondary',
-            textMain: '--color-text-main', textSecondary: '--color-text-secondary', textMuted: '--color-text-muted',
-            border: '--color-border', error: '--color-status-error', success: '--color-status-success', warning: '--color-status-warning'
-          };
-          var root = document.documentElement;
-          for (var k in map) if (p[k]) root.style.setProperty(map[k], p[k]);
-          if (boot.hovers) {
-            root.style.setProperty('--color-primary-hover', boot.hovers.primary);
-            root.style.setProperty('--color-secondary-hover', boot.hovers.secondary);
-          }
-          if (boot.font) root.style.setProperty('--font-base', boot.font);
-          root.classList.toggle('dark', isDark);
-          root.classList.toggle('light', !isDark);
-          var meta = document.querySelector('meta[name="theme-color"]');
-          if (meta && p.bgMain) meta.setAttribute('content', p.bgMain);
-        } catch (e) {}
-      })();
-    </script>
+<!-- Theme boot: apply active theme before first paint (avoids FOUC). Keys must match PALETTE_KEYS/CSS_VAR in src/lib/theme/themeSchema.ts -->
+<script>
+  (function () {
+    try {
+      var raw = localStorage.getItem("ck-theme-boot");
+      if (!raw) return;
+      var boot = JSON.parse(raw);
+      var isDark =
+        boot.mode === "dark" ||
+        (boot.mode === "system" &&
+          matchMedia("(prefers-color-scheme: dark)").matches);
+      var p = isDark ? boot.dark : boot.light;
+      if (!p) return;
+      var map = {
+        primary: "--color-primary",
+        secondary: "--color-secondary",
+        bgMain: "--color-bg-main",
+        bgSurface: "--color-bg-surface",
+        bgSecondary: "--color-bg-secondary",
+        textMain: "--color-text-main",
+        textSecondary: "--color-text-secondary",
+        textMuted: "--color-text-muted",
+        border: "--color-border",
+        error: "--color-status-error",
+        success: "--color-status-success",
+        warning: "--color-status-warning",
+      };
+      var root = document.documentElement;
+      for (var k in map) if (p[k]) root.style.setProperty(map[k], p[k]);
+      if (boot.hovers) {
+        root.style.setProperty("--color-primary-hover", boot.hovers.primary);
+        root.style.setProperty(
+          "--color-secondary-hover",
+          boot.hovers.secondary,
+        );
+      }
+      if (boot.font) root.style.setProperty("--font-base", boot.font);
+      root.classList.toggle("dark", isDark);
+      root.classList.toggle("light", !isDark);
+      var meta = document.querySelector('meta[name="theme-color"]');
+      if (meta && p.bgMain) meta.setAttribute("content", p.bgMain);
+    } catch (e) {}
+  })();
+</script>
 ```
 
 - [ ] **Step 3: Verify build + Default unchanged**
@@ -654,6 +832,7 @@ git commit -m "feat(theme): add secondary/font tokens and pre-paint boot script"
 ### Task 6: Theme storage + store; retire `services/theme.ts`; wire init
 
 **Files:**
+
 - Create: `src/lib/theme/themeStorage.ts`
 - Create: `src/lib/theme/themeStore.ts`
 - Modify: `src/routes/+layout.svelte` (swap `themeStore` import + `init()`)
@@ -661,19 +840,20 @@ git commit -m "feat(theme): add secondary/font tokens and pre-paint boot script"
 - Test: `src/lib/theme/themeStorage.test.ts` (light — mock comicStorage)
 
 **Interfaces:**
+
 - `themeStorage`: `getThemes(): Promise<Theme[]>`, `saveThemes(t: Theme[]): Promise<void>`, `getActiveThemeId(): Promise<string>`, `setActiveThemeId(id): Promise<void>`, `getMode(): Promise<ThemeMode>`, `setMode(m): Promise<void>`.
 - `themeStore` (Svelte store): state `{ mode, activeThemeId, userThemes: Theme[] }`; methods `init()`, `setMode(m)`, `setActiveTheme(id)`, `saveTheme(t)`, `deleteTheme(id)`, `importTheme(json): Theme`, `exportTheme(id): string`; derived export `allThemes` (`PRESETS` + userThemes); helper `getActiveTheme(state): Theme`.
 
 - [ ] **Step 1: Write `themeStorage.ts`**
 
 ```ts
-import { comicStorage } from '$lib/storage/comicStorage';
-import { themeValidator } from './themeValidator';
-import { DEFAULT_THEME_ID, type Theme, type ThemeMode } from './themeSchema';
+import { comicStorage } from "$lib/storage/comicStorage";
+import { themeValidator } from "./themeValidator";
+import { DEFAULT_THEME_ID, type Theme, type ThemeMode } from "./themeSchema";
 
-const K_THEMES = 'themes';
-const K_ACTIVE = 'activeThemeId';
-const K_MODE = 'themeMode';
+const K_THEMES = "themes";
+const K_ACTIVE = "activeThemeId";
+const K_MODE = "themeMode";
 
 export const themeStorage = {
   async getThemes(): Promise<Theme[]> {
@@ -684,13 +864,15 @@ export const themeStorage = {
     return comicStorage.saveSetting(K_THEMES, themes);
   },
   async getActiveThemeId(): Promise<string> {
-    return (await comicStorage.getSetting<string>(K_ACTIVE)) ?? DEFAULT_THEME_ID;
+    return (
+      (await comicStorage.getSetting<string>(K_ACTIVE)) ?? DEFAULT_THEME_ID
+    );
   },
   setActiveThemeId(id: string): Promise<void> {
     return comicStorage.saveSetting(K_ACTIVE, id);
   },
   async getMode(): Promise<ThemeMode> {
-    return (await comicStorage.getSetting<ThemeMode>(K_MODE)) ?? 'system';
+    return (await comicStorage.getSetting<ThemeMode>(K_MODE)) ?? "system";
   },
   setMode(mode: ThemeMode): Promise<void> {
     return comicStorage.saveSetting(K_MODE, mode);
@@ -701,17 +883,25 @@ export const themeStorage = {
 - [ ] **Step 2: Write `themeStore.ts`**
 
 ```ts
-import { writable, get } from 'svelte/store';
-import { browser } from '$app/environment';
-import { logger } from '$lib/services/logger';
+import { writable, get } from "svelte/store";
+import { browser } from "$app/environment";
+import { logger } from "$lib/services/logger";
 import {
-  PRESETS, DEFAULT_THEME_ID, FONT_STACKS,
-  type Theme, type ThemeMode,
-} from './themeSchema';
-import { applyTheme, resolvePalette, startSystemWatch, stopSystemWatch } from './themeEngine';
-import { deriveHover } from './colorUtil';
-import { themeValidator } from './themeValidator';
-import { themeStorage } from './themeStorage';
+  PRESETS,
+  DEFAULT_THEME_ID,
+  FONT_STACKS,
+  type Theme,
+  type ThemeMode,
+} from "./themeSchema";
+import {
+  applyTheme,
+  resolvePalette,
+  startSystemWatch,
+  stopSystemWatch,
+} from "./themeEngine";
+import { deriveHover } from "./colorUtil";
+import { themeValidator } from "./themeValidator";
+import { themeStorage } from "./themeStorage";
 
 interface State {
   mode: ThemeMode;
@@ -719,41 +909,57 @@ interface State {
   userThemes: Theme[];
 }
 
-const BOOT_KEY = 'ck-theme-boot';
+const BOOT_KEY = "ck-theme-boot";
 
 function allThemesFrom(userThemes: Theme[]): Theme[] {
   return [...PRESETS, ...userThemes];
 }
 
 export function getActiveTheme(state: State): Theme {
-  return allThemesFrom(state.userThemes).find((t) => t.id === state.activeThemeId)
-    ?? PRESETS[0];
+  return (
+    allThemesFrom(state.userThemes).find((t) => t.id === state.activeThemeId) ??
+    PRESETS[0]
+  );
 }
 
 function writeBoot(state: State) {
   if (!browser) return;
   const theme = getActiveTheme(state);
-  const lightHov = { primary: deriveHover(theme.light.primary, false), secondary: deriveHover(theme.light.secondary, false) };
-  const darkHov = { primary: deriveHover(theme.dark.primary, true), secondary: deriveHover(theme.dark.secondary, true) };
+  const lightHov = {
+    primary: deriveHover(theme.light.primary, false),
+    secondary: deriveHover(theme.light.secondary, false),
+  };
+  const darkHov = {
+    primary: deriveHover(theme.dark.primary, true),
+    secondary: deriveHover(theme.dark.secondary, true),
+  };
   const { isDark } = resolvePalette(theme, state.mode);
-  localStorage.setItem(BOOT_KEY, JSON.stringify({
-    mode: state.mode,
-    font: FONT_STACKS[theme.font],
-    light: theme.light,
-    dark: theme.dark,
-    hovers: isDark ? darkHov : lightHov,
-  }));
+  localStorage.setItem(
+    BOOT_KEY,
+    JSON.stringify({
+      mode: state.mode,
+      font: FONT_STACKS[theme.font],
+      light: theme.light,
+      dark: theme.dark,
+      hovers: isDark ? darkHov : lightHov,
+    }),
+  );
 }
 
 function createThemeStore() {
-  const store = writable<State>({ mode: 'system', activeThemeId: DEFAULT_THEME_ID, userThemes: [] });
+  const store = writable<State>({
+    mode: "system",
+    activeThemeId: DEFAULT_THEME_ID,
+    userThemes: [],
+  });
   const { subscribe, set, update } = store;
   let initialized = false;
 
   function render(state: State) {
     applyTheme(getActiveTheme(state), state.mode);
     writeBoot(state);
-    if (state.mode === 'system') startSystemWatch(() => applyTheme(getActiveTheme(get(store)), 'system'));
+    if (state.mode === "system")
+      startSystemWatch(() => applyTheme(getActiveTheme(get(store)), "system"));
     else stopSystemWatch();
   }
 
@@ -763,18 +969,33 @@ function createThemeStore() {
       if (!browser || initialized) return;
       initialized = true;
       const [mode, activeThemeId, userThemes] = await Promise.all([
-        themeStorage.getMode(), themeStorage.getActiveThemeId(), themeStorage.getThemes(),
+        themeStorage.getMode(),
+        themeStorage.getActiveThemeId(),
+        themeStorage.getThemes(),
       ]);
       const state = { mode, activeThemeId, userThemes };
       set(state);
       render(state);
-      logger.info('ThemeStore', `Initialized mode=${mode} theme=${activeThemeId}`);
+      logger.info(
+        "ThemeStore",
+        `Initialized mode=${mode} theme=${activeThemeId}`,
+      );
     },
     setMode(mode: ThemeMode) {
-      update((s) => { const ns = { ...s, mode }; render(ns); void themeStorage.setMode(mode); return ns; });
+      update((s) => {
+        const ns = { ...s, mode };
+        render(ns);
+        void themeStorage.setMode(mode);
+        return ns;
+      });
     },
     setActiveTheme(id: string) {
-      update((s) => { const ns = { ...s, activeThemeId: id }; render(ns); void themeStorage.setActiveThemeId(id); return ns; });
+      update((s) => {
+        const ns = { ...s, activeThemeId: id };
+        render(ns);
+        void themeStorage.setActiveThemeId(id);
+        return ns;
+      });
     },
     saveTheme(theme: Theme) {
       themeValidator.validateOrThrow(theme);
@@ -783,28 +1004,39 @@ function createThemeStore() {
           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
           : [...s.userThemes, theme];
         const ns = { ...s, userThemes, activeThemeId: theme.id };
-        render(ns); void themeStorage.saveThemes(userThemes); void themeStorage.setActiveThemeId(theme.id);
+        render(ns);
+        void themeStorage.saveThemes(userThemes);
+        void themeStorage.setActiveThemeId(theme.id);
         return ns;
       });
     },
     deleteTheme(id: string) {
       update((s) => {
         const userThemes = s.userThemes.filter((t) => t.id !== id);
-        const activeThemeId = s.activeThemeId === id ? DEFAULT_THEME_ID : s.activeThemeId;
+        const activeThemeId =
+          s.activeThemeId === id ? DEFAULT_THEME_ID : s.activeThemeId;
         const ns = { ...s, userThemes, activeThemeId };
-        render(ns); void themeStorage.saveThemes(userThemes); void themeStorage.setActiveThemeId(activeThemeId);
+        render(ns);
+        void themeStorage.saveThemes(userThemes);
+        void themeStorage.setActiveThemeId(activeThemeId);
         return ns;
       });
     },
     importTheme(json: string): Theme {
       const parsed = JSON.parse(json);
-      const theme = themeValidator.validateOrThrow({ ...parsed, id: `custom-${crypto.randomUUID()}`, builtIn: false });
+      const theme = themeValidator.validateOrThrow({
+        ...parsed,
+        id: `custom-${crypto.randomUUID()}`,
+        builtIn: false,
+      });
       this.saveTheme(theme);
       return theme;
     },
     exportTheme(id: string): string {
-      const theme = allThemesFrom(get(store).userThemes).find((t) => t.id === id);
-      if (!theme) throw new Error('Theme not found');
+      const theme = allThemesFrom(get(store).userThemes).find(
+        (t) => t.id === id,
+      );
+      if (!theme) throw new Error("Theme not found");
       return JSON.stringify({ ...theme, builtIn: false }, null, 2);
     },
     /** Preview an in-progress theme without persisting (builder live preview). */
@@ -825,31 +1057,40 @@ export { allThemesFrom };
 - [ ] **Step 3: Write light storage test**
 
 ```ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock('$lib/storage/comicStorage', () => {
+vi.mock("$lib/storage/comicStorage", () => {
   const store = new Map<string, unknown>();
-  return { comicStorage: {
-    saveSetting: vi.fn((k: string, v: unknown) => { store.set(k, v); return Promise.resolve(); }),
-    getSetting: vi.fn((k: string) => Promise.resolve(store.get(k) ?? null)),
-  } };
+  return {
+    comicStorage: {
+      saveSetting: vi.fn((k: string, v: unknown) => {
+        store.set(k, v);
+        return Promise.resolve();
+      }),
+      getSetting: vi.fn((k: string) => Promise.resolve(store.get(k) ?? null)),
+    },
+  };
 });
 
-import { themeStorage } from './themeStorage';
-import { PRESETS } from './themeSchema';
+import { themeStorage } from "./themeStorage";
+import { PRESETS } from "./themeSchema";
 
-describe('themeStorage', () => {
+describe("themeStorage", () => {
   beforeEach(() => {});
-  it('defaults mode to system and active to default', async () => {
-    expect(await themeStorage.getMode()).toBe('system');
-    expect(await themeStorage.getActiveThemeId()).toBe('preset-default');
+  it("defaults mode to system and active to default", async () => {
+    expect(await themeStorage.getMode()).toBe("system");
+    expect(await themeStorage.getActiveThemeId()).toBe("preset-default");
   });
-  it('round-trips user themes and drops invalid ones', async () => {
-    const custom = { ...structuredClone(PRESETS[0]), id: 'custom-1', builtIn: false };
+  it("round-trips user themes and drops invalid ones", async () => {
+    const custom = {
+      ...structuredClone(PRESETS[0]),
+      id: "custom-1",
+      builtIn: false,
+    };
     await themeStorage.saveThemes([custom, { junk: true } as any]);
     const out = await themeStorage.getThemes();
     expect(out).toHaveLength(1);
-    expect(out[0].id).toBe('custom-1');
+    expect(out[0].id).toBe("custom-1");
   });
 });
 ```
@@ -877,6 +1118,7 @@ git commit -m "feat(theme): persistence store + init wiring"
 ### Task 7: Theme menu UI (replace ThemeToggle) + retire old service
 
 **Files:**
+
 - Create: `src/lib/ui/ThemeMenu.svelte`
 - Modify: `src/routes/+page.svelte` (swap `ThemeToggle` → `ThemeMenu`)
 - Modify: `src/routes/+error.svelte` (swap `ThemeToggle` → `ThemeMenu`)
@@ -884,6 +1126,7 @@ git commit -m "feat(theme): persistence store + init wiring"
 - Delete: `src/lib/services/theme.ts`
 
 **Interfaces:**
+
 - Consumes: `themeStore`, `allThemesFrom`, `getActiveTheme` from `themeStore`; `PRESETS`, `Theme`, `ThemeMode` from schema.
 - Produces: `ThemeMenu` component with prop `onEdit?: (theme: Theme | null) => void` (null = create new). Emits nothing else; dispatches builder open through the callback.
 
@@ -1000,10 +1243,12 @@ git commit -m "feat(theme): theme menu replaces toggle; retire legacy theme serv
 ### Task 8: Theme builder modal (pickers + live preview + export/import)
 
 **Files:**
+
 - Create: `src/lib/ui/ThemeBuilder.svelte`
 - Modify: `src/routes/+page.svelte` (host the modal + `openThemeBuilder`)
 
 **Interfaces:**
+
 - Consumes: `themeStore` (`saveTheme`, `deleteTheme`, `preview`, `restore`, `exportTheme`, `importTheme`), schema (`Palette`, `Theme`, `FontId`, `PALETTE_KEYS`, `FONT_STACKS`, `PRESETS`), `themeValidator`.
 - Produces: `ThemeBuilder` with props `open: boolean`, `initial: Theme | null` (null = create), `onClose: () => void`.
 
@@ -1183,15 +1428,20 @@ Full component. State: working copy `draft: Theme`, `editMode: 'light' | 'dark'`
 
 - [ ] **Step 2: Host the modal in `+page.svelte`** — add state + handler and render the builder next to `ThemeMenu`.
 
-In `<script>`: 
+In `<script>`:
+
 ```ts
-import ThemeBuilder from '$lib/ui/ThemeBuilder.svelte';
+import ThemeBuilder from "$lib/ui/ThemeBuilder.svelte";
 let themeBuilderOpen = false;
-let themeBuilderInitial: import('$lib/theme/themeSchema').Theme | null = null;
-function openThemeBuilder(theme: import('$lib/theme/themeSchema').Theme | null) {
-  themeBuilderInitial = theme; themeBuilderOpen = true;
+let themeBuilderInitial: import("$lib/theme/themeSchema").Theme | null = null;
+function openThemeBuilder(
+  theme: import("$lib/theme/themeSchema").Theme | null,
+) {
+  themeBuilderInitial = theme;
+  themeBuilderOpen = true;
 }
 ```
+
 In markup (top level): `<ThemeBuilder open={themeBuilderOpen} initial={themeBuilderInitial} onClose={() => (themeBuilderOpen = false)} />` and ensure `<ThemeMenu onEdit={openThemeBuilder} />` (from Task 7 Step 2).
 
 - [ ] **Step 3: Verify**
@@ -1211,6 +1461,7 @@ git commit -m "feat(theme): theme builder modal with live preview, export/import
 ### Task 9: Globalize hardcoded colors/fonts in reader & filter components
 
 **Files (modify):**
+
 - `src/lib/ui/ReaderShell.svelte`, `src/lib/ui/ScrollViewer.svelte`, `src/lib/ui/CanvasViewer.svelte`, `src/lib/ui/FilterEditor.svelte`, `src/lib/ui/FilterButton.svelte`
 
 **Interfaces:** none (pure CSS/markup migration).
@@ -1250,6 +1501,7 @@ git commit -m "refactor(theme): route reader/filter component colors through tok
 ### Task 10: Globalize hardcoded colors/fonts in routes & layout
 
 **Files (modify):**
+
 - `src/routes/reader/+page.svelte`, `src/routes/+page.svelte`, `src/routes/library/+page.svelte`, `src/routes/+layout.svelte`
 
 **Interfaces:** none (CSS/markup migration).

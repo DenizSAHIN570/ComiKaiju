@@ -11,11 +11,7 @@
 
 export type ThemeMode = "light" | "dark" | "system";
 export type FontId =
-  | "system-sans"
-  | "system-serif"
-  | "mono"
-  | "rounded"
-  | "humanist";
+  "system-sans" | "system-serif" | "mono" | "rounded" | "humanist";
 
 export interface Palette {
   primary: string;

@@ -31,13 +31,13 @@ This is **not** an extension of the image-filter schema. It is a conventional th
 
 The complete, final token set. Every color in the app resolves to one of these per mode. Values are 6-digit hex strings.
 
-| Group | Tokens | Role |
-|---|---|---|
-| **Brand** | `primary`, `secondary` | `primary` = main brand color (orange today). `secondary` = side accent — **new**; applied to secondary buttons / accents / links during globalization. |
-| **Surfaces** | `bgMain`, `bgSurface`, `bgSecondary` | page background → panels/cards → insets |
-| **Text** | `textMain`, `textSecondary`, `textMuted` | primary → secondary → muted text |
-| **Lines** | `border` | borders/dividers |
-| **Semantic** | `error`, `success`, `warning` | destructive/delete, confirm/accept, caution |
+| Group        | Tokens                                   | Role                                                                                                                                                   |
+| ------------ | ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Brand**    | `primary`, `secondary`                   | `primary` = main brand color (orange today). `secondary` = side accent — **new**; applied to secondary buttons / accents / links during globalization. |
+| **Surfaces** | `bgMain`, `bgSurface`, `bgSecondary`     | page background → panels/cards → insets                                                                                                                |
+| **Text**     | `textMain`, `textSecondary`, `textMuted` | primary → secondary → muted text                                                                                                                       |
+| **Lines**    | `border`                                 | borders/dividers                                                                                                                                       |
+| **Semantic** | `error`, `success`, `warning`            | destructive/delete, confirm/accept, caution                                                                                                            |
 
 **12 pickers per mode, 24 per theme.**
 
@@ -51,24 +51,32 @@ These map to CSS custom properties `--color-<kebab>` (e.g. `--color-bg-main`, `-
 
 ```ts
 // src/lib/theme/themeSchema.ts
-export type ThemeMode = 'light' | 'dark' | 'system';
-export type FontId = 'system-sans' | 'system-serif' | 'mono' | 'rounded' | 'humanist';
+export type ThemeMode = "light" | "dark" | "system";
+export type FontId =
+  "system-sans" | "system-serif" | "mono" | "rounded" | "humanist";
 
 export interface Palette {
-  primary: string; secondary: string;
-  bgMain: string; bgSurface: string; bgSecondary: string;
-  textMain: string; textSecondary: string; textMuted: string;
+  primary: string;
+  secondary: string;
+  bgMain: string;
+  bgSurface: string;
+  bgSecondary: string;
+  textMain: string;
+  textSecondary: string;
+  textMuted: string;
   border: string;
-  error: string; success: string; warning: string;
+  error: string;
+  success: string;
+  warning: string;
 }
 
 export interface Theme {
-  id: string;          // 'preset-default' | `custom-${uuid}`
+  id: string; // 'preset-default' | `custom-${uuid}`
   name: string;
-  builtIn: boolean;    // presets: read-only, cannot delete; "edit" clones
+  builtIn: boolean; // presets: read-only, cannot delete; "edit" clones
   light: Palette;
   dark: Palette;
-  font: FontId;        // one font for the whole theme, both modes
+  font: FontId; // one font for the whole theme, both modes
 }
 ```
 
@@ -76,13 +84,13 @@ export interface Theme {
 
 ### Font stacks (system/web-safe only)
 
-| FontId | Stack |
-|---|---|
-| `system-sans` | `ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif` |
-| `system-serif` | `ui-serif, Georgia, Cambria, 'Times New Roman', serif` |
-| `mono` | `ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace` |
-| `rounded` | `ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif` |
-| `humanist` | `'Segoe UI', Candara, 'Trebuchet MS', Verdana, system-ui, sans-serif` |
+| FontId         | Stack                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------- |
+| `system-sans`  | `ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif` |
+| `system-serif` | `ui-serif, Georgia, Cambria, 'Times New Roman', serif`                                      |
+| `mono`         | `ui-monospace, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Menlo, Consolas, monospace`       |
+| `rounded`      | `ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif`                           |
+| `humanist`     | `'Segoe UI', Candara, 'Trebuchet MS', Verdana, system-ui, sans-serif`                       |
 
 ---
 
