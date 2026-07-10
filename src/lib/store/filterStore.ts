@@ -1,43 +1,31 @@
 import { writable, type Writable } from "svelte/store";
 import { comicStorage } from "$lib/storage/comicStorage";
+import type { FilterConfig } from "../../types/filterConfig.js";
 
-export type Filter =
-  | "none"
-  | "monochrome"
-  | "color-correction"
-  | "vintage"
-  | "vibrant";
+export {
+  premadeFilters,
+  customFilterParameters,
+  CUSTOM_FILTER_FUNCTIONS,
+} from "../../types/filterConfig.js";
+export type { FilterConfig } from "../../types/filterConfig.js";
 
-export const availableFilters: { id: Filter; name: string }[] = [
-  { id: "none", name: "None" },
-  { id: "monochrome", name: "Monochrome" },
-  { id: "color-correction", name: "Color Correction" },
-  { id: "vintage", name: "Vintage" },
-  { id: "vibrant", name: "Vibrant" },
-];
-
-const createFilterStore = () => {
-  const { subscribe, set, update }: Writable<Record<string, Filter>> = writable(
-    {},
-  );
-
+// Global, reusable custom filter library (persisted in IndexedDB settings).
+const createCustomFilterStore = () => {
+  const { subscribe, set }: Writable<FilterConfig[]> = writable([]);
   return {
     subscribe,
-    set,
-    update,
     async init() {
-      // filterStore handles its own persistence for now or we can use localstorage
-      // for simplicity, let's keep it as is but fix the type errors if the methods moved
-      const settings = await comicStorage.loadAllFilterSettings();
-      set(settings as Record<string, Filter>);
+      set(await comicStorage.getCustomFilters());
     },
-    async setFilter(comicId: string, filter: Filter) {
-      await comicStorage.saveFilterSetting(comicId, filter);
-      update((state) => {
-        return { ...state, [comicId]: filter };
-      });
+    async save(config: FilterConfig) {
+      await comicStorage.saveCustomFilter(config);
+      set(await comicStorage.getCustomFilters());
+    },
+    async remove(id: string) {
+      await comicStorage.deleteCustomFilter(id);
+      set(await comicStorage.getCustomFilters());
     },
   };
 };
 
-export const filterStore = createFilterStore();
+export const customFilterStore = createCustomFilterStore();
