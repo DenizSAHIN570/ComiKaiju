@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { onMount } from 'svelte';
   import { currentPageIndex, viewSettings } from '../store/session.js';
+  import { readerSettings, type FitMode } from '$lib/reader/readerSettings';
   import type { ComicBook } from '../../types/comic.js';
   import FilterButton from './FilterButton.svelte';
   import FilterEditor from './FilterEditor.svelte';
@@ -182,11 +183,12 @@
     canvasViewerRef?.triggerFitApply();
   }
 
+  // Route reader controls through readerSettings so changes persist and stay
+  // in sync with the Settings page (readerSettings applies to viewSettings).
   function switchMode() {
-    viewSettings.update((s) => ({
-      ...s,
-      readingMode: s.readingMode === 'vertical' ? 'horizontal' : 'vertical'
-    }));
+    readerSettings.update({
+      readingMode: $viewSettings.readingMode === 'vertical' ? 'horizontal' : 'vertical'
+    });
   }
 
   onMount(async () => {
@@ -255,7 +257,11 @@
 					<button on:click={reapplyFit} aria-label="Apply fit mode">⟳</button>
 				</div>
 
-				<select bind:value={$viewSettings.fitMode} aria-label="View mode">
+				<select
+					value={$viewSettings.fitMode}
+					on:change={(e) => readerSettings.update({ fitMode: e.currentTarget.value as FitMode })}
+					aria-label="View mode"
+				>
 					<option value="fit-width">Fit Width</option>
 					<option value="fit-height">Fit Height</option>
 					<option value="original">Original Size</option>
