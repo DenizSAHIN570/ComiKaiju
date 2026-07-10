@@ -41,8 +41,14 @@
 	let error = '';
 	let fileInput: HTMLInputElement;
 
+	// JSON clone: unwraps Svelte reactive proxies (structuredClone throws on them)
+	// and is safe for the pure-data Theme shape (strings/booleans/nested objects).
+	function cloneTheme(t: Theme): Theme {
+		return JSON.parse(JSON.stringify(t));
+	}
+
 	function freshDraft(): Theme {
-		const base = structuredClone(PRESETS[0]);
+		const base = cloneTheme(PRESETS[0]);
 		return { ...base, id: `custom-${crypto.randomUUID()}`, name: 'My Theme', builtIn: false };
 	}
 
@@ -50,7 +56,7 @@
 	$: if (open && !draft) {
 		draft = initial
 			? {
-					...structuredClone(initial),
+					...cloneTheme(initial),
 					id: initial.builtIn ? `custom-${crypto.randomUUID()}` : initial.id,
 					name: initial.builtIn ? `${initial.name} Copy` : initial.name,
 					builtIn: false
