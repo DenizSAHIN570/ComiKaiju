@@ -390,17 +390,19 @@
 					{/each}
 				</div>
 
-				<h3 class="group-label">Page fit</h3>
-				<div class="segmented">
-					{#each FITS as f (f.id)}
-						<button
-							class:selected={reader.fitMode === f.id}
-							onclick={() => readerSettings.update({ fitMode: f.id })}
-						>
-							{f.label}
-						</button>
-					{/each}
-				</div>
+				{#if layout !== 'vertical'}
+					<h3 class="group-label">Page fit</h3>
+					<div class="segmented">
+						{#each FITS as f (f.id)}
+							<button
+								class:selected={reader.fitMode === f.id}
+								onclick={() => readerSettings.update({ fitMode: f.id })}
+							>
+								{f.label}
+							</button>
+						{/each}
+					</div>
+				{/if}
 			{:else if section === 'filters'}
 				<div class="content-head">
 					<div>
