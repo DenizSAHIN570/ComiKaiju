@@ -1,12 +1,11 @@
 <script lang="ts">
-	import { themeStore, getActiveTheme } from '$lib/theme/themeStore';
-	import { PRESETS, type Theme, type ThemeMode } from '$lib/theme/themeSchema';
-
-	export let onEdit: (theme: Theme | null) => void = () => {};
+	import { themeStore, allThemesFrom, getActiveTheme } from '$lib/theme/themeStore';
+	import { type ThemeMode } from '$lib/theme/themeSchema';
 
 	let open = false;
 	$: state = $themeStore;
 	$: active = getActiveTheme(state);
+	$: themes = allThemesFrom(state.userThemes);
 
 	const MODES: { id: ThemeMode; label: string }[] = [
 		{ id: 'light', label: 'Light' },
@@ -34,26 +33,14 @@
 				{/each}
 			</div>
 
-			<div class="section-label">Presets</div>
-			{#each PRESETS as t (t.id)}
+			<div class="section-label">Theme</div>
+			{#each themes as t (t.id)}
 				<div class="row" class:active={active.id === t.id}>
 					<button class="name" on:click={() => themeStore.setActiveTheme(t.id)}>{t.name}</button>
-					<button class="icon" title="Duplicate & edit" on:click={() => { onEdit(t); open = false; }}>✎</button>
 				</div>
 			{/each}
 
-			{#if state.userThemes.length}
-				<div class="section-label">My Themes</div>
-				{#each state.userThemes as t (t.id)}
-					<div class="row" class:active={active.id === t.id}>
-						<button class="name" on:click={() => themeStore.setActiveTheme(t.id)}>{t.name}</button>
-						<button class="icon" title="Edit" on:click={() => { onEdit(t); open = false; }}>✎</button>
-						<button class="icon" title="Delete" on:click={() => themeStore.deleteTheme(t.id)}>🗑</button>
-					</div>
-				{/each}
-			{/if}
-
-			<button class="create" on:click={() => { onEdit(null); open = false; }}>+ Create theme</button>
+			<a class="settings-link" href="/settings" on:click={() => (open = false)}>Theme settings →</a>
 		</div>
 	{/if}
 </div>
@@ -92,7 +79,7 @@
 		right: 0;
 		top: calc(100% + 0.5rem);
 		z-index: 50;
-		min-width: 15rem;
+		min-width: 14rem;
 		background: var(--color-bg-surface);
 		border: 1px solid var(--color-border);
 		border-radius: 12px;
@@ -145,14 +132,8 @@
 	.row.active .name {
 		color: var(--color-primary);
 	}
-	.icon {
-		padding: 0.4rem;
-		background: transparent;
-		border: 0;
-		cursor: pointer;
-		color: var(--color-text-secondary);
-	}
-	.create {
+	.settings-link {
+		display: block;
 		width: 100%;
 		margin-top: 0.5rem;
 		padding: 0.5rem;
@@ -161,8 +142,11 @@
 		background: transparent;
 		color: var(--color-text-secondary);
 		cursor: pointer;
+		text-align: center;
+		text-decoration: none;
+		font-size: 0.85rem;
 	}
-	.create:hover {
+	.settings-link:hover {
 		color: var(--color-primary);
 		border-color: var(--color-primary);
 	}
