@@ -13,6 +13,8 @@
   export let onSave: (config: FilterConfig) => void;
   export let onDelete: (id: string) => void;
   export let onClose: () => void;
+  // Apply-to-current-comic only makes sense in the reader; hide it elsewhere.
+  export let showApply = true;
 
   const engine = new FilterEngine();
 
@@ -181,7 +183,9 @@
     </div>
 
     <div class="actions">
-      <button on:click={applyFilter}>Apply</button>
+      {#if showApply}
+        <button on:click={applyFilter}>Apply</button>
+      {/if}
       <button on:click={save} class="primary">Save</button>
       {#if editingId}
         <button on:click={remove} class="danger">Delete</button>
