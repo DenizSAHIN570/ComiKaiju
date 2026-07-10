@@ -46,6 +46,15 @@
 		}
 	})();
 
+	// Zoom is a manual adjustment on top of the fit baseline (zoom = 1 = exact
+	// fit). Reset it when the fit mode changes so the new fit is exact, and so a
+	// leftover page-mode zoom scale doesn't carry into the webtoon viewer.
+	let prevFitReset = $viewSettings.fitMode;
+	$: if ($viewSettings.fitMode !== prevFitReset) {
+		prevFitReset = $viewSettings.fitMode;
+		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
+	}
+
 	// Re-render already-loaded pages when the active filter changes.
 	$: if (customFilterConfig !== undefined) applyFilterToLoaded();
 
@@ -230,6 +239,10 @@
 	}
 
 	onMount(() => {
+		// Entering scroll mode: clear any absolute zoom scale left by page mode
+		// so fit-width/fit-height start as an exact viewport fit.
+		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
+
 		const ratioMap = new Map<number, number>();
 
 		lazyObserver = new IntersectionObserver(
