@@ -39,8 +39,6 @@
 					<button class="name" on:click={() => themeStore.setActiveTheme(t.id)}>{t.name}</button>
 				</div>
 			{/each}
-
-			<a class="settings-link" href="/settings" on:click={() => (open = false)}>Theme settings →</a>
 		</div>
 	{/if}
 </div>
@@ -131,23 +129,5 @@
 	}
 	.row.active .name {
 		color: var(--color-primary);
-	}
-	.settings-link {
-		display: block;
-		width: 100%;
-		margin-top: 0.5rem;
-		padding: 0.5rem;
-		border-radius: 6px;
-		border: 1px dashed var(--color-border);
-		background: transparent;
-		color: var(--color-text-secondary);
-		cursor: pointer;
-		text-align: center;
-		text-decoration: none;
-		font-size: 0.85rem;
-	}
-	.settings-link:hover {
-		color: var(--color-primary);
-		border-color: var(--color-primary);
 	}
 </style>
