@@ -324,8 +324,8 @@
 		overflow-y: auto;
 		height: 100vh;
 		width: 100vw;
-		background: #000;
-		color: #f5f5f5;
+		background: var(--color-bg-main);
+		color: var(--color-text-main);
 		position: relative;
 		touch-action: pan-y;
 	}
@@ -351,14 +351,14 @@
 		flex-direction: column;
 		align-items: center;
 		justify-content: center;
-		background: #111;
-		color: #555;
+		background: var(--color-bg-secondary);
+		color: var(--color-text-muted);
 		gap: 0.75rem;
-		border-bottom: 1px solid #1a1a1a;
+		border-bottom: 1px solid var(--color-border);
 	}
 
 	.page-placeholder.error {
-		color: #c0392b;
+		color: var(--color-status-error);
 	}
 
 	.page-number {
@@ -370,8 +370,8 @@
 	.loading-spinner {
 		width: 36px;
 		height: 36px;
-		border: 4px solid rgba(255, 255, 255, 0.15);
-		border-top-color: #ff6600;
+		border: 4px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+		border-top-color: var(--color-primary);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 	}
