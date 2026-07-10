@@ -24,7 +24,27 @@
 	let lazyObserver: IntersectionObserver;
 	let progressObserver: IntersectionObserver;
 
-	$: overflowX = $viewSettings.zoomLevel > 1 ? 'auto' : 'hidden';
+	// fit-height / original pages can exceed the viewport width, so allow
+	// horizontal scroll for them (and whenever zoomed past 1).
+	$: overflowX =
+		$viewSettings.zoomLevel > 1 || $viewSettings.fitMode !== 'fit-width'
+			? 'auto'
+			: 'hidden';
+
+	// Per-page image sizing for the webtoon viewer, mirroring the page-mode fit
+	// options: fit-width fills the container width, fit-height sizes each page to
+	// one viewport height, original is native pixels — all scaled by zoom.
+	$: imgStyle = (() => {
+		const z = $viewSettings.zoomLevel;
+		switch ($viewSettings.fitMode) {
+			case 'fit-height':
+				return `height:${z * 100}vh;width:auto;max-width:none;`;
+			case 'original':
+				return `width:auto;height:auto;max-width:none;zoom:${z};`;
+			default:
+				return `width:${z * 100}%;height:auto;`;
+		}
+	})();
 
 	// Re-render already-loaded pages when the active filter changes.
 	$: if (customFilterConfig !== undefined) applyFilterToLoaded();
@@ -297,11 +317,11 @@
 	bind:this={container}
 	style="overflow-x: {overflowX};"
 >
-	<div class="pages" style="width: {$viewSettings.zoomLevel * 100}%;">
+	<div class="pages">
 		{#each Array(comic.totalPages) as _, i}
 			<div class="page-wrapper" data-index={i}>
 				{#if pageUrls[i] && pageUrls[i] !== 'loading' && pageUrls[i] !== 'error'}
-					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" />
+					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" style={imgStyle} />
 				{:else if pageUrls[i] === 'error'}
 					<div class="page-placeholder error"><span>!</span></div>
 				{:else}
@@ -331,17 +351,18 @@
 	}
 
 	.pages {
+		width: 100%;
 		margin: 0 auto;
 	}
 
 	.page-wrapper {
 		width: 100%;
+		display: flex;
+		justify-content: center;
 	}
 
 	.page-wrapper img {
 		display: block;
-		width: 100%;
-		height: auto;
 	}
 
 	.page-placeholder {

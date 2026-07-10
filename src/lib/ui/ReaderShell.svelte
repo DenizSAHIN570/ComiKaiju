@@ -259,17 +259,15 @@
 					{/if}
 				</div>
 
-				{#if $viewSettings.readingMode !== 'vertical'}
-					<select
-						value={$viewSettings.fitMode}
-						on:change={(e) => readerSettings.update({ fitMode: e.currentTarget.value as FitMode })}
-						aria-label="View mode"
-					>
-						<option value="fit-width">Fit Width</option>
-						<option value="fit-height">Fit Height</option>
-						<option value="original">Original Size</option>
-					</select>
-				{/if}
+				<select
+					value={$viewSettings.fitMode}
+					on:change={(e) => readerSettings.update({ fitMode: e.currentTarget.value as FitMode })}
+					aria-label="View mode"
+				>
+					<option value="fit-width">Fit Width</option>
+					<option value="fit-height">Fit Height</option>
+					<option value="original">Original Size</option>
+				</select>
 
 				<button on:click={switchMode} aria-label="Switch reading mode" class="mode-toggle">
 					{$viewSettings.readingMode === 'vertical' ? '⇄ Page Mode' : '↕ Scroll'}
