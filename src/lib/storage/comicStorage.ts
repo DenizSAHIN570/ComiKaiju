@@ -6,6 +6,7 @@ import type {
   FileSystemItem,
   BlobRecord,
 } from "../../types/comic.js";
+import type { FilterConfig } from "../../types/filterConfig.js";
 import { calculateHash } from "../utils/hash.js";
 import { logger } from "../services/logger.js";
 
@@ -347,9 +348,12 @@ class ComicStorageManager {
     });
   }
 
-  // --- Metadata & Cache Operations ---
+  // --- Filter Config Operations (Numeric Parameters) ---
 
-  async saveFilterSetting(comicId: string, filter: string): Promise<void> {
+  async saveFilterConfig(
+    comicId: string,
+    config: FilterConfig | null,
+  ): Promise<void> {
     const db = await this.ensureDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(this.metadataStoreName, "readwrite");
@@ -358,39 +362,74 @@ class ComicStorageManager {
       getRequest.onsuccess = () => {
         const record = getRequest.result as ComicBook | undefined;
         if (record) {
-          // Add filter to metadata object
-          (record as any).filter = filter;
+          // Store full filter config (numeric parameters only - no injection risk).
+          // A null config clears any previously saved filter.
+          record.customFilter = config ?? undefined;
           const putRequest = store.put(record);
           putRequest.onsuccess = () => resolve();
           putRequest.onerror = () =>
-            reject(new Error("Failed to save filter setting"));
+            reject(new Error("Failed to save filter config"));
         } else {
-          resolve(); // Not found
+          reject(new Error("Comic not found"));
         }
       };
       getRequest.onerror = () =>
-        reject(new Error("Failed to get metadata for filter update"));
+        reject(new Error("Failed to get metadata for filter config update"));
     });
   }
 
-  async loadAllFilterSettings(): Promise<Record<string, string>> {
+  async loadFilterConfig(comicId: string): Promise<FilterConfig | null> {
     const db = await this.ensureDB();
     return new Promise((resolve, reject) => {
       const transaction = db.transaction(this.metadataStoreName, "readonly");
       const store = transaction.objectStore(this.metadataStoreName);
-      const request = store.getAll();
+      const request = store.get(comicId);
+
       request.onsuccess = () => {
-        const records = request.result as ComicBook[];
-        const settings: Record<string, string> = {};
-        for (const record of records) {
-          if ((record as any).filter) {
-            settings[record.id] = (record as any).filter;
-          }
-        }
-        resolve(settings);
+        const record = request.result as ComicBook | null;
+        resolve(record?.customFilter || null);
       };
       request.onerror = () =>
-        reject(new Error("Failed to load filter settings"));
+        reject(new Error("Failed to retrieve filter config"));
+    });
+  }
+
+  // --- Custom Filter Library (global, reusable) ---
+
+  private customFiltersKey = "customFilters";
+
+  async getCustomFilters(): Promise<FilterConfig[]> {
+    const db = await this.ensureDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.settingsStoreName, "readonly");
+      const store = tx.objectStore(this.settingsStoreName);
+      const req = store.get(this.customFiltersKey);
+      req.onsuccess = () => resolve((req.result as FilterConfig[]) ?? []);
+      req.onerror = () => reject(new Error("Failed to load custom filters"));
+    });
+  }
+
+  async saveCustomFilter(config: FilterConfig): Promise<void> {
+    const existing = await this.getCustomFilters();
+    const idx = existing.findIndex((f) => f.id === config.id);
+    if (idx >= 0) existing[idx] = config;
+    else existing.push(config);
+    await this.putCustomFilters(existing);
+  }
+
+  async deleteCustomFilter(id: string): Promise<void> {
+    const existing = await this.getCustomFilters();
+    await this.putCustomFilters(existing.filter((f) => f.id !== id));
+  }
+
+  private async putCustomFilters(filters: FilterConfig[]): Promise<void> {
+    const db = await this.ensureDB();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(this.settingsStoreName, "readwrite");
+      const store = tx.objectStore(this.settingsStoreName);
+      const req = store.put(filters, this.customFiltersKey);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(new Error("Failed to save custom filters"));
     });
   }
 

@@ -21,10 +21,12 @@
 ## Task 1: `downloadProgress` store and `formatBytes` utility
 
 **Files:**
+
 - Modify: `src/lib/store/session.ts`
 - Create: `src/lib/utils/format.ts`
 
 **Interfaces:**
+
 - Produces: `export interface DownloadProgress { loaded: number; total: number | null; }`
 - Produces: `export const downloadProgress: Writable<DownloadProgress | null>`
 - Produces: `export function setDownloadProgress(progress: DownloadProgress | null): void`
@@ -75,11 +77,11 @@ Expected: `npm run check` reports 0 errors/0 warnings; the targeted `eslint` cal
 Run `npm run dev`, open `http://localhost:5173` in a browser, open devtools console, run:
 
 ```js
-const m = await import('/src/lib/utils/format.ts');
-m.formatBytes(0);        // "0 Bytes"
-m.formatBytes(1024);     // "1 KB"
-m.formatBytes(2097152);  // "2 MB"
-m.formatBytes(512);      // "512 Bytes"
+const m = await import("/src/lib/utils/format.ts");
+m.formatBytes(0); // "0 Bytes"
+m.formatBytes(1024); // "1 KB"
+m.formatBytes(2097152); // "2 MB"
+m.formatBytes(512); // "512 Bytes"
 ```
 
 Expected: results match the comments above.
@@ -93,9 +95,11 @@ Report the diff to the controller and wait for explicit go-ahead before committi
 ## Task 2: Stream-read `handleUrlImport` with progress reporting
 
 **Files:**
+
 - Modify: `src/lib/services/comicProcessor.ts`
 
 **Interfaces:**
+
 - Consumes: `setDownloadProgress`, `DownloadProgress` from `$lib/store/session.js` (Task 1).
 - Produces: no change to `handleUrlImport`'s external signature (`(url: string, loadComics: () => Promise<void>) => Promise<void>`) — only its internal implementation changes.
 
@@ -208,12 +212,18 @@ export async function handleUrlImport(
         if (value) {
           chunks.push(value);
           loaded += value.length;
-          setDownloadProgress({ loaded, total: total && !Number.isNaN(total) ? total : null });
+          setDownloadProgress({
+            loaded,
+            total: total && !Number.isNaN(total) ? total : null,
+          });
         }
       }
     }
 
-    const blob = chunks.length > 0 ? new Blob(chunks, { type: contentType }) : await response.blob();
+    const blob =
+      chunks.length > 0
+        ? new Blob(chunks, { type: contentType })
+        : await response.blob();
     const filename = deriveFilenameFromUrl(url);
     const file = new File([blob], filename, { type: blob.type });
 
@@ -263,10 +273,15 @@ cp sample.cbz /home/deniz/Documents/Projects/ComiKaiju/static/test-fixtures/samp
 Run `npm run dev`, open `http://localhost:5173` in a browser, open devtools console, and run:
 
 ```js
-const session = await import('/src/lib/services/comicProcessor.ts');
-const store = await import('/src/lib/store/session.ts');
-const unsub = store.downloadProgress.subscribe(p => console.log('progress:', p));
-await session.handleUrlImport('http://localhost:5173/test-fixtures/sample.cbz', async () => {});
+const session = await import("/src/lib/services/comicProcessor.ts");
+const store = await import("/src/lib/store/session.ts");
+const unsub = store.downloadProgress.subscribe((p) =>
+  console.log("progress:", p),
+);
+await session.handleUrlImport(
+  "http://localhost:5173/test-fixtures/sample.cbz",
+  async () => {},
+);
 unsub();
 ```
 
@@ -283,9 +298,11 @@ Report the diff to the controller and wait for explicit go-ahead before committi
 ## Task 3: Loading overlay progress UI
 
 **Files:**
+
 - Modify: `src/routes/+layout.svelte`
 
 **Interfaces:**
+
 - Consumes: `downloadProgress` store and `DownloadProgress` type from `$lib/store/session.js` (Task 1); `formatBytes` from `$lib/utils/format.js` (Task 1).
 
 Current relevant markup (for reference — `src/routes/+layout.svelte` lines 75-82):
@@ -308,14 +325,27 @@ This file uses **tabs** for indentation — match that.
 Find (near the top of the `<script>` block):
 
 ```ts
-import { error, clearError, isLoading, loadingMessage, setError } from '$lib/store/session.js';
+import {
+  error,
+  clearError,
+  isLoading,
+  loadingMessage,
+  setError,
+} from "$lib/store/session.js";
 ```
 
 Replace with:
 
 ```ts
-import { error, clearError, isLoading, loadingMessage, downloadProgress, setError } from '$lib/store/session.js';
-import { formatBytes } from '$lib/utils/format.js';
+import {
+  error,
+  clearError,
+  isLoading,
+  loadingMessage,
+  downloadProgress,
+  setError,
+} from "$lib/store/session.js";
+import { formatBytes } from "$lib/utils/format.js";
 ```
 
 - [ ] **Step 2: Replace the loading-overlay markup**
@@ -356,36 +386,40 @@ Replace the `{#if $isLoading} ... {/if}` block shown above with:
 In the `<style>` block, add this right after the existing `.loading-spinner { ... }` rule:
 
 ```css
-	.download-progress-bar {
-		width: 100%;
-		height: 6px;
-		background-color: var(--color-border);
-		border-radius: 3px;
-		overflow: hidden;
-		margin-top: 0.75rem;
-	}
+.download-progress-bar {
+  width: 100%;
+  height: 6px;
+  background-color: var(--color-border);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-top: 0.75rem;
+}
 
-	.download-progress-fill {
-		height: 100%;
-		background-color: var(--color-primary);
-		transition: width 0.2s ease;
-	}
+.download-progress-fill {
+  height: 100%;
+  background-color: var(--color-primary);
+  transition: width 0.2s ease;
+}
 
-	.download-progress-bar.indefinite .download-progress-fill {
-		width: 40%;
-		animation: download-indefinite 1.2s ease-in-out infinite;
-	}
+.download-progress-bar.indefinite .download-progress-fill {
+  width: 40%;
+  animation: download-indefinite 1.2s ease-in-out infinite;
+}
 
-	@keyframes download-indefinite {
-		0% { transform: translateX(-100%); }
-		100% { transform: translateX(250%); }
-	}
+@keyframes download-indefinite {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
 
-	.download-progress-label {
-		margin: 0.5rem 0 0;
-		font-size: 0.85rem;
-		color: var(--color-text-main);
-	}
+.download-progress-label {
+  margin: 0.5rem 0 0;
+  font-size: 0.85rem;
+  color: var(--color-text-main);
+}
 ```
 
 - [ ] **Step 4: Type-check and lint**
@@ -400,11 +434,12 @@ Reuse the fixture-building commands from Task 2 Step 4 to create `static/test-fi
 `http://localhost:5173/?url=http://localhost:5173/test-fixtures/sample.cbz`
 
 Confirm the import, and while the "Downloading..." overlay is showing, observe:
+
 - Since this is a same-origin request, `Content-Length` should be available and exposed → expect a filling progress bar and a percentage label (e.g. "100%") — the file is tiny so this may complete in well under a second; if needed, throttle the network in devtools (Network tab → "Slow 3G") before confirming, to see the bar animate from 0% upward.
 - To see the bytes-downloaded fallback, serve the same fixture from a plain `python3 -m http.server` on a different port (e.g. 8099) from `/tmp/comikaiju-progress-fixture`, without CORS `Access-Control-Expose-Headers` — but note that host will fail the CORS check entirely (no `Access-Control-Allow-Origin`) before any progress could show, since this app requires CORS-permissive hosts to fetch at all. Instead, verify the bytes-downloaded fallback path by testing directly in the console (as in Task 2 Step 4) with a synthetic `Response` object that has no `Content-Length`:
 
 ```js
-const store = await import('/src/lib/store/session.ts');
+const store = await import("/src/lib/store/session.ts");
 store.setDownloadProgress({ loaded: 2200000, total: null });
 ```
 

@@ -73,7 +73,7 @@ Subscribe to `$downloadProgress` alongside the existing `$isLoading`/`$loadingMe
 
 ## Error Handling
 
-No new error paths — this only adds progress *reporting* to the existing fetch/read flow. The existing try/catch structure in `handleUrlImport` (established during the original URL-import review, which added a try/catch around the post-fetch blob/File/handleFile section) is extended to also clear `downloadProgress` on any failure, so the progress UI never gets stuck if a read fails partway through.
+No new error paths — this only adds progress _reporting_ to the existing fetch/read flow. The existing try/catch structure in `handleUrlImport` (established during the original URL-import review, which added a try/catch around the post-fetch blob/File/handleFile section) is extended to also clear `downloadProgress` on any failure, so the progress UI never gets stuck if a read fails partway through.
 
 ## Out of Scope (YAGNI)
 

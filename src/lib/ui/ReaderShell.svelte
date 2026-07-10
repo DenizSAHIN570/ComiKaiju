@@ -1,110 +1,230 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
-	import { currentPageIndex, viewSettings } from '../store/session.js';
-	import type { ComicBook } from '../../types/comic.js';
-	import FilterButton from './FilterButton.svelte';
-	import CanvasViewer from './CanvasViewer.svelte';
-	import ScrollViewer from './ScrollViewer.svelte';
+  import { onDestroy } from 'svelte';
+  import { onMount } from 'svelte';
+  import { currentPageIndex, viewSettings } from '../store/session.js';
+  import type { ComicBook } from '../../types/comic.js';
+  import FilterButton from './FilterButton.svelte';
+  import FilterEditor from './FilterEditor.svelte';
+  import CanvasViewer from './CanvasViewer.svelte';
+  import ScrollViewer from './ScrollViewer.svelte';
+  import { premadeFilters, customFilterStore } from '$lib/store/filterStore';
+  import type { FilterConfig } from '$lib/store/filterStore';
+  import { configValidator } from '$lib/services/configValidator';
+  import { comicStorage } from '$lib/storage/comicStorage';
+  import { logger } from '$lib/services/logger';
 
-	const UI_HIDE_DELAY = 2200;
-	const MAX_ZOOM = 5;
-	const MIN_ZOOM = 0.1;
+  const UI_HIDE_DELAY = 2200;
+  const MAX_ZOOM = 5;
+  const MIN_ZOOM = 0.1;
 
-	export let comic: ComicBook;
-	export let onExtractPage: (index: number) => Promise<Blob>;
-	export let onExit: (() => Promise<void> | void) | undefined = undefined;
+  export let comic: ComicBook;
+  export let onExtractPage: (index: number) => Promise<Blob>;
+  export let onExit: (() => Promise<void> | void) | undefined = undefined;
 
-	let isExiting = false;
-	let isUiVisible = true;
-	let hideUiTimer: ReturnType<typeof setTimeout> | null = null;
-	let canvasViewerRef: CanvasViewer;
+  let isExiting = false;
+  let isUiVisible = true;
+  let hideUiTimer: ReturnType<typeof setTimeout> | null = null;
+  let canvasViewerRef: CanvasViewer;
 
-	// Scroll mode keeps UI always visible
-	$: if ($viewSettings.readingMode === 'vertical') {
-		isUiVisible = true;
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-	}
+  // Active numeric filter config for this comic (null = no filter)
+  let customFilterConfig: FilterConfig | null = null;
+  let isEditorOpen = false;
+  let editorInitial: FilterConfig | null = null;
+  let previewBlob: Blob | null = null;
 
-	function showUi(autoHide: boolean) {
-		isUiVisible = true;
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-		if (autoHide && $viewSettings.readingMode === 'horizontal') {
-			hideUiTimer = setTimeout(() => {
-				isUiVisible = false;
-				hideUiTimer = null;
-			}, UI_HIDE_DELAY);
-		}
-	}
+  async function handleExit() {
+    if (!onExit || isExiting) return;
+    isExiting = true;
+    try {
+      await onExit();
+    } finally {
+      isExiting = false;
+    }
+  }
 
-	function hideUi() {
-		if ($viewSettings.readingMode === 'vertical') return;
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-		isUiVisible = false;
-	}
+  // Scroll mode keeps UI always visible
+  $: if ($viewSettings.readingMode === 'vertical') {
+    isUiVisible = true;
+    if (hideUiTimer) {
+      clearTimeout(hideUiTimer);
+      hideUiTimer = null;
+    }
+  }
 
-	async function handleExit() {
-		if (!onExit || isExiting) return;
-		isExiting = true;
-		try {
-			await onExit();
-		} finally {
-			isExiting = false;
-		}
-	}
+  function showUi(autoHide: boolean) {
+    isUiVisible = true;
+    if (hideUiTimer) {
+      clearTimeout(hideUiTimer);
+      hideUiTimer = null;
+    }
+    if (autoHide && $viewSettings.readingMode === 'horizontal') {
+      hideUiTimer = setTimeout(() => {
+        isUiVisible = false;
+        hideUiTimer = null;
+      }, UI_HIDE_DELAY);
+    }
+  }
 
-	function goToPrevPage() {
-		if ($currentPageIndex > 0) {
-			currentPageIndex.set($currentPageIndex - 1);
-		}
-	}
+  function hideUi() {
+    if ($viewSettings.readingMode === 'vertical') return;
+    if (hideUiTimer) {
+      clearTimeout(hideUiTimer);
+      hideUiTimer = null;
+    }
+    isUiVisible = false;
+  }
 
-	function goToNextPage() {
-		if ($currentPageIndex < comic.totalPages - 1) {
-			currentPageIndex.set($currentPageIndex + 1);
-		}
-	}
+  async function loadCustomFilter() {
+    try {
+      const filter = await comicStorage.loadFilterConfig(comic.id);
+      if (filter) {
+        // Validate before applying
+        const validation = configValidator.validate(filter);
+        if (validation.valid) {
+          customFilterConfig = filter;
+          logger.info('ReaderShell', `Loaded filter: ${filter.name}`);
+        } else {
+          logger.warn('ReaderShell', `Invalid stored filter: ${validation.errors.join(', ')}`);
+        }
+      }
+    } catch (error) {
+      logger.error('ReaderShell', 'Failed to load filter', error);
+    }
+  }
 
-	function adjustZoom(factor: number) {
-		viewSettings.update((s) => ({
-			...s,
-			zoomLevel: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s.zoomLevel * factor))
-		}));
-	}
+  // Single entry point for selecting a built-in filter, applying a custom one,
+  // or clearing (config === null). Persists the choice on the comic record.
+  async function applyFilterConfig(config: FilterConfig | null) {
+    try {
+      if (config) {
+        const validation = configValidator.validate(config);
+        if (!validation.valid) {
+          logger.error('ReaderShell', `Invalid filter config: ${validation.errors.join(', ')}`);
+          return;
+        }
+      }
 
-	function resetZoom() {
-		viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
-	}
+      await comicStorage.saveFilterConfig(comic.id, config);
+      customFilterConfig = config;
+      logger.info('ReaderShell', config ? `Applied filter: ${config.name}` : 'Cleared filter');
+    } catch (error) {
+      logger.error('ReaderShell', 'Failed to apply filter', error);
+    }
+  }
 
-	function reapplyFit() {
-		canvasViewerRef?.triggerFitApply();
-	}
+  async function saveCustom(config: FilterConfig) {
+    await customFilterStore.save(config);
+    await applyFilterConfig(config);
+  }
 
-	function switchMode() {
-		viewSettings.update((s) => ({
-			...s,
-			readingMode: s.readingMode === 'vertical' ? 'horizontal' : 'vertical'
-		}));
-	}
+  async function deleteCustom(id: string) {
+    await customFilterStore.remove(id);
+    if (customFilterConfig?.id === id) await applyFilterConfig(null);
+  }
 
-	onDestroy(() => {
-		if (hideUiTimer) {
-			clearTimeout(hideUiTimer);
-			hideUiTimer = null;
-		}
-	});
+  // Grab the current page as a preview source, then open the editor.
+  async function openEditorWith(config: FilterConfig | null) {
+    try {
+      previewBlob = await onExtractPage($currentPageIndex);
+    } catch {
+      previewBlob = null;
+    }
+    editorInitial = config;
+    isEditorOpen = true;
+  }
+
+  function handleEditorToggle() {
+    if (isEditorOpen) {
+      isEditorOpen = false;
+    } else {
+      const active = customFilterConfig?.id.startsWith('custom-')
+        ? customFilterConfig
+        : null;
+      openEditorWith(active);
+    }
+  }
+
+  function handleApplyFilterEvent(event: Event) {
+    const detail = (event as CustomEvent).detail as { filterId?: string } | undefined;
+    const id = detail?.filterId;
+    if (!id || id === 'none') {
+      applyFilterConfig(null);
+      return;
+    }
+    const filter = premadeFilters.find((f) => f.id === id);
+    if (filter) applyFilterConfig(structuredClone(filter));
+  }
+
+  function goToPrevPage() {
+    if ($currentPageIndex > 0) {
+      currentPageIndex.set($currentPageIndex - 1);
+    }
+  }
+
+  function goToNextPage() {
+    if ($currentPageIndex < comic.totalPages - 1) {
+      currentPageIndex.set($currentPageIndex + 1);
+    }
+  }
+
+  function adjustZoom(factor: number) {
+    viewSettings.update((s) => ({
+      ...s,
+      zoomLevel: Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, s.zoomLevel * factor))
+    }));
+  }
+
+  function resetZoom() {
+    viewSettings.update((s) => ({ ...s, zoomLevel: 1 }));
+  }
+
+  function reapplyFit() {
+    canvasViewerRef?.triggerFitApply();
+  }
+
+  function switchMode() {
+    viewSettings.update((s) => ({
+      ...s,
+      readingMode: s.readingMode === 'vertical' ? 'horizontal' : 'vertical'
+    }));
+  }
+
+  onMount(async () => {
+    window.addEventListener('filter-editor-toggle', handleEditorToggle);
+    window.addEventListener('apply-filter', handleApplyFilterEvent);
+    await customFilterStore.init();
+    await loadCustomFilter();
+  });
+
+  onDestroy(() => {
+    window.removeEventListener('filter-editor-toggle', handleEditorToggle);
+    window.removeEventListener('apply-filter', handleApplyFilterEvent);
+    if (hideUiTimer) {
+      clearTimeout(hideUiTimer);
+      hideUiTimer = null;
+    }
+  });
 </script>
 
 <div class="reader-shell">
-	<FilterButton {comic} />
+	<FilterButton
+		activeConfig={customFilterConfig}
+		customFilters={$customFilterStore}
+		onSelect={applyFilterConfig}
+		onEdit={(c) => openEditorWith(c)}
+		onDelete={deleteCustom}
+		onOpenEditor={() => openEditorWith(null)}
+	/>
+
+	<FilterEditor
+		open={isEditorOpen}
+		initialConfig={editorInitial}
+		{previewBlob}
+		onApply={applyFilterConfig}
+		onSave={saveCustom}
+		onDelete={deleteCustom}
+		onClose={() => (isEditorOpen = false)}
+	/>
 
 	<div class="overlay-top" class:hidden={!isUiVisible}>
 		{#if onExit}
@@ -155,15 +275,16 @@
 	</div>
 
 	{#if $viewSettings.readingMode === 'vertical'}
-		<ScrollViewer {comic} {onExtractPage} onShowUi={showUi} />
+		<ScrollViewer {comic} {onExtractPage} onShowUi={showUi} {customFilterConfig} />
 	{:else}
 		<CanvasViewer
-			bind:this={canvasViewerRef}
-			{comic}
-			{onExtractPage}
-			isUiVisible={isUiVisible}
-			onShowUi={showUi}
-			onHideUi={hideUi}
+		  bind:this={canvasViewerRef}
+		  {comic}
+		  {onExtractPage}
+		  isUiVisible={isUiVisible}
+		  onShowUi={showUi}
+		  onHideUi={hideUi}
+		  customFilterConfig={customFilterConfig}
 		/>
 	{/if}
 </div>

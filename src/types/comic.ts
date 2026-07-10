@@ -1,3 +1,5 @@
+import type { FilterConfig } from "./filterConfig";
+
 export interface ComicPage {
   filename: string;
   index: number;
@@ -16,6 +18,9 @@ export interface ComicBook {
   totalPages: number;
   lastRead: Date;
   coverThumbnail?: string; // Base64 encoded thumbnail
+
+  // Custom filter configuration (numeric parameters only)
+  customFilter?: FilterConfig;
 }
 
 export interface ArchiveEntry {
