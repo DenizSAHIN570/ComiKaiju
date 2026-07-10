@@ -271,7 +271,7 @@
         min-height: 100vh;
         background-color: var(--color-bg-main);
         color: var(--color-text-main);
-        font-family: system-ui, sans-serif;
+        font-family: var(--font-base);
         padding: 2rem;
     }
 
@@ -354,7 +354,7 @@
     }
 
     .local-placeholder {
-        background: var(--color-bg-tertiary, #2d3748);
+        background: var(--color-bg-tertiary, var(--color-bg-secondary));
         color: var(--color-primary);
     }
 
@@ -396,7 +396,7 @@
         border-radius: 8px;
         overflow: hidden;
         position: relative;
-        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
     }
 
     .card-cover img {
@@ -424,7 +424,7 @@
         right: 0.5rem;
         width: 32px;
         height: 32px;
-        background: rgba(0,0,0,0.7);
+        background: color-mix(in srgb, #000 70%, transparent);
         border: none;
         border-radius: 4px;
         color: white;

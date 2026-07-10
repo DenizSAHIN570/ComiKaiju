@@ -696,7 +696,7 @@
         flex-direction: column;
         background-color: var(--color-bg-main);
         color: var(--color-text-main);
-        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        font-family: var(--font-base);
     }
 
     /* Navbar */
@@ -704,7 +704,7 @@
         border-bottom: 1px solid var(--color-border);
         position: sticky;
         top: 0;
-        background-color: rgba(0, 0, 0, 0.8);
+        background-color: color-mix(in srgb, #000 80%, transparent);
         backdrop-filter: blur(12px);
         z-index: 50;
     }
@@ -738,7 +738,7 @@
     }
 
     .shadow-glow {
-        box-shadow: 0 0 15px rgba(255, 102, 0, 0.3);
+        box-shadow: 0 0 15px color-mix(in srgb, var(--color-primary) 30%, transparent);
     }
 
     .brand h1 {
@@ -873,14 +873,14 @@
     .shelf-support {
 		height: 20px;
 		background: linear-gradient(to bottom, var(--color-bg-secondary) 0%, var(--color-bg-surface) 30%, var(--color-bg-main) 100%);
-		box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.5), 0 2px 5px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+		box-shadow: 0 -2px 10px color-mix(in srgb, #000 50%, transparent), 0 2px 5px color-mix(in srgb, #000 80%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-text-main) 5%, transparent);
 		border-radius: 2px;
 		position: relative;
 	}
 	.shelf-support::before {
 		content: '';
 		position: absolute; top: 0; left: 0; right: 0; height: 2px;
-		background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.05) 50%, transparent 100%);
+		background: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--color-text-main) 5%, transparent) 50%, transparent 100%);
 	}
 
 	.comic-book {
@@ -897,17 +897,17 @@
 		border-radius: 4px;
 		overflow: hidden;
 		position: relative;
-		box-shadow: -5px 0 15px rgba(0, 0, 0, 0.8), 2px 2px 5px rgba(0, 0, 0, 0.6), 0 0 40px rgba(0, 0, 0, 0.5);
+		box-shadow: -5px 0 15px color-mix(in srgb, #000 80%, transparent), 2px 2px 5px color-mix(in srgb, #000 60%, transparent), 0 0 40px color-mix(in srgb, #000 50%, transparent);
 		border: 1px solid var(--color-border);
 	}
     .comic-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .cover-action { width: 100%; height: 100%; cursor: pointer; }
     
-    .progress-bar-container { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: rgba(0, 0, 0, 0.3); z-index: 3; }
+    .progress-bar-container { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: color-mix(in srgb, #000 30%, transparent); z-index: 3; }
     .progress-bar-fill { height: 100%; background: var(--color-primary); }
     .progress-badge {
         position: absolute; bottom: 0.5rem; left: 0.5rem;
-        background: rgba(0, 0, 0, 0.8); color: var(--color-primary);
+        background: color-mix(in srgb, #000 80%, transparent); color: var(--color-primary);
         padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700;
         z-index: 4; border: 1px solid var(--color-primary);
     }
@@ -929,11 +929,11 @@
     .menu-btn { background: transparent; border: none; color: var(--color-text-secondary); padding: 0.25rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
     .menu-btn:hover { background: var(--color-bg-secondary); color: var(--color-text-main); }
     
-    .dropdown-menu { position: absolute; bottom: calc(100% + 5px); right: 0; width: 120px; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.3), 0 4px 6px rgba(0, 0, 0, 0.1); z-index: 100; overflow: hidden; }
+    .dropdown-menu { position: absolute; bottom: calc(100% + 5px); right: 0; width: 120px; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 -4px 12px color-mix(in srgb, #000 30%, transparent), 0 4px 6px color-mix(in srgb, #000 10%, transparent); z-index: 100; overflow: hidden; }
     .dropdown-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.75rem 1rem; font-size: 0.85rem; background: transparent; border: none; color: var(--color-text-main); cursor: pointer; text-align: left; transition: background 0.2s; }
     .dropdown-item:hover { background: var(--color-bg-secondary); }
     .dropdown-item.delete { color: var(--color-status-error); }
-    .dropdown-item.delete:hover { background: rgba(239, 68, 68, 0.1); }
+    .dropdown-item.delete:hover { background: color-mix(in srgb, var(--color-status-error) 10%, transparent); }
 
     /* Hero Section (Responsive logic) */
     .hero-section {
@@ -1092,8 +1092,8 @@
         border-bottom: 1px solid var(--color-border);
     }
     
-    .local-pill { background-color: #10b981; /* Green for local */ }
-    .local-cover { background: linear-gradient(135deg, #059669 0%, #10b981 100%); }
+    .local-pill { background-color: var(--color-status-success); /* Green for local */ }
+    .local-cover { background: linear-gradient(135deg, color-mix(in srgb, var(--color-status-success) 80%, #000) 0%, var(--color-status-success) 100%); }
     .text-btn { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
 
     /* Features Section */
@@ -1101,7 +1101,7 @@
     .features-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 2rem; }
     @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
     .feature-card { background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; }
-    .feature-icon { width: 3rem; height: 3rem; background-color: rgba(255, 102, 0, 0.1); color: var(--color-primary); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+    .feature-icon { width: 3rem; height: 3rem; background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
     .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
     .feature-card p { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; }
 
