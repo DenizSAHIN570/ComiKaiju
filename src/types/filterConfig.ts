@@ -96,9 +96,30 @@ export const premadeFilters: FilterConfig[] = [
 // Parameter descriptors for the custom editor's four adjustment groups.
 export const customFilterParameters: Record<string, FilterParameter> = {
   red: { name: "Red", type: "number", min: 0, max: 255, default: 255, step: 1 },
-  green: { name: "Green", type: "number", min: 0, max: 255, default: 255, step: 1 },
-  blue: { name: "Blue", type: "number", min: 0, max: 255, default: 255, step: 1 },
-  gamma: { name: "Gamma", type: "number", min: 0.1, max: 5, default: 1, step: 0.1 },
+  green: {
+    name: "Green",
+    type: "number",
+    min: 0,
+    max: 255,
+    default: 255,
+    step: 1,
+  },
+  blue: {
+    name: "Blue",
+    type: "number",
+    min: 0,
+    max: 255,
+    default: 255,
+    step: 1,
+  },
+  gamma: {
+    name: "Gamma",
+    type: "number",
+    min: 0.1,
+    max: 5,
+    default: 1,
+    step: 0.1,
+  },
   vibrance: {
     name: "Vibrance",
     type: "number",
@@ -117,7 +138,14 @@ export const customFilterParameters: Record<string, FilterParameter> = {
     step: 100,
     unit: "K",
   },
-  tint: { name: "Tint", type: "number", min: -100, max: 100, default: 0, step: 1 },
+  tint: {
+    name: "Tint",
+    type: "number",
+    min: -100,
+    max: 100,
+    default: 0,
+    step: 1,
+  },
 };
 
 // Applied in order to build a custom filter from the editor's four groups.

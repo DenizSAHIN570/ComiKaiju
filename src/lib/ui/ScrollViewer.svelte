@@ -1,35 +1,33 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { currentPageIndex, viewSettings, setPage } from '../store/session.js';
-	import { filterStore, type Filter } from '$lib/store/filterStore';
 	import type { ComicBook } from '../../types/comic.js';
+	import type { FilterConfig } from '$lib/store/filterStore';
+	import { FilterEngine } from '$lib/services/filterEngine.js';
 	import { logger } from '$lib/services/logger';
 
 	const MIN_ZOOM = 0.5;
 	const MAX_ZOOM = 4;
+	const filterEngine = new FilterEngine();
 
 	export let comic: ComicBook;
 	export let onExtractPage: (index: number) => Promise<Blob>;
 	export const onShowUi: (autoHide: boolean) => void = () => {};
+	export let customFilterConfig: FilterConfig | null = null;
 
 	let container: HTMLDivElement;
 
 	let pageUrls: (string | null | 'loading' | 'error')[] = Array(comic.totalPages).fill(null);
+	// Cached raw page blobs so the filter can be (re)applied without re-extracting.
+	let rawBlobs: (Blob | undefined)[] = Array(comic.totalPages).fill(undefined);
 
 	let lazyObserver: IntersectionObserver;
 	let progressObserver: IntersectionObserver;
 
-	const CSS_FILTERS: Record<Filter, string> = {
-		none: '',
-		monochrome: 'grayscale(1)',
-		'color-correction': 'contrast(1.1) saturate(1.15)',
-		vintage: 'sepia(0.55) contrast(1.1) brightness(0.92)',
-		vibrant: 'saturate(1.8) contrast(1.05)'
-	};
-
-	$: activeFilter = $filterStore[comic.id] ?? 'none';
-	$: cssFilter = CSS_FILTERS[activeFilter] ?? '';
 	$: overflowX = $viewSettings.zoomLevel > 1 ? 'auto' : 'hidden';
+
+	// Re-render already-loaded pages when the active filter changes.
+	$: if (customFilterConfig !== undefined) applyFilterToLoaded();
 
 	// Pinch-to-zoom state
 	const pinchPointers = new Map<number, { x: number; y: number }>();
@@ -50,11 +48,59 @@
 
 		try {
 			const blob = await onExtractPage(index);
-			pageUrls[index] = URL.createObjectURL(blob);
+			rawBlobs[index] = blob;
+			pageUrls[index] = await renderPage(blob);
 			pageUrls = pageUrls;
 		} catch (err) {
 			logger.error('ScrollViewer', `Failed to load page ${index}`, err);
 			pageUrls[index] = 'error';
+			pageUrls = pageUrls;
+		}
+	}
+
+	// Produce the display URL for a page blob, applying the active filter (via an
+	// offscreen canvas) when one is set. Falls back to the raw blob on any failure.
+	async function renderPage(blob: Blob): Promise<string> {
+		if (!customFilterConfig) {
+			return URL.createObjectURL(blob);
+		}
+
+		try {
+			const bitmap = await createImageBitmap(blob);
+			const canvas = document.createElement('canvas');
+			canvas.width = bitmap.width;
+			canvas.height = bitmap.height;
+			const ctx = canvas.getContext('2d', { willReadFrequently: true });
+			if (!ctx) {
+				bitmap.close();
+				return URL.createObjectURL(blob);
+			}
+			ctx.drawImage(bitmap, 0, 0);
+			bitmap.close();
+			filterEngine.applyFilter(ctx, customFilterConfig);
+			const filtered = await new Promise<Blob | null>((resolve) =>
+				canvas.toBlob(resolve, 'image/jpeg', 0.92)
+			);
+			return URL.createObjectURL(filtered ?? blob);
+		} catch (err) {
+			logger.error('ScrollViewer', 'Failed to apply filter to page', err);
+			return URL.createObjectURL(blob);
+		}
+	}
+
+	// Rebuild display URLs for all loaded pages after a filter change, revoking
+	// the previous URLs so nothing leaks.
+	async function applyFilterToLoaded() {
+		for (let i = 0; i < rawBlobs.length; i++) {
+			const raw = rawBlobs[i];
+			if (!raw) continue;
+
+			const previous = pageUrls[i];
+			const next = await renderPage(raw);
+			if (typeof previous === 'string' && previous !== 'loading' && previous !== 'error') {
+				URL.revokeObjectURL(previous);
+			}
+			pageUrls[i] = next;
 			pageUrls = pageUrls;
 		}
 	}
@@ -253,7 +299,7 @@
 >
 	<div class="pages" style="width: {$viewSettings.zoomLevel * 100}%;">
 		{#each Array(comic.totalPages) as _, i}
-			<div class="page-wrapper" data-index={i} style="filter: {cssFilter};">
+			<div class="page-wrapper" data-index={i}>
 				{#if pageUrls[i] && pageUrls[i] !== 'loading' && pageUrls[i] !== 'error'}
 					<img src={pageUrls[i]} alt="Page {i + 1}" loading="eager" />
 				{:else if pageUrls[i] === 'error'}

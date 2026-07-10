@@ -5,11 +5,13 @@
 	import { formatBytes } from '$lib/utils/format.js';
 	import { themeStore } from '$lib/services/theme';
 	import { logger } from '$lib/services/logger';
+	import { initShortcuts } from '$lib/services/keyboardShortcuts';
 	import { dev } from '$app/environment';
 	
 	onMount(() => {
-		// Initialize services
-		themeStore.init();
+	  // Initialize services
+	  themeStore.init();
+	  initShortcuts();
 
 		// Register Service Worker for offline support (Production only)
 		if (!dev && 'serviceWorker' in navigator) {

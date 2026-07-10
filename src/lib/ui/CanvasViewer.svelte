@@ -2,20 +2,18 @@
 	import { onMount, onDestroy } from 'svelte';
 	import { get } from 'svelte/store';
 	import { currentPageIndex, viewSettings } from '../store/session.js';
-	import { filterStore, type Filter } from '$lib/store/filterStore';
+	import type { FilterConfig } from '$lib/store/filterStore';
 	import type { ComicBook } from '../../types/comic.js';
-	import { applyMonochrome } from '$lib/filters/monochrome';
-	import { applyColorCorrection } from '$lib/filters/colorCorrection';
-	import { applyVintage } from '$lib/filters/vintage';
-	import { applyVibrant } from '$lib/filters/vibrant';
+	import { FilterEngine } from '$lib/services/filterEngine.js';
 	import { logger } from '$lib/services/logger';
+
+	const filterEngine = new FilterEngine();
 
 	const MAX_ZOOM = 5;
 	const MIN_ZOOM = 0.1;
 
 	export let comic: ComicBook;
 	export let onExtractPage: (index: number) => Promise<Blob>;
-	// Controls help-overlay visibility only; the shell owns its own overlay visibility state
 	export let isUiVisible: boolean;
 	export let onShowUi: (autoHide: boolean) => void;
 	export let onHideUi: () => void;
@@ -44,15 +42,23 @@
 	let pinchStartZoom = 1;
 
 	let hasAppliedInitialView = false;
-	let activeFilter: Filter = 'none';
 	let prevFitMode = get(viewSettings).fitMode;
+
+	// Active numeric filter config (null = no filter)
+	export let customFilterConfig: FilterConfig | null = null;
+
+	// Pre-filtered copy of the current page at native resolution. Rebuilt only
+	// when the page or the filter changes, then drawn (scaled/panned) each frame —
+	// so panning/zooming never re-runs the per-pixel filter.
+	let renderSource: HTMLImageElement | HTMLCanvasElement | null = null;
 
 	$: if (comic && $currentPageIndex !== undefined) {
 		loadCurrentPage();
 	}
 
-	$: if (comic && $filterStore[comic.id]) {
-		activeFilter = $filterStore[comic.id];
+	// Rebuild the filtered source and redraw when the active filter changes.
+	$: if (customFilterConfig !== undefined) {
+		prepareRenderSource();
 		drawCurrentImage();
 	}
 
@@ -114,6 +120,7 @@
 			const img = new Image();
 			img.onload = () => {
 				currentImage = img;
+				prepareRenderSource();
 				if (!hasAppliedInitialView) {
 					applyViewMode();
 					hasAppliedInitialView = true;
@@ -443,46 +450,55 @@
 		}
 	}
 
+	// Build the (optionally filtered) source drawn each frame. Runs once per page
+	// load and once per filter change — never during pan/zoom.
+	function prepareRenderSource() {
+	  if (!currentImage) {
+	    renderSource = null;
+	    return;
+	  }
+	  if (!customFilterConfig) {
+	    renderSource = currentImage;
+	    return;
+	  }
+
+	  const off = document.createElement('canvas');
+	  off.width = currentImage.width;
+	  off.height = currentImage.height;
+	  const octx = off.getContext('2d', { willReadFrequently: true });
+	  if (!octx) {
+	    renderSource = currentImage;
+	    return;
+	  }
+	  octx.drawImage(currentImage, 0, 0);
+	  filterEngine.applyFilter(octx, customFilterConfig);
+	  renderSource = off;
+	}
+
 	function drawCurrentImage() {
-		if (!ctx || !currentImage || !canvas) return;
+	  if (!ctx || !currentImage || !canvas) return;
 
-		const rect = canvas.getBoundingClientRect();
-		const dpr = window.devicePixelRatio || 1;
-		const displayWidth = rect.width;
-		const displayHeight = rect.height;
+	  const source = renderSource ?? currentImage;
+	  const rect = canvas.getBoundingClientRect();
+	  const dpr = window.devicePixelRatio || 1;
+	  const displayWidth = rect.width;
+	  const displayHeight = rect.height;
 
-		clampPan();
+	  clampPan();
 
-		const width = Math.round(displayWidth * dpr);
-		const height = Math.round(displayHeight * dpr);
+	  const width = Math.round(displayWidth * dpr);
+	  const height = Math.round(displayHeight * dpr);
 
-		if (canvas.width !== width || canvas.height !== height) {
-			canvas.width = width;
-			canvas.height = height;
-		}
+	  if (canvas.width !== width || canvas.height !== height) {
+	    canvas.width = width;
+	    canvas.height = height;
+	  }
 
-		ctx.save();
-		ctx.scale(dpr, dpr);
-		ctx.clearRect(0, 0, displayWidth, displayHeight);
-		ctx.drawImage(currentImage, panX, panY, currentImage.width * zoomLevel, currentImage.height * zoomLevel);
-
-		// Apply filter
-		switch (activeFilter) {
-			case 'monochrome':
-				applyMonochrome(ctx);
-				break;
-			case 'color-correction':
-				applyColorCorrection(ctx);
-				break;
-			case 'vintage':
-				applyVintage(ctx);
-				break;
-			case 'vibrant':
-				applyVibrant(ctx);
-				break;
-		}
-
-		ctx.restore();
+	  ctx.save();
+	  ctx.scale(dpr, dpr);
+	  ctx.clearRect(0, 0, displayWidth, displayHeight);
+	  ctx.drawImage(source, panX, panY, currentImage.width * zoomLevel, currentImage.height * zoomLevel);
+	  ctx.restore();
 	}
 </script>
 
