@@ -4,6 +4,7 @@
 	import { error, clearError, isLoading, loadingMessage, downloadProgress, setError } from '$lib/store/session.js';
 	import { formatBytes } from '$lib/utils/format.js';
 	import { themeStore } from '$lib/theme/themeStore';
+	import { readerSettings } from '$lib/reader/readerSettings';
 	import { logger } from '$lib/services/logger';
 	import { initShortcuts } from '$lib/services/keyboardShortcuts';
 	import { dev } from '$app/environment';
@@ -11,6 +12,7 @@
 	onMount(() => {
 	  // Initialize services
 	  themeStore.init();
+	  readerSettings.init();
 	  initShortcuts();
 
 		// Register Service Worker for offline support (Production only)

@@ -16,8 +16,9 @@
 		premadeFilters,
 		type FilterConfig
 	} from '$lib/store/filterStore';
+	import { readerSettings, type FitMode } from '$lib/reader/readerSettings';
 
-	type Section = 'themes' | 'filters';
+	type Section = 'themes' | 'reader' | 'filters';
 	let section = $state<Section>('themes');
 
 	// ---------- Themes ----------
@@ -184,8 +185,30 @@
 		filterEditorOpen = true;
 	}
 
+	// ---------- Reader ----------
+	const reader = $derived($readerSettings);
+	type Layout = 'ltr' | 'rtl' | 'vertical';
+	const layout = $derived<Layout>(
+		reader.readingMode === 'vertical' ? 'vertical' : reader.readingDirection
+	);
+	const LAYOUTS: { id: Layout; label: string; desc: string }[] = [
+		{ id: 'ltr', label: 'Left to right', desc: 'Western comics — turn pages leftward to right' },
+		{ id: 'rtl', label: 'Right to left', desc: 'Manga — turn pages rightward to left' },
+		{ id: 'vertical', label: 'Vertical scroll', desc: 'Webtoon — continuous top-to-bottom scrolling' }
+	];
+	function setLayout(id: Layout) {
+		if (id === 'vertical') readerSettings.update({ readingMode: 'vertical' });
+		else readerSettings.update({ readingMode: 'horizontal', readingDirection: id });
+	}
+	const FITS: { id: FitMode; label: string }[] = [
+		{ id: 'fit-width', label: 'Fit width' },
+		{ id: 'fit-height', label: 'Fit height' },
+		{ id: 'original', label: 'Original size' }
+	];
+
 	const NAV: { id: Section; label: string }[] = [
 		{ id: 'themes', label: 'Themes' },
+		{ id: 'reader', label: 'Reader' },
 		{ id: 'filters', label: 'Filters' }
 	];
 </script>
@@ -346,6 +369,38 @@
 						</div>
 					</div>
 				{/if}
+			{:else if section === 'reader'}
+				<div class="content-head">
+					<div>
+						<h2>Reader</h2>
+						<p class="hint">Default reading layout for newly opened comics.</p>
+					</div>
+				</div>
+
+				<h3 class="group-label">Reading layout</h3>
+				<div class="radio-list">
+					{#each LAYOUTS as l (l.id)}
+						<button class="radio-row" class:selected={layout === l.id} onclick={() => setLayout(l.id)}>
+							<span class="radio" class:on={layout === l.id}></span>
+							<span class="radio-text">
+								<span class="radio-label">{l.label}</span>
+								<span class="radio-desc">{l.desc}</span>
+							</span>
+						</button>
+					{/each}
+				</div>
+
+				<h3 class="group-label">Page fit</h3>
+				<div class="segmented">
+					{#each FITS as f (f.id)}
+						<button
+							class:selected={reader.fitMode === f.id}
+							onclick={() => readerSettings.update({ fitMode: f.id })}
+						>
+							{f.label}
+						</button>
+					{/each}
+				</div>
 			{:else if section === 'filters'}
 				<div class="content-head">
 					<div>
@@ -690,6 +745,70 @@
 	.empty {
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
+	}
+
+	/* Reader: layout radios + fit segmented */
+	.radio-list {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+		max-width: 34rem;
+	}
+	.radio-row {
+		display: flex;
+		align-items: center;
+		gap: 0.85rem;
+		padding: 0.85rem 1rem;
+		border-radius: 10px;
+		border: 1px solid var(--color-border);
+		background: var(--color-bg-surface);
+		cursor: pointer;
+		text-align: left;
+	}
+	.radio-row.selected {
+		border-color: var(--color-primary);
+	}
+	.radio {
+		width: 1.1rem;
+		height: 1.1rem;
+		border-radius: 9999px;
+		border: 2px solid var(--color-text-muted);
+		flex-shrink: 0;
+	}
+	.radio.on {
+		border-color: var(--color-primary);
+		background: radial-gradient(circle, var(--color-primary) 40%, transparent 45%);
+	}
+	.radio-text {
+		display: flex;
+		flex-direction: column;
+	}
+	.radio-label {
+		color: var(--color-text-main);
+		font-weight: 500;
+	}
+	.radio-desc {
+		color: var(--color-text-secondary);
+		font-size: 0.85rem;
+	}
+	.segmented {
+		display: flex;
+		gap: 0.5rem;
+		max-width: 34rem;
+	}
+	.segmented button {
+		flex: 1;
+		padding: 0.55rem;
+		border-radius: 8px;
+		border: 1px solid var(--color-border);
+		background: transparent;
+		color: var(--color-text-secondary);
+		cursor: pointer;
+	}
+	.segmented button.selected {
+		background: var(--color-primary);
+		color: #fff;
+		border-color: var(--color-primary);
 	}
 	.grid {
 		display: grid;

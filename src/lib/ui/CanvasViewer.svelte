@@ -142,13 +142,23 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
+		const rtl = $viewSettings.readingDirection === 'rtl';
 		switch (event.key) {
 			case 'ArrowLeft':
+				if (rtl) goToNextPage();
+				else goToPreviousPage();
+				onHideUi();
+				break;
 			case 'PageUp':
 				goToPreviousPage();
 				onHideUi();
 				break;
 			case 'ArrowRight':
+				event.preventDefault();
+				if (rtl) goToPreviousPage();
+				else goToNextPage();
+				onHideUi();
+				break;
 			case 'PageDown':
 			case ' ':
 				event.preventDefault();
@@ -275,14 +285,18 @@
 
 		onShowUi(true);
 
+		const rtl = $viewSettings.readingDirection === 'rtl';
+
 		if (relativeX < leftZone) {
-			goToPreviousPage();
+			if (rtl) goToNextPage();
+			else goToPreviousPage();
 			onHideUi();
 			return;
 		}
 
 		if (relativeX > rightZone) {
-			goToNextPage();
+			if (rtl) goToPreviousPage();
+			else goToNextPage();
 			onHideUi();
 			return;
 		}
