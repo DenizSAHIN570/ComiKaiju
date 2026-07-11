@@ -36,6 +36,9 @@
 
 	let ignoreNextTap = false;
 
+	// Internal pointer bookkeeping for pinch handling — never read reactively, so
+	// a plain Map is intentional (no need for svelte/reactivity's SvelteMap).
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const activePointers = new Map<number, { x: number; y: number }>();
 	let isPinching = false;
 	let pinchStartDistance = 0;
@@ -70,6 +73,9 @@
 	}
 
 	$: if ($viewSettings.fitMode !== prevFitMode && hasAppliedInitialView) {
+		// Tracks the last-seen fit mode across reactive runs; the write is read on
+		// the next run, which the linter's single-pass flow analysis can't see.
+		// eslint-disable-next-line no-useless-assignment
 		prevFitMode = $viewSettings.fitMode;
 		applyViewMode();
 	}
@@ -142,13 +148,23 @@
 	}
 
 	function handleKeydown(event: KeyboardEvent) {
+		const rtl = $viewSettings.readingDirection === 'rtl';
 		switch (event.key) {
 			case 'ArrowLeft':
+				if (rtl) goToNextPage();
+				else goToPreviousPage();
+				onHideUi();
+				break;
 			case 'PageUp':
 				goToPreviousPage();
 				onHideUi();
 				break;
 			case 'ArrowRight':
+				event.preventDefault();
+				if (rtl) goToPreviousPage();
+				else goToNextPage();
+				onHideUi();
+				break;
 			case 'PageDown':
 			case ' ':
 				event.preventDefault();
@@ -275,14 +291,18 @@
 
 		onShowUi(true);
 
+		const rtl = $viewSettings.readingDirection === 'rtl';
+
 		if (relativeX < leftZone) {
-			goToPreviousPage();
+			if (rtl) goToNextPage();
+			else goToPreviousPage();
 			onHideUi();
 			return;
 		}
 
 		if (relativeX > rightZone) {
-			goToNextPage();
+			if (rtl) goToPreviousPage();
+			else goToNextPage();
 			onHideUi();
 			return;
 		}
@@ -544,8 +564,8 @@
 		position: relative;
 		height: 100vh;
 		width: 100vw;
-		background: #000;
-		color: #f5f5f5;
+		background: var(--color-bg-main);
+		color: var(--color-text-main);
 		overflow: hidden;
 	}
 
@@ -562,7 +582,7 @@
 	}
 
 	.canvas-layer:focus-visible {
-		outline: 2px solid #ff6600;
+		outline: 2px solid var(--color-primary);
 		outline-offset: 3px;
 	}
 
@@ -584,17 +604,17 @@
 		transform: translate(-50%, -50%);
 		padding: 1.5rem;
 		border-radius: 10px;
-		background: rgba(12, 12, 12, 0.92);
+		background: color-mix(in srgb, var(--color-bg-surface) 92%, transparent);
 		text-align: center;
-		border: 1px solid rgba(255, 255, 255, 0.08);
-		box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+		border: 1px solid color-mix(in srgb, var(--color-text-main) 8%, transparent);
+		box-shadow: 0 10px 30px color-mix(in srgb, var(--color-bg-main) 40%, transparent);
 	}
 
 	.loading-spinner {
 		width: 36px;
 		height: 36px;
-		border: 4px solid rgba(255, 255, 255, 0.15);
-		border-top-color: #ff6600;
+		border: 4px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+		border-top-color: var(--color-primary);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
 		margin: 0 auto 0.75rem;
@@ -605,13 +625,13 @@
 		left: 50%;
 		bottom: 1.5rem;
 		transform: translateX(-50%);
-		background: rgba(12, 12, 12, 0.85);
-		color: #d9d9d9;
+		background: color-mix(in srgb, var(--color-bg-surface) 85%, transparent);
+		color: var(--color-text-secondary);
 		padding: 0.6rem 1rem;
 		border-radius: 999px;
 		font-size: 0.75rem;
-		box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45);
-		border: 1px solid rgba(255, 255, 255, 0.08);
+		box-shadow: 0 6px 18px color-mix(in srgb, var(--color-bg-main) 45%, transparent);
+		border: 1px solid color-mix(in srgb, var(--color-text-main) 8%, transparent);
 		pointer-events: none;
 		transition: opacity 0.25s ease;
 		opacity: 1;

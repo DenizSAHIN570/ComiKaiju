@@ -28,6 +28,7 @@ export const viewSettings = writable({
   singlePageMode: true,
   showThumbnails: false,
   readingMode: "horizontal" as "horizontal" | "vertical",
+  readingDirection: "ltr" as "ltr" | "rtl",
   zoomLevel: 1,
 });
 

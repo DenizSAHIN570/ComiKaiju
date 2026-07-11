@@ -39,7 +39,7 @@ pipeline:
 - **Premade filters** — code constants in `filterConfig.ts` (`premadeFilters`).
 - **Custom filters** — user configs stored in an IndexedDB library, surfaced
   through a reactive `customFilterStore`.
-- **Active-per-comic** — a full `FilterConfig` *snapshot* stored on the comic
+- **Active-per-comic** — a full `FilterConfig` _snapshot_ stored on the comic
   record (`comic.customFilter`).
 
 `CanvasViewer` (offscreen prerender) and `ScrollViewer` (filtered blob URLs)
@@ -51,12 +51,14 @@ Dispatch remains an explicit `switch` allowlist (no dynamic `this[name]`).
 Parameter values are read from `parameters[key].default`.
 
 Existing (unchanged):
+
 - `applyRgbAdjustment` — per-channel scale by `value / 255`.
 - `applyGammaCorrection` — LUT of `255 * (v/255)^gamma`.
 - `applyVibrance` — `saturation = 1 + vibrance/100`; push each channel from luma.
 - `applyWhiteBalance` — temperature/tint multipliers.
 
 New:
+
 - `applyContrast` — `out = (v - 128) * (contrast/100) + 128`, per channel.
 - `applySepia` — fixed matrix:
   - `r' = 0.393r + 0.769g + 0.189b`
@@ -84,15 +86,15 @@ Allowlist after this change: `applyRgbAdjustment`, `applyGammaCorrection`,
 
 ## Premade definitions
 
-| Filter           | canvasFunctions                    | params                     |
-|------------------|------------------------------------|----------------------------|
-| Monochrome       | `applyVibrance`                    | vibrance −100              |
-| Color Correction | `applyContrast`, `applyVibrance`   | contrast 110, vibrance 15  |
-| Vintage          | `applySepia`                       | —                          |
-| Vibrant          | `applyVibrance`                    | vibrance +50               |
-| Protanopia       | `applyDaltonize`                   | mode 0                     |
-| Deuteranopia     | `applyDaltonize`                   | mode 1                     |
-| Tritanopia       | `applyDaltonize`                   | mode 2                     |
+| Filter           | canvasFunctions                  | params                    |
+| ---------------- | -------------------------------- | ------------------------- |
+| Monochrome       | `applyVibrance`                  | vibrance −100             |
+| Color Correction | `applyContrast`, `applyVibrance` | contrast 110, vibrance 15 |
+| Vintage          | `applySepia`                     | —                         |
+| Vibrant          | `applyVibrance`                  | vibrance +50              |
+| Protanopia       | `applyDaltonize`                 | mode 0                    |
+| Deuteranopia     | `applyDaltonize`                 | mode 1                    |
+| Tritanopia       | `applyDaltonize`                 | mode 2                    |
 
 ## Data model
 
@@ -103,7 +105,7 @@ interface FilterConfig {
   id: string;
   name: string;
   description?: string;
-  type: string;              // descriptive only; engine dispatches on canvasFunctions
+  type: string; // descriptive only; engine dispatches on canvasFunctions
   parameters: { [key: string]: FilterParameter }; // numeric only
   canvasFunctions?: string[];
 }
@@ -132,6 +134,7 @@ interface FilterConfig {
 ## UI
 
 ### Menu (`FilterButton`)
+
 ```
 None
 ── Premade ──   Monochrome · Color Correction · Vintage · Vibrant
@@ -140,11 +143,13 @@ None
 ────────────
 ⚙️ Create Custom Filter
 ```
+
 - Active entry highlighted (by `id`).
 - Props: `activeConfig`, `customFilters`, `onSelect(config|null)`,
   `onEdit(config)`, `onDelete(id)`, `onOpenEditor()`.
 
 ### Editor (`FilterEditor`)
+
 - Name text field.
 - Four slider sections: RGB Channels (R/G/B), Gamma, Vibrance,
   White Balance (Temperature/Tint).

@@ -2,6 +2,7 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { resolve } from '$app/paths';
 	import { get } from 'svelte/store';
 	import { currentComic, currentPageIndex, isLoading, error, currentFile, setError } from '$lib/store/session.js';
 	import ArchiveManager from '$lib/archive/archiveManager.js';
@@ -41,7 +42,7 @@
 		await comicStorage.init();
 
 		if (!comic) {
-			await goto('/');
+			await goto(resolve('/'));
 			return;
 		}
 
@@ -189,7 +190,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 
 	async function exitReader() {
 		await saveProgress();
-		await goto('/');
+		await goto(resolve('/'));
 	}
 </script>
 
@@ -269,7 +270,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 		left: 0;
 		width: 100vw;
 		height: 100vh;
-		background: rgba(0, 0, 0, 0.9);
+		background: color-mix(in srgb, #000 90%, transparent);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -281,7 +282,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 	.loading-content,
 	.file-reload-content {
 		text-align: center;
-		background: #2a2a2a;
+		background: var(--color-bg-secondary);
 		padding: 2rem;
 		border-radius: 8px;
 		max-width: 400px;
@@ -291,7 +292,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 	.loading-spinner {
 		width: 40px;
 		height: 40px;
-		border: 4px solid #444;
+		border: 4px solid var(--color-border);
 		border-top: 4px solid var(--color-primary);
 		border-radius: 50%;
 		animation: spin 1s linear infinite;
@@ -331,7 +332,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 	}
 	
 	.cancel-button {
-		background: #666;
+		background: var(--color-text-muted);
 		color: white;
 		padding: 0.75rem 1.5rem;
 		border: none;
@@ -341,7 +342,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 	}
 	
 	.cancel-button:hover {
-		background: #777;
+		background: var(--color-text-secondary);
 	}
 	
 	.no-comic {
@@ -350,7 +351,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 		align-items: center;
 		justify-content: center;
 		height: 100vh;
-		background: #1a1a1a;
+		background: var(--color-bg-secondary);
 		color: white;
 	}
 	

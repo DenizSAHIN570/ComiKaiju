@@ -113,7 +113,7 @@ class ComicStorageManager {
     const db = await this.ensureDB();
     const hash = await calculateHash(file);
 
-    return new Promise<FileSystemItem | undefined>((resolve, reject) => {
+    return new Promise<FileSystemItem | undefined>((resolve) => {
       const tx = db.transaction(this.itemsStoreName, "readonly");
       const store = tx.objectStore(this.itemsStoreName);
 

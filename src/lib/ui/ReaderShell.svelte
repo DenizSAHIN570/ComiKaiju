@@ -2,6 +2,7 @@
   import { onDestroy } from 'svelte';
   import { onMount } from 'svelte';
   import { currentPageIndex, viewSettings } from '../store/session.js';
+  import { readerSettings, type FitMode } from '$lib/reader/readerSettings';
   import type { ComicBook } from '../../types/comic.js';
   import FilterButton from './FilterButton.svelte';
   import FilterEditor from './FilterEditor.svelte';
@@ -182,11 +183,12 @@
     canvasViewerRef?.triggerFitApply();
   }
 
+  // Route reader controls through readerSettings so changes persist and stay
+  // in sync with the Settings page (readerSettings applies to viewSettings).
   function switchMode() {
-    viewSettings.update((s) => ({
-      ...s,
-      readingMode: s.readingMode === 'vertical' ? 'horizontal' : 'vertical'
-    }));
+    readerSettings.update({
+      readingMode: $viewSettings.readingMode === 'vertical' ? 'horizontal' : 'vertical'
+    });
   }
 
   onMount(async () => {
@@ -252,10 +254,16 @@
 					<span class="zoom-level">{Math.round($viewSettings.zoomLevel * 100)}%</span>
 					<button on:click={() => adjustZoom(1.1)} aria-label="Zoom in">+</button>
 					<button on:click={resetZoom} aria-label="Reset zoom">⌂</button>
-					<button on:click={reapplyFit} aria-label="Apply fit mode">⟳</button>
+					{#if $viewSettings.readingMode !== 'vertical'}
+						<button on:click={reapplyFit} aria-label="Apply fit mode">⟳</button>
+					{/if}
 				</div>
 
-				<select bind:value={$viewSettings.fitMode} aria-label="View mode">
+				<select
+					value={$viewSettings.fitMode}
+					on:change={(e) => readerSettings.update({ fitMode: e.currentTarget.value as FitMode })}
+					aria-label="View mode"
+				>
 					<option value="fit-width">Fit Width</option>
 					<option value="fit-height">Fit Height</option>
 					<option value="original">Original Size</option>
@@ -294,8 +302,8 @@
 		position: relative;
 		height: 100vh;
 		width: 100vw;
-		background: #000;
-		color: #f5f5f5;
+		background: var(--color-bg-main);
+		color: var(--color-text-main);
 		overflow: hidden;
 	}
 
@@ -309,7 +317,7 @@
 		justify-content: space-between;
 		align-items: center;
 		padding: 1rem 1.5rem;
-		background: linear-gradient(180deg, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0) 100%);
+		background: linear-gradient(180deg, color-mix(in srgb, var(--color-bg-main) 85%, transparent) 0%, transparent 100%);
 		gap: 1rem;
 		pointer-events: none;
 		transition: opacity 0.25s ease;
@@ -334,14 +342,14 @@
 		align-items: center;
 		gap: 0.5rem;
 		padding: 0.5rem 1.25rem;
-		background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%);
+		background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
 		color: #fff;
 		border: none;
 		border-radius: 999px;
 		font-weight: 600;
 		letter-spacing: 0.02em;
 		cursor: pointer;
-		box-shadow: 0 6px 18px rgba(255, 102, 0, 0.35);
+		box-shadow: 0 6px 18px color-mix(in srgb, var(--color-primary) 35%, transparent);
 		transition:
 			transform 0.2s ease,
 			box-shadow 0.2s ease,
@@ -355,7 +363,7 @@
 
 	.back-button:not(:disabled):hover {
 		transform: translateY(-1px);
-		box-shadow: 0 10px 24px rgba(255, 102, 0, 0.45);
+		box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 45%, transparent);
 	}
 
 	.back-button:disabled {
@@ -383,7 +391,7 @@
 		margin: 0;
 		font-size: 1.1rem;
 		font-weight: 600;
-		color: #ff8533;
+		color: var(--color-primary-hover);
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
@@ -391,7 +399,7 @@
 
 	.page-info {
 		font-size: 0.9rem;
-		color: #d1d1d1;
+		color: var(--color-text-secondary);
 	}
 
 	.controls {
@@ -403,9 +411,9 @@
 
 	.controls button {
 		padding: 0.5rem 1rem;
-		background: #1f1f1f;
-		color: #f5f5f5;
-		border: 1px solid #2f2f2f;
+		background: var(--color-border);
+		color: var(--color-text-main);
+		border: 1px solid var(--color-border);
 		border-radius: 6px;
 		cursor: pointer;
 		transition:
@@ -415,8 +423,8 @@
 	}
 
 	.controls button:hover:not(:disabled) {
-		background: #292929;
-		border-color: #3a3a3a;
+		background: var(--color-bg-secondary);
+		border-color: var(--color-border);
 		transform: translateY(-1px);
 	}
 
@@ -428,9 +436,9 @@
 
 	.controls select {
 		padding: 0.5rem;
-		background: #1f1f1f;
-		color: #f5f5f5;
-		border: 1px solid #2f2f2f;
+		background: var(--color-border);
+		color: var(--color-text-main);
+		border: 1px solid var(--color-border);
 		border-radius: 6px;
 	}
 
@@ -438,15 +446,15 @@
 		display: inline-flex;
 		align-items: center;
 		gap: 0.25rem;
-		background: #151515;
+		background: var(--color-bg-secondary);
 		border-radius: 8px;
-		border: 1px solid #1f1f1f;
+		border: 1px solid var(--color-border);
 		padding: 0.25rem;
-		box-shadow: inset 0 0 12px rgba(255, 255, 255, 0.05);
+		box-shadow: inset 0 0 12px color-mix(in srgb, var(--color-text-main) 5%, transparent);
 	}
 
 	.zoom-level {
-		color: #ff8533;
+		color: var(--color-primary-hover);
 		font-size: 0.85rem;
 		font-weight: 600;
 		min-width: 50px;

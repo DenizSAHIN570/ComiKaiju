@@ -22,10 +22,12 @@
 ### Task 1: Engine operations — contrast, sepia, daltonize
 
 **Files:**
+
 - Modify: `src/lib/services/filterEngine.ts`
 - Test: `scratchpad/engineOpsTest.mts` (scratchpad; not committed to src)
 
 **Interfaces:**
+
 - Consumes: `FilterConfig` from `../../types/filterConfig.js`; existing `param(config, key, fallback)` helper.
 - Produces: methods `applyContrast`, `applySepia`, `applyDaltonize(ctx, config)`; `applyFilter` switch handles the three new names.
 
@@ -121,34 +123,73 @@
 - [ ] **Step 3: Write the unit test** (`scratchpad/engineOpsTest.mts`)
 
 ```ts
-import { FilterEngine } from '/home/deniz/Projects/ComiKaiju/src/lib/services/filterEngine.ts';
+import { FilterEngine } from "/home/deniz/Projects/ComiKaiju/src/lib/services/filterEngine.ts";
 function ctxFrom(px: number[]) {
   const data = new Uint8ClampedArray(px);
-  return { canvas:{width:px.length/4,height:1}, _data:data,
-    getImageData(){return {data,width:px.length/4,height:1};}, putImageData(i:any){this._data.set(i.data);} } as any;
+  return {
+    canvas: { width: px.length / 4, height: 1 },
+    _data: data,
+    getImageData() {
+      return { data, width: px.length / 4, height: 1 };
+    },
+    putImageData(i: any) {
+      this._data.set(i.data);
+    },
+  } as any;
 }
-const e = new FilterEngine(); let pass = true;
-const ok=(n:string,c:boolean,x='')=>{console.log(`${c?'✅':'❌'} ${n} ${x}`); if(!c)pass=false;};
+const e = new FilterEngine();
+let pass = true;
+const ok = (n: string, c: boolean, x = "") => {
+  console.log(`${c ? "✅" : "❌"} ${n} ${x}`);
+  if (!c) pass = false;
+};
 
 // Sepia on neutral grey -> warm (r>g>b)
-let c = ctxFrom([128,128,128,255]);
-e.applyFilter(c, {id:'v',name:'v',type:'sepia',parameters:{},canvasFunctions:['applySepia']} as any);
-ok('sepia warm r>g>b', c._data[0] > c._data[1] && c._data[1] > c._data[2], `[${c._data[0]},${c._data[1]},${c._data[2]}]`);
+let c = ctxFrom([128, 128, 128, 255]);
+e.applyFilter(c, {
+  id: "v",
+  name: "v",
+  type: "sepia",
+  parameters: {},
+  canvasFunctions: ["applySepia"],
+} as any);
+ok(
+  "sepia warm r>g>b",
+  c._data[0] > c._data[1] && c._data[1] > c._data[2],
+  `[${c._data[0]},${c._data[1]},${c._data[2]}]`,
+);
 
 // Contrast 200 pushes 200 brighter, 50 darker
-c = ctxFrom([200,200,200,255, 50,50,50,255]);
-e.applyFilter(c, {id:'c',name:'c',type:'contrast',parameters:{contrast:{name:'c',type:'number',default:200}},canvasFunctions:['applyContrast']} as any);
-ok('contrast brightens highs', c._data[0] > 200, `${c._data[0]}`);
-ok('contrast darkens lows', c._data[4] < 50, `${c._data[4]}`);
+c = ctxFrom([200, 200, 200, 255, 50, 50, 50, 255]);
+e.applyFilter(c, {
+  id: "c",
+  name: "c",
+  type: "contrast",
+  parameters: { contrast: { name: "c", type: "number", default: 200 } },
+  canvasFunctions: ["applyContrast"],
+} as any);
+ok("contrast brightens highs", c._data[0] > 200, `${c._data[0]}`);
+ok("contrast darkens lows", c._data[4] < 50, `${c._data[4]}`);
 
 // Daltonize deut on red-vs-green shifts channels, stays finite
-c = ctxFrom([200,40,40,255]);
+c = ctxFrom([200, 40, 40, 255]);
 const before = [...c._data];
-e.applyFilter(c, {id:'d',name:'d',type:'daltonize',parameters:{mode:{name:'m',type:'number',default:1}},canvasFunctions:['applyDaltonize']} as any);
-ok('daltonize finite', [...c._data].every(Number.isFinite));
-ok('daltonize shifts', c._data[1]!==before[1] || c._data[2]!==before[2], `[${c._data[0]},${c._data[1]},${c._data[2]}]`);
+e.applyFilter(c, {
+  id: "d",
+  name: "d",
+  type: "daltonize",
+  parameters: { mode: { name: "m", type: "number", default: 1 } },
+  canvasFunctions: ["applyDaltonize"],
+} as any);
+ok("daltonize finite", [...c._data].every(Number.isFinite));
+ok(
+  "daltonize shifts",
+  c._data[1] !== before[1] || c._data[2] !== before[2],
+  `[${c._data[0]},${c._data[1]},${c._data[2]}]`,
+);
 
-console.log(pass?'\nPASS':'\nFAIL'); process.exit(pass?0:1);
+console.log(pass ? "\nPASS" : "\nFAIL");
+process.exit(pass ? 0 : 1);
 ```
 
 - [ ] **Step 4: Run it**
@@ -168,9 +209,11 @@ git commit -m "feat(filters): add contrast, sepia, daltonize engine ops"
 ### Task 2: Premade filter definitions
 
 **Files:**
+
 - Modify: `src/types/filterConfig.ts`
 
 **Interfaces:**
+
 - Produces: `export const premadeFilters: FilterConfig[]` with ids `monochrome`, `color-correction`, `vintage`, `vibrant`, `protanopia`, `deuteranopia`, `tritanopia`. Removes `builtinFilters`.
 
 - [ ] **Step 1: Replace the `builtinFilters` array with `premadeFilters`**
@@ -185,7 +228,9 @@ export const premadeFilters: FilterConfig[] = [
     name: "Monochrome",
     description: "Grayscale",
     type: "vibrance",
-    parameters: { vibrance: { name: "Vibrance", type: "number", default: -100 } },
+    parameters: {
+      vibrance: { name: "Vibrance", type: "number", default: -100 },
+    },
     canvasFunctions: ["applyVibrance"],
   },
   {
@@ -243,13 +288,64 @@ export const premadeFilters: FilterConfig[] = [
 
 // Parameter descriptors for the custom editor's four adjustment groups.
 export const customFilterParameters = {
-  red: { name: "Red", type: "number" as const, min: 0, max: 255, default: 255, step: 1 },
-  green: { name: "Green", type: "number" as const, min: 0, max: 255, default: 255, step: 1 },
-  blue: { name: "Blue", type: "number" as const, min: 0, max: 255, default: 255, step: 1 },
-  gamma: { name: "Gamma", type: "number" as const, min: 0.1, max: 5, default: 1, step: 0.1 },
-  vibrance: { name: "Vibrance", type: "number" as const, min: -100, max: 100, default: 0, step: 1, unit: "%" },
-  temperature: { name: "Temperature", type: "number" as const, min: 2000, max: 10000, default: 6500, step: 100, unit: "K" },
-  tint: { name: "Tint", type: "number" as const, min: -100, max: 100, default: 0, step: 1 },
+  red: {
+    name: "Red",
+    type: "number" as const,
+    min: 0,
+    max: 255,
+    default: 255,
+    step: 1,
+  },
+  green: {
+    name: "Green",
+    type: "number" as const,
+    min: 0,
+    max: 255,
+    default: 255,
+    step: 1,
+  },
+  blue: {
+    name: "Blue",
+    type: "number" as const,
+    min: 0,
+    max: 255,
+    default: 255,
+    step: 1,
+  },
+  gamma: {
+    name: "Gamma",
+    type: "number" as const,
+    min: 0.1,
+    max: 5,
+    default: 1,
+    step: 0.1,
+  },
+  vibrance: {
+    name: "Vibrance",
+    type: "number" as const,
+    min: -100,
+    max: 100,
+    default: 0,
+    step: 1,
+    unit: "%",
+  },
+  temperature: {
+    name: "Temperature",
+    type: "number" as const,
+    min: 2000,
+    max: 10000,
+    default: 6500,
+    step: 100,
+    unit: "K",
+  },
+  tint: {
+    name: "Tint",
+    type: "number" as const,
+    min: -100,
+    max: 100,
+    default: 0,
+    step: 1,
+  },
 };
 
 export const CUSTOM_FILTER_FUNCTIONS = [
@@ -277,37 +373,39 @@ git commit -m "feat(filters): define premade filters and custom editor params"
 ### Task 3: Validator allowlist
 
 **Files:**
+
 - Modify: `src/lib/services/configValidator.ts`
 
 **Interfaces:**
+
 - Produces: `validFunctions` includes contrast/sepia/daltonize; `validTypes` includes premade type strings.
 
 - [ ] **Step 1: Extend `isValidFunctionName`**
 
 ```ts
-    const validFunctions = [
-      "applyRgbAdjustment",
-      "applyGammaCorrection",
-      "applyVibrance",
-      "applyWhiteBalance",
-      "applyContrast",
-      "applySepia",
-      "applyDaltonize",
-    ];
+const validFunctions = [
+  "applyRgbAdjustment",
+  "applyGammaCorrection",
+  "applyVibrance",
+  "applyWhiteBalance",
+  "applyContrast",
+  "applySepia",
+  "applyDaltonize",
+];
 ```
 
 - [ ] **Step 2: Extend `isValidType`**
 
 ```ts
-    const validTypes = [
-      "rgb",
-      "gamma",
-      "vibrance",
-      "white-balance",
-      "composite",
-      "sepia",
-      "daltonize",
-    ];
+const validTypes = [
+  "rgb",
+  "gamma",
+  "vibrance",
+  "white-balance",
+  "composite",
+  "sepia",
+  "daltonize",
+];
 ```
 
 - [ ] **Step 3: Commit**
@@ -322,9 +420,11 @@ git commit -m "feat(filters): allow new ops and types in validator"
 ### Task 4: Library storage CRUD
 
 **Files:**
+
 - Modify: `src/lib/storage/comicStorage.ts`
 
 **Interfaces:**
+
 - Consumes: existing `ensureDB()`, `settingsStoreName`, `FilterConfig`.
 - Produces: `getCustomFilters(): Promise<FilterConfig[]>`, `saveCustomFilter(config: FilterConfig): Promise<void>`, `deleteCustomFilter(id: string): Promise<void>`.
 
@@ -383,9 +483,11 @@ git commit -m "feat(filters): custom filter library storage"
 ### Task 5: Store exports + reactive library store
 
 **Files:**
+
 - Modify: `src/lib/store/filterStore.ts`
 
 **Interfaces:**
+
 - Produces: re-export `premadeFilters`, `customFilterParameters`, `CUSTOM_FILTER_FUNCTIONS`, type `FilterConfig`; `customFilterStore` with `subscribe`, `init()`, `save(config)`, `remove(id)`.
 
 - [ ] **Step 1: Replace file contents**
@@ -436,9 +538,11 @@ git commit -m "feat(filters): reactive custom filter library store"
 ### Task 6: FilterButton menu rework
 
 **Files:**
+
 - Modify: `src/lib/ui/FilterButton.svelte`
 
 **Interfaces:**
+
 - Consumes: `premadeFilters`, `FilterConfig`.
 - Produces: props `activeConfig: FilterConfig | null`, `customFilters: FilterConfig[]`, `onSelect: (c: FilterConfig | null) => void`, `onEdit: (c: FilterConfig) => void`, `onDelete: (id: string) => void`, `onOpenEditor: () => void`.
 
@@ -501,10 +605,25 @@ git commit -m "feat(filters): reactive custom filter library store"
 - [ ] **Step 3: Add styles for `.section`, `.custom-row`, `.custom-name`, `.icon`** (append to `<style>`)
 
 ```css
-.filter-menu .section { padding: 0.4rem 1rem 0.15rem; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: #888; }
-.filter-menu .custom-row { display: flex; align-items: center; }
-.filter-menu .custom-row .custom-name { flex: 1; }
-.filter-menu .custom-row .icon { width: auto; padding: 0.5rem 0.5rem; font-size: 0.85rem; }
+.filter-menu .section {
+  padding: 0.4rem 1rem 0.15rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #888;
+}
+.filter-menu .custom-row {
+  display: flex;
+  align-items: center;
+}
+.filter-menu .custom-row .custom-name {
+  flex: 1;
+}
+.filter-menu .custom-row .icon {
+  width: auto;
+  padding: 0.5rem 0.5rem;
+  font-size: 0.85rem;
+}
 ```
 
 - [ ] **Step 4: Type-check**
@@ -524,9 +643,11 @@ git commit -m "feat(filters): premade + custom library menu"
 ### Task 7: FilterEditor rework (name, 4 sections, preview, save/apply/delete)
 
 **Files:**
+
 - Modify: `src/lib/ui/FilterEditor.svelte`
 
 **Interfaces:**
+
 - Consumes: `customFilterParameters`, `CUSTOM_FILTER_FUNCTIONS`, `FilterConfig`, `FilterEngine`, `configValidator`, `logger`.
 - Produces: props `open: boolean`, `initialConfig: FilterConfig | null`, `previewBlob: Blob | null`, `onApply: (c: FilterConfig | null) => void`, `onSave: (c: FilterConfig) => void`, `onDelete: (id: string) => void`, `onClose: () => void`.
 
@@ -709,12 +830,39 @@ git commit -m "feat(filters): premade + custom library menu"
 - [ ] **Step 3: Ensure styles exist for `.name-field`, `.section h4`, `.close`** (append to `<style>`; the file already styles `.parameter-row`, `.value-display`, `.actions`, `.preview-section`, overlay)
 
 ```css
-.name-field { display: flex; flex-direction: column; gap: 0.25rem; margin-bottom: 1rem; }
-.name-field span { font-size: 0.8rem; color: #d1d1d1; }
-.name-field input { padding: 0.5rem; border-radius: 6px; border: 1px solid #444; background: #2a2a2a; color: #f5f5f5; }
-.section h4 { margin: 0 0 0.5rem; color: #ff8533; font-size: 0.95rem; }
-.section { margin-bottom: 1rem; }
-.editor-header .close { background: #333; border: 1px solid #444; color: #f5f5f5; border-radius: 4px; cursor: pointer; padding: 0.3rem 0.6rem; }
+.name-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin-bottom: 1rem;
+}
+.name-field span {
+  font-size: 0.8rem;
+  color: #d1d1d1;
+}
+.name-field input {
+  padding: 0.5rem;
+  border-radius: 6px;
+  border: 1px solid #444;
+  background: #2a2a2a;
+  color: #f5f5f5;
+}
+.section h4 {
+  margin: 0 0 0.5rem;
+  color: #ff8533;
+  font-size: 0.95rem;
+}
+.section {
+  margin-bottom: 1rem;
+}
+.editor-header .close {
+  background: #333;
+  border: 1px solid #444;
+  color: #f5f5f5;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0.3rem 0.6rem;
+}
 ```
 
 - [ ] **Step 4: Type-check**
@@ -734,9 +882,11 @@ git commit -m "feat(filters): editor with name, four groups, preview, save/apply
 ### Task 8: ReaderShell wiring
 
 **Files:**
+
 - Modify: `src/lib/ui/ReaderShell.svelte`
 
 **Interfaces:**
+
 - Consumes: `premadeFilters`, `customFilterStore`, `FilterConfig`; `FilterButton`, `FilterEditor` new props; `onExtractPage`.
 - Produces: `applyFilterConfig`, `saveCustom`, `deleteCustom`, `openEditorWith`, preview blob loading; `apply-filter` event maps to `premadeFilters` by id.
 
@@ -853,9 +1003,11 @@ git commit -m "feat(filters): wire premade + custom library into reader"
 ### Task 9: Keyboard shortcuts by premade index
 
 **Files:**
+
 - Modify: `src/lib/services/keyboardShortcuts.ts`
 
 **Interfaces:**
+
 - Consumes: `premadeFilters`.
 - Produces: `Ctrl+Shift+1..7` dispatch premade ids; `0` = none; `F` = editor.
 
@@ -870,16 +1022,16 @@ import { premadeFilters } from "../../types/filterConfig.js";
 And in the digit match block:
 
 ```ts
-  const digitMatch = event.code.match(/^Digit([1-7])$/);
-  if (digitMatch) {
-    event.preventDefault();
-    const filter = premadeFilters[Number(digitMatch[1]) - 1];
-    if (filter) {
-      window.dispatchEvent(
-        new CustomEvent("apply-filter", { detail: { filterId: filter.id } }),
-      );
-    }
+const digitMatch = event.code.match(/^Digit([1-7])$/);
+if (digitMatch) {
+  event.preventDefault();
+  const filter = premadeFilters[Number(digitMatch[1]) - 1];
+  if (filter) {
+    window.dispatchEvent(
+      new CustomEvent("apply-filter", { detail: { filterId: filter.id } }),
+    );
   }
+}
 ```
 
 - [ ] **Step 2: Commit**

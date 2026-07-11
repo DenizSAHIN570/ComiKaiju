@@ -77,7 +77,10 @@ One roadmap listed "single/double page + continuous webtoon scroll" as already s
 - Adaptive Light/Dark/System theming, with AMOLED-true dark mode as the default
 - ComicInfo.xml parsing (in progress / to be wired up properly)
 - Full touch + keyboard support (ctrl+scroll zoom, etc.)
-- Color filters: black & white, vintage/sepia, color correction, brightness — doubles as accessibility tooling (light sensitivity, reading fatigue, some color-blindness accommodation), worth naming as "accessibility" in docs, not just "filters"
+- Config-driven image filters: premade one-click filters (monochrome, color correction, vintage/sepia, vibrant) plus colorblind **assist** (protanopia/deuteranopia/tritanopia daltonize), and a custom filter builder — RGB channels, gamma, vibrance, white balance — saved to a reusable library with keyboard cycling and per-comic persistence. Numeric-schema based (no raw CSS/SVG), doubling as accessibility tooling (light sensitivity, reading fatigue, color-blindness accommodation)
+- Theme Builder: color + font theme builder (typed schema, light + dark palette per theme), built-in presets + editable user library with live editing, JSON export/import; all app colors/fonts globalized onto CSS variables (see "Theme Builder" below)
+- Dedicated `/settings` page (sidebar layout): Themes, Reader (reading layout LTR/RTL/vertical-scroll + page fit, persisted globally), and Filters management
+- RTL (right-to-left) reading direction for the page viewer; fit-width/fit-height/original honored in both page and webtoon-scroll modes
 - PWA support
 - File Manager: hierarchical folders, bulk uploads, OS-like navigation
 - Deduplication: content-addressable storage (SHA-256) to minimize disk usage
@@ -87,13 +90,17 @@ One roadmap listed "single/double page + continuous webtoon scroll" as already s
 
 ---
 
-## Custom Filters & Theme Builder
+## Theme Builder ✅ SHIPPED
 
-- Filters and themes both move to a **config-driven system**: user-defined filters/themes described by a fixed schema (named parameters — intensity, hue, contrast, color values, spacing, fonts, etc.), not raw CSS/SVG markup.
-  - Reasoning: accepting free-form CSS or SVG filter code from users is an injection vector (SVG especially can carry scripts/external references). A typed schema gives full expressiveness without needing to sanitize arbitrary strings.
-- Maps naturally onto CSS `filter` properties and SVG filter primitives (`feColorMatrix`, hue-rotate, etc.) under the hood.
-- Should govern the Light/Dark/System adaptive modes above, not just per-page filters, so theming and filtering share one schema instead of two systems.
-- QOL pairing: keyboard shortcut to cycle filters, and remember filter/zoom preference per-series (or globally) instead of resetting each session.
+Shipped as a standard color + font theme builder (a color picker per semantic role + a font picker), **not** a filter-schema extension. Delivered: a typed theme schema (light + dark palette per theme, driven by the Light/Dark/System toggle), built-in presets (Default/Sepia/High Contrast) plus an editable user library with live inline editing, JSON export/import, and full globalization of color/font usage onto CSS custom properties (with a pre-paint boot script to avoid FOUC). Lives in a dedicated `/settings` page alongside Reader and Filters sections. Original planning notes below.
+
+Extends the config-driven schema already shipping for image filters (see "Already shipped") to **themes**.
+
+- User-defined themes described by the same fixed, typed schema (named parameters — color values, spacing, fonts, etc.), not raw CSS/SVG markup.
+  - Reasoning: accepting free-form CSS or SVG from users is an injection vector (SVG especially can carry scripts/external references). A typed schema gives full expressiveness without needing to sanitize arbitrary strings — the approach already proven by the shipped filter system.
+- Maps naturally onto CSS custom properties (and, where useful, SVG filter primitives) under the hood.
+- Govern the Light/Dark/System adaptive modes above through this schema, so theming and per-page filtering share one system instead of two.
+- QOL pairing: remember zoom/theme preference per-series (or globally) instead of resetting each session.
 
 ---
 

@@ -37,7 +37,6 @@ self.addEventListener("fetch", (event: any) => {
   if (event.request.method !== "GET") return;
 
   async function respond() {
-    const url = new URL(event.request.url);
     const cache = await caches.open(CACHE_NAME);
 
     // Try to serve from cache first
@@ -47,19 +46,15 @@ self.addEventListener("fetch", (event: any) => {
       return response;
     }
 
-    // Fallback to network
-    try {
-      const networkResponse = await fetch(event.request);
+    // Fallback to network. If this fails and there's no cache entry, we are
+    // truly offline and don't have the resource — let the error propagate.
+    const networkResponse = await fetch(event.request);
 
-      if (networkResponse.status === 200) {
-        cache.put(event.request, networkResponse.clone());
-      }
-
-      return networkResponse;
-    } catch (err) {
-      // If network fails and no cache, we are truly offline and don't have the resource
-      throw err;
+    if (networkResponse.status === 200) {
+      cache.put(event.request, networkResponse.clone());
     }
+
+    return networkResponse;
   }
 
   event.respondWith(respond());

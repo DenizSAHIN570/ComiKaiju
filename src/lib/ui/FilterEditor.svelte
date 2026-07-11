@@ -13,6 +13,8 @@
   export let onSave: (config: FilterConfig) => void;
   export let onDelete: (id: string) => void;
   export let onClose: () => void;
+  // Apply-to-current-comic only makes sense in the reader; hide it elsewhere.
+  export let showApply = true;
 
   const engine = new FilterEngine();
 
@@ -181,7 +183,9 @@
     </div>
 
     <div class="actions">
-      <button on:click={applyFilter}>Apply</button>
+      {#if showApply}
+        <button on:click={applyFilter}>Apply</button>
+      {/if}
       <button on:click={save} class="primary">Save</button>
       {#if editingId}
         <button on:click={remove} class="danger">Delete</button>
@@ -194,7 +198,7 @@
   .filter-editor-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(0, 0, 0, 0.7);
+    background: color-mix(in srgb, var(--color-bg-main) 70%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -206,14 +210,14 @@
   }
 
   .filter-editor {
-    background: #1a1a1a;
+    background: var(--color-bg-secondary);
     border-radius: 12px;
     padding: 1.5rem;
     max-width: 500px;
     width: 90%;
     max-height: 85vh;
     overflow-y: auto;
-    color: #f5f5f5;
+    color: var(--color-text-main);
   }
 
   .editor-header {
@@ -229,9 +233,9 @@
   }
 
   .editor-header .close {
-    background: #333;
-    border: 1px solid #444;
-    color: #f5f5f5;
+    background: var(--color-border);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-main);
     border-radius: 4px;
     cursor: pointer;
     padding: 0.3rem 0.6rem;
@@ -246,15 +250,15 @@
 
   .name-field span {
     font-size: 0.8rem;
-    color: #d1d1d1;
+    color: var(--color-text-secondary);
   }
 
   .name-field input {
     padding: 0.5rem;
     border-radius: 6px;
-    border: 1px solid #444;
-    background: #2a2a2a;
-    color: #f5f5f5;
+    border: 1px solid var(--color-border);
+    background: var(--color-bg-secondary);
+    color: var(--color-text-main);
   }
 
   .section {
@@ -263,7 +267,7 @@
 
   .section h4 {
     margin: 0 0 0.5rem;
-    color: #ff8533;
+    color: var(--color-primary-hover);
     font-size: 0.95rem;
   }
 
@@ -284,7 +288,7 @@
     height: 6px;
     -webkit-appearance: none;
     appearance: none;
-    background: #333;
+    background: var(--color-border);
     border-radius: 3px;
   }
 
@@ -293,7 +297,7 @@
     appearance: none;
     width: 16px;
     height: 16px;
-    background: #ff6600;
+    background: var(--color-primary);
     border-radius: 50%;
     cursor: pointer;
   }
@@ -302,11 +306,11 @@
     min-width: 56px;
     text-align: right;
     font-family: monospace;
-    color: #ff8533;
+    color: var(--color-primary-hover);
   }
 
   .preview-section {
-    background: #2a2a2a;
+    background: var(--color-bg-secondary);
     padding: 1rem;
     border-radius: 8px;
     margin-bottom: 1rem;
@@ -316,7 +320,7 @@
   .preview-section h4 {
     margin: 0 0 0.5rem;
     font-size: 0.9rem;
-    color: #d1d1d1;
+    color: var(--color-text-secondary);
   }
 
   .preview-section canvas {
@@ -339,25 +343,25 @@
     cursor: pointer;
     font-size: 0.9rem;
     font-weight: 600;
-    background: #333;
-    color: #f5f5f5;
+    background: var(--color-border);
+    color: var(--color-text-main);
   }
 
   .actions button.primary {
-    background: #ff6600;
+    background: var(--color-primary);
     color: white;
   }
 
   .actions button.primary:hover {
-    background: #ff8533;
+    background: var(--color-primary-hover);
   }
 
   .actions button.danger {
-    background: #ef4444;
+    background: var(--color-status-error);
     color: white;
   }
 
   .actions button.danger:hover {
-    background: #dc2626;
+    background: color-mix(in srgb, var(--color-status-error) 85%, #000);
   }
 </style>

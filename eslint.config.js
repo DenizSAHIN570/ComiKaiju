@@ -20,6 +20,10 @@ export default [
     rules: {
       ...tsPlugin.configs.recommended.rules,
       "@typescript-eslint/no-explicit-any": "warn",
+      // TypeScript (via svelte-check) handles undefined references, including
+      // DOM lib types like ScrollBehavior/BufferSource that ESLint's core
+      // rule doesn't know about. Disable to avoid false positives.
+      "no-undef": "off",
     },
   },
   {

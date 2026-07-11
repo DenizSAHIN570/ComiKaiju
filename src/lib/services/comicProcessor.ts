@@ -1,4 +1,5 @@
 import { goto } from "$app/navigation";
+import { resolve } from "$app/paths";
 import ArchiveManager from "$lib/archive/archiveManager.js";
 import { comicStorage } from "$lib/storage/comicStorage.js";
 import {
@@ -145,7 +146,7 @@ export async function handleFile(file: File, loadComics: () => Promise<void>) {
         await loadComics();
         setComic(comic, file);
         logger.info("ComicProcessor", "Opening existing comic");
-        await goto("/reader");
+        await goto(resolve("/reader"));
         return;
       }
     }
@@ -199,7 +200,7 @@ export async function handleFile(file: File, loadComics: () => Promise<void>) {
 
     setComic(comic, file);
     logger.info("ComicProcessor", "Comic ready for reading");
-    await goto("/reader");
+    await goto(resolve("/reader"));
   } catch (error) {
     logger.error("ComicProcessor", "Failed to process file", error);
     setError(error instanceof Error ? error.message : "Failed to process file");
