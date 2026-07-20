@@ -215,7 +215,9 @@
 				onlibrary={() => goto(resolve('/library'))}
 			/>
 		{/if}
-		<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
+		{#if shelfComics.length > 0}
+			<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
+		{/if}
 	{:else}
 		<section class="home-hero">
 			<div class="hero-scrim"></div>

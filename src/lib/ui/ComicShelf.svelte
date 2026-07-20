@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onDestroy } from "svelte";
   import CoverArt from "$lib/ui/CoverArt.svelte";
 
   let {
@@ -28,9 +29,34 @@
   // svelte-ignore state_referenced_locally
   let openId = $state<string | null>(autoOpenFirst ? (comics[0]?.id ?? null) : null);
 
+  // Hover intent: opening on the first mouseenter means simply crossing the shelf
+  // reflows it under the cursor, so the spine you aimed at slides away. Require a
+  // short dwell; deliberate input (click, focus, keyboard) still opens instantly.
+  const HOVER_INTENT_MS = 180;
+  let hoverTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function cancelPending() {
+    if (hoverTimer !== null) {
+      clearTimeout(hoverTimer);
+      hoverTimer = null;
+    }
+  }
+
   function open(id: string) {
+    cancelPending();
     openId = id;
   }
+
+  function intendOpen(id: string) {
+    if (openId === id) return;
+    cancelPending();
+    hoverTimer = setTimeout(() => {
+      hoverTimer = null;
+      openId = id;
+    }, HOVER_INTENT_MS);
+  }
+
+  onDestroy(cancelPending);
 
   function extension(name: string): string {
     const i = name.lastIndexOf(".");
@@ -66,7 +92,7 @@
   }
 </script>
 
-<div class="shelf">
+<div class="shelf" class:sparse={comics.length < 3}>
   {#each comics as comic, i (comic.id)}
     {@const isOpen = openId === comic.id}
     {@const title = comic.metadata?.title ?? comic.name}
@@ -81,7 +107,8 @@
       aria-label={title}
       class="spine"
       class:open={isOpen}
-      onmouseenter={() => open(comic.id)}
+      onmouseenter={() => intendOpen(comic.id)}
+      onmouseleave={cancelPending}
       onfocusin={() => open(comic.id)}
       onclick={() => open(comic.id)}
       onkeydown={(e) => {
@@ -173,6 +200,23 @@
 
   .shelf:hover .spine {
     flex: 1 1 0;
+  }
+
+  /* Too few comics to fill the row: don't let closed spines stretch into fat,
+     cropped slabs. Hold each at a natural cover width, left-aligned, so 1–2
+     comics read as covers rather than distorted fills. */
+  .shelf.sparse {
+    justify-content: flex-start;
+  }
+
+  .shelf.sparse .spine,
+  .shelf.sparse:hover .spine {
+    flex: 0 0 240px;
+  }
+
+  .shelf.sparse .spine.open,
+  .shelf.sparse:hover .spine:hover {
+    flex: 0 0 490px;
   }
 
   .art {
