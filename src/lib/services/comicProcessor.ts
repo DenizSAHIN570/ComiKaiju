@@ -113,7 +113,7 @@ export async function handleFile(file: File, loadComics: () => Promise<void>) {
 
   const isSupported = await archiveManager.isSupported(file);
   if (!isSupported) {
-    setError("Please select a CBZ, ZIP, CBR, or RAR file.");
+    setError("Please select a CBZ or CBR file.");
     setLoading(false);
     return;
   }

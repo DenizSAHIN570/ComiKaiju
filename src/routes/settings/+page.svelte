@@ -526,7 +526,7 @@
 		background: var(--color-primary);
 		border: 1px solid var(--color-primary);
 		border-radius: 3px;
-		color: #fff;
+		color: var(--color-bg-main);
 		font-family: var(--font-base);
 		font-weight: 650;
 		font-size: 0.82rem;
@@ -596,7 +596,7 @@
 	/* Inline editor */
 	.editor {
 		border: 1px solid var(--color-border);
-		border-radius: 4px;
+		border-radius: 3px;
 		background: var(--color-bg-surface);
 		padding: 20px;
 	}
@@ -638,7 +638,7 @@
 	}
 	.modetabs button.sel {
 		background: var(--color-primary);
-		color: #fff;
+		color: var(--color-bg-main);
 	}
 	.groups {
 		display: grid;
@@ -745,7 +745,7 @@
 	}
 	.danger:hover {
 		background: var(--color-status-error);
-		color: #fff;
+		color: var(--color-bg-main);
 	}
 
 	/* Reader + filters shared */
@@ -825,7 +825,7 @@
 	}
 	.segmented button.sel {
 		background: var(--color-primary);
-		color: #fff;
+		color: var(--color-bg-main);
 		border-color: var(--color-primary);
 	}
 
@@ -846,7 +846,7 @@
 	}
 	.fcard {
 		border: 1px solid var(--color-border);
-		border-radius: 4px;
+		border-radius: 3px;
 		background: var(--color-bg-main);
 		padding: 14px;
 	}

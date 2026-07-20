@@ -1,6 +1,8 @@
 <script lang="ts">
   import { handleFile, handleUrlImport, isHttpUrl } from "$lib/services/comicProcessor";
   import { directoryService } from "$lib/services/directoryService";
+  import { setError } from "$lib/store/session";
+  import { logger } from "$lib/services/logger";
   import UrlImportConfirm from "$lib/ui/UrlImportConfirm.svelte";
 
   let { oncomplete }: { oncomplete?: () => void } = $props();
@@ -84,6 +86,9 @@
       if (handle) {
         await complete();
       }
+    } catch (err) {
+      logger.error("ImportPanel", "Failed to sync folder", err);
+      setError("Failed to sync folder. Please try again.");
     } finally {
       syncing = false;
     }
@@ -100,7 +105,12 @@
     role="button"
     tabindex="0"
     onclick={openFilePicker}
-    onkeydown={(e) => e.key === "Enter" && openFilePicker()}
+    onkeydown={(e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        if (e.key === " ") e.preventDefault();
+        openFilePicker();
+      }
+    }}
   >
     <div class="ic" aria-hidden="true">⤓</div>
     <div>
