@@ -1,0 +1,138 @@
+# Review package: cac9c76..d6fe7a3
+
+## Commits
+d6fe7a3 feat(ui): add SiteFooter and FeatureColophon
+
+## Files changed
+ src/lib/ui/FeatureColophon.svelte | 78 +++++++++++++++++++++++++++++++++++++++
+ src/lib/ui/SiteFooter.svelte      | 37 +++++++++++++++++++
+ 2 files changed, 115 insertions(+)
+
+## Diff
+diff --git a/src/lib/ui/FeatureColophon.svelte b/src/lib/ui/FeatureColophon.svelte
+new file mode 100644
+index 0000000..4d30189
+--- /dev/null
++++ b/src/lib/ui/FeatureColophon.svelte
+@@ -0,0 +1,78 @@
++<div class="colophon">
++  <div class="col">
++    <div class="kick">
++      <span class="n">01</span>Offline
++    </div>
++    <h5>Reads without a connection</h5>
++    <p>Your whole library lives in the browser and works on a plane. Install it as an app for a native feel.</p>
++  </div>
++
++  <div class="col">
++    <div class="kick">
++      <span class="n">02</span>Private
++    </div>
++    <h5>Nothing leaves your device</h5>
++    <p>No accounts, no servers, no tracking. Comics are yours alone — reading stays personal.</p>
++  </div>
++
++  <div class="col">
++    <div class="kick">
++      <span class="n">03</span>Fast
++    </div>
++    <h5>Instant pages, deduped storage</h5>
++    <p>WebAssembly extraction and smart caching keep turns instant and storage lean.</p>
++  </div>
++</div>
++
++<style>
++  .colophon {
++    margin: 0 30px;
++    border-top: 1px solid var(--color-border);
++    display: grid;
++    grid-template-columns: repeat(3, 1fr);
++  }
++
++  .col {
++    padding: 22px 26px 24px;
++    border-left: 1px solid var(--color-border);
++    transition: background 0.18s;
++  }
++
++  .col:first-child {
++    border-left: none;
++    padding-left: 0;
++  }
++
++  .col:hover {
++    background: var(--color-bg-secondary);
++  }
++
++  .col .kick {
++    font-family: var(--font-base);
++    font-size: 0.62rem;
++    letter-spacing: 0.16em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++    display: flex;
++    gap: 8px;
++    align-items: center;
++  }
++
++  .col .kick .n {
++    color: var(--color-primary);
++  }
++
++  .col h5 {
++    margin: 12px 0 6px;
++    font-size: 1rem;
++    font-weight: 750;
++    letter-spacing: -0.01em;
++  }
++
++  .col p {
++    margin: 0;
++    font-size: 0.82rem;
++    line-height: 1.5;
++    color: var(--color-text-secondary);
++  }
++</style>
+diff --git a/src/lib/ui/SiteFooter.svelte b/src/lib/ui/SiteFooter.svelte
+new file mode 100644
+index 0000000..637a8e1
+--- /dev/null
++++ b/src/lib/ui/SiteFooter.svelte
+@@ -0,0 +1,37 @@
++<script lang="ts">
++  const year = new Date().getFullYear();
++</script>
++
++<footer>
++  <div class="cp">© {year} ComiKaiju. Built for readers.</div>
++  <div class="pw">
++    Powered by
++    <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer">Svelte</a>
++    .
++  </div>
++</footer>
++
++<style>
++  footer {
++    margin-top: 6px;
++    padding: 26px 30px 20px;
++    border-top: 1px solid var(--color-border);
++    text-align: center;
++    color: var(--color-text-muted);
++  }
++
++  .cp {
++    font-size: 0.8rem;
++  }
++
++  .pw {
++    margin-top: 6px;
++    font-size: 0.72rem;
++    opacity: 0.8;
++  }
++
++  .pw a {
++    color: var(--color-primary);
++    text-decoration: none;
++  }
++</style>

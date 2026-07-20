@@ -1,5 +1,5 @@
 /// <reference types="@sveltejs/kit" />
-import { build, files, version } from "$service-worker";
+import { build, files, prerendered, version } from "$service-worker";
 
 // Create a unique cache name for this deployment
 const CACHE_NAME = `cache-${version}`;
@@ -7,6 +7,7 @@ const CACHE_NAME = `cache-${version}`;
 const ASSETS = [
   ...build, // the app itself
   ...files, // everything in `static`
+  ...prerendered, // the prerendered HTML pages (/, /library, /reader, /settings)
 ];
 
 self.addEventListener("install", (event: any) => {
@@ -46,15 +47,26 @@ self.addEventListener("fetch", (event: any) => {
       return response;
     }
 
-    // Fallback to network. If this fails and there's no cache entry, we are
-    // truly offline and don't have the resource — let the error propagate.
-    const networkResponse = await fetch(event.request);
+    // Fallback to network.
+    try {
+      const networkResponse = await fetch(event.request);
 
-    if (networkResponse.status === 200) {
-      cache.put(event.request, networkResponse.clone());
+      if (networkResponse.status === 200) {
+        cache.put(event.request, networkResponse.clone());
+      }
+
+      return networkResponse;
+    } catch (err) {
+      // Offline with nothing cached for this exact request. A navigation to a
+      // route we haven't stored still has to boot the app, so fall back to the
+      // cached app shell; the client router takes it from there.
+      if (event.request.mode === "navigate") {
+        const shell = await cache.match("/");
+        if (shell) return shell;
+      }
+
+      throw err;
     }
-
-    return networkResponse;
   }
 
   event.respondWith(respond());

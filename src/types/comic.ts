@@ -18,6 +18,7 @@ export interface ComicBook {
   totalPages: number;
   lastRead: Date;
   coverThumbnail?: string; // Base64 encoded thumbnail
+  lastReadThumbnail?: string; // data URL of the last-read page (Continue-band background)
 
   // Custom filter configuration (numeric parameters only)
   customFilter?: FilterConfig;

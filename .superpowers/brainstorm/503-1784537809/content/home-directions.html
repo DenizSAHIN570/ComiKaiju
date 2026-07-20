@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home — two directions</title>
+<style>
+  /* ---- Real ComiKaiju default (dark) theme tokens ---- */
+  :root{
+    --primary:#ff6600; --primary-hover:#ff8533; --secondary:#4f9cf9;
+    --bg:#000; --surface:#0a0a0a; --inset:#111;
+    --text:#fff; --text2:#a1a1aa; --muted:#52525b;
+    --border:#1f1f1f;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#161618;color:#e9e9ee;font-family:var(--font);padding:32px 20px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 28px;color:#9a9aa4;font-size:.95rem;max-width:70ch;line-height:1.5}
+
+  .caption{display:flex;align-items:baseline;gap:12px;margin:34px 0 12px}
+  .caption .tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;
+    color:#0a0a0a;background:#e9e9ee;padding:3px 8px;border-radius:5px;font-weight:600}
+  .caption h2{margin:0;font-size:1.05rem;font-weight:650}
+  .caption p{margin:0;color:#8b8b95;font-size:.85rem}
+
+  /* browser window chrome around each mock */
+  .window{border:1px solid #2a2a2e;border-radius:14px;overflow:hidden;
+    box-shadow:0 20px 50px -20px rgba(0,0,0,.7);cursor:pointer;transition:border-color .18s, transform .18s}
+  .window:hover{border-color:#4a4a50;transform:translateY(-2px)}
+  .window.selected{border-color:var(--primary);box-shadow:0 0 0 1px var(--primary),0 20px 50px -20px rgba(0,0,0,.7)}
+  .chrome{height:38px;background:#202024;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #2a2a2e}
+  .dot{width:11px;height:11px;border-radius:50%}
+  .dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:var(--mono);font-size:.72rem;color:#8b8b95}
+
+  /* ---- the actual app canvas (real theme) ---- */
+  .app{background:var(--bg);color:var(--text);font-family:var(--font)}
+
+  /* cover art — mock comic covers (content imagery, not UI chrome) */
+  .cover{aspect-ratio:2/3;border-radius:6px;position:relative;overflow:hidden;border:1px solid var(--border);
+    background:var(--art,linear-gradient(150deg,#1a2a4a,#0d1526));isolation:isolate}
+  .cover::before{content:"";position:absolute;inset:0;
+    background-image:radial-gradient(rgba(255,255,255,.14) 1px,transparent 1.4px);
+    background-size:7px 7px;mix-blend-mode:overlay;opacity:.55}
+  .cover::after{content:"";position:absolute;inset:0;
+    background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.55) 100%)}
+  .cover .glyph{position:absolute;top:10px;left:11px;z-index:2;font-family:var(--mono);
+    font-size:.62rem;letter-spacing:.14em;color:rgba(255,255,255,.82);text-transform:uppercase}
+  .cover .ctitle{position:absolute;left:11px;right:11px;bottom:10px;z-index:2;font-weight:800;
+    font-size:.92rem;line-height:1.05;letter-spacing:-.01em;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+  .prog{position:absolute;left:0;right:0;bottom:0;height:3px;background:rgba(0,0,0,.45);z-index:3}
+  .prog i{display:block;height:100%;background:var(--primary)}
+
+  /* ============ DIRECTION A — EDITORIAL ============ */
+  .A{padding:0}
+  .A .masthead{display:flex;align-items:flex-end;justify-content:space-between;
+    padding:26px 30px 18px;border-bottom:1px solid var(--border)}
+  .A .brand{display:flex;flex-direction:column;gap:6px}
+  .A .brand .kw{font-size:1.4rem;font-weight:800;letter-spacing:-.03em;line-height:1;
+    display:flex;align-items:center;gap:10px}
+  .A .brand .kw::before{content:"";width:4px;height:22px;background:var(--primary);border-radius:2px}
+  .A .brand .tl{font-family:var(--mono);font-size:.68rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted);padding-left:14px}
+  .A .navtools{display:flex;align-items:center;gap:18px}
+  .A .meter{display:flex;flex-direction:column;align-items:flex-end;gap:5px}
+  .A .meter .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+  .A .meter .track{width:120px;height:3px;background:var(--inset);border-radius:2px;overflow:hidden}
+  .A .meter .track i{display:block;height:100%;width:42%;background:var(--text2)}
+  .A .icobtn{width:34px;height:34px;border:1px solid var(--border);border-radius:8px;color:var(--text2);
+    display:grid;place-items:center;background:transparent}
+
+  .A .body{padding:28px 30px 34px}
+  .A .sec{margin-bottom:40px}
+  .A .sechead{display:flex;align-items:center;justify-content:space-between;
+    padding-bottom:10px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+  .A .sechead .l{display:flex;align-items:baseline;gap:12px}
+  .A .sechead .lbl{font-size:.72rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--text)}
+  .A .sechead .cnt{font-family:var(--mono);font-size:.72rem;color:var(--muted)}
+  .A .sechead .more{font-size:.75rem;color:var(--text2);letter-spacing:.02em}
+  .A .row{display:grid;grid-template-columns:repeat(6,1fr);gap:20px}
+  .A .book .meta{margin-top:9px}
+  .A .book .t{font-size:.82rem;font-weight:600;line-height:1.25;color:var(--text);
+    display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+  .A .book .s{font-family:var(--mono);font-size:.68rem;color:var(--muted);margin-top:3px}
+
+  .A .import{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;
+    border:1px solid var(--border);border-radius:12px;background:var(--surface);padding:18px}
+  .A .drop{border:1px dashed #2e2e2e;border-radius:9px;padding:20px;display:flex;align-items:center;gap:14px}
+  .A .drop .ic{width:40px;height:40px;border-radius:9px;background:var(--inset);color:var(--primary);display:grid;place-items:center;flex:none}
+  .A .drop .h{font-weight:650;font-size:.9rem}
+  .A .drop .p{font-size:.78rem;color:var(--text2);margin-top:2px}
+  .A .side{display:flex;flex-direction:column;gap:10px;justify-content:center}
+  .A .urlrow{display:flex;gap:8px}
+  .A .urlrow input{flex:1;background:var(--inset);border:1px solid var(--border);border-radius:8px;
+    color:var(--text);padding:9px 11px;font-size:.8rem;font-family:var(--font)}
+  .A .btn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:9px 16px;font-weight:650;font-size:.8rem}
+  .A .ghost{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:8px;padding:9px 12px;font-size:.8rem;text-align:left}
+
+  /* ============ DIRECTION B — CINEMATIC ============ */
+  .B .topbar{position:relative;z-index:3;display:flex;align-items:center;justify-content:space-between;padding:18px 30px}
+  .B .kw{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+  .B .kw .mark{width:22px;height:22px;border-radius:6px;background:var(--primary);display:grid;place-items:center;color:#fff;font-weight:900;font-size:.8rem}
+  .B .topbar .r{display:flex;align-items:center;gap:14px;font-size:.8rem;color:var(--text2)}
+  .B .addbtn{background:var(--primary);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-weight:650;font-size:.8rem}
+
+  .B .hero{position:relative;padding:34px 30px 40px;overflow:hidden;border-bottom:1px solid var(--border)}
+  .B .hero .bg{position:absolute;inset:0;background:var(--art,linear-gradient(120deg,#3a1d5c,#0d1526));
+    filter:blur(40px) saturate(1.2);transform:scale(1.2);opacity:.5}
+  .B .hero .scrim{position:absolute;inset:0;background:linear-gradient(90deg,var(--bg) 12%,rgba(0,0,0,.4) 60%,rgba(0,0,0,.7))}
+  .B .hero .inner{position:relative;z-index:2;display:flex;gap:26px;align-items:flex-end}
+  .B .hero .fcov{width:150px;flex:none;border-radius:8px;box-shadow:0 16px 40px -12px rgba(0,0,0,.8)}
+  .B .hero .info{flex:1;padding-bottom:6px}
+  .B .hero .eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.18em;text-transform:uppercase;color:var(--primary);font-weight:600}
+  .B .hero h1{margin:10px 0 6px;font-size:2rem;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .B .hero .by{color:var(--text2);font-size:.85rem}
+  .B .hero .pbar{margin:18px 0 16px;max-width:340px}
+  .B .hero .pbar .track{height:4px;background:var(--inset);border-radius:2px;overflow:hidden}
+  .B .hero .pbar .track i{display:block;height:100%;width:35%;background:var(--primary)}
+  .B .hero .pbar .cap{font-family:var(--mono);font-size:.7rem;color:var(--text2);margin-top:7px}
+  .B .hero .cta{display:flex;gap:12px}
+  .B .hero .resume{background:var(--primary);color:#fff;border:none;border-radius:9px;padding:11px 22px;font-weight:700;font-size:.85rem}
+  .B .hero .sec2{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);border-radius:9px;padding:11px 18px;font-size:.85rem}
+
+  .B .rail{padding:24px 30px 8px}
+  .B .rail .rh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .B .rail .rh h3{margin:0;font-size:1rem;font-weight:700;letter-spacing:-.01em}
+  .B .rail .rh .more{font-size:.75rem;color:var(--text2)}
+  .B .strip{display:flex;gap:16px;overflow:hidden;position:relative;
+    -webkit-mask-image:linear-gradient(90deg,#000 92%,transparent);mask-image:linear-gradient(90deg,#000 92%,transparent)}
+  .B .strip .book{width:118px;flex:none}
+  .B .strip .book .t{font-size:.78rem;font-weight:600;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .B .strip .book .s{font-family:var(--mono);font-size:.66rem;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Home page — two crafted directions</h1>
+  <p class="pagesub">Both use only your theme tokens for UI (orange is used as a precise accent, not gradients/glows), both drop the generic marketing feature-cards, and both share one refined cover-card. They differ in personality. Click the one that feels right — or tell me in the terminal what you'd pull from each.</p>
+
+  <!-- DIRECTION A -->
+  <div class="caption"><span class="tag">A</span><h2>Editorial</h2><p>Print/magazine restraint — typographic masthead, strict grid, library-first, quiet import panel.</p></div>
+  <div class="window" data-choice="editorial" onclick="pick(this)">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app A">
+      <div class="masthead">
+        <div class="brand">
+          <div class="kw">ComiKaiju</div>
+          <div class="tl">offline comics reader</div>
+        </div>
+        <div class="navtools">
+          <div class="meter"><span class="lbl">Storage 1.2 / 3.0 GB</span><span class="track"><i></i></span></div>
+          <div class="icobtn">◐</div>
+          <div class="icobtn">⚙</div>
+        </div>
+      </div>
+      <div class="body">
+        <div class="sec">
+          <div class="sechead"><div class="l"><span class="lbl">Continue</span><span class="cnt">3</span></div><span class="more">All →</span></div>
+          <div class="row">
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#7a2d1a,#2a0f08)"><span class="glyph">#014</span><span class="ctitle">Ember Circuit</span><span class="prog"><i style="width:64%"></i></span></div><div class="meta"><div class="t">Ember Circuit</div><div class="s">p.64 / 100</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"><span class="glyph">#207</span><span class="ctitle">Tidewatch</span><span class="prog"><i style="width:22%"></i></span></div><div class="meta"><div class="t">Tidewatch</div><div class="s">p.22 / 98</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"><span class="glyph">#003</span><span class="ctitle">Nightglass</span><span class="prog"><i style="width:88%"></i></span></div><div class="meta"><div class="t">Nightglass</div><div class="s">p.88 / 100</div></div></div>
+          </div>
+        </div>
+        <div class="sec">
+          <div class="sechead"><div class="l"><span class="lbl">Library</span><span class="cnt">48</span></div><span class="more">All →</span></div>
+          <div class="row">
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"><span class="glyph">#031</span><span class="ctitle">Verdant</span></div><div class="meta"><div class="t">Verdant</div><div class="s">42 MB</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"><span class="glyph">#128</span><span class="ctitle">Rosewire</span></div><div class="meta"><div class="t">Rosewire</div><div class="s">61 MB</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"><span class="glyph">#077</span><span class="ctitle">Goldfall</span></div><div class="meta"><div class="t">Goldfall</div><div class="s">38 MB</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#16404a,#08191d)"><span class="glyph">#090</span><span class="ctitle">Coldharbor</span></div><div class="meta"><div class="t">Coldharbor</div><div class="s">55 MB</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3a2a5c,#150f22)"><span class="glyph">#012</span><span class="ctitle">Dust & Signal</span></div><div class="meta"><div class="t">Dust &amp; Signal</div><div class="s">47 MB</div></div></div>
+            <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c3a16,#221608)"><span class="glyph">#155</span><span class="ctitle">Kilnhouse</span></div><div class="meta"><div class="t">Kilnhouse</div><div class="s">29 MB</div></div></div>
+          </div>
+        </div>
+        <div class="sec" style="margin-bottom:0">
+          <div class="sechead"><div class="l"><span class="lbl">Add to library</span></div></div>
+          <div class="import">
+            <div class="drop">
+              <div class="ic">⤓</div>
+              <div><div class="h">Drop a comic, or click to browse</div><div class="p">CBZ · CBR · ZIP · RAR</div></div>
+            </div>
+            <div class="side">
+              <div class="urlrow"><input placeholder="Paste a download link…"><button class="btn">Add</button></div>
+              <button class="ghost">⊕  Sync a folder from disk</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DIRECTION B -->
+  <div class="caption"><span class="tag">B</span><h2>Cinematic</h2><p>Reading-first — a featured "continue" hero built from the last cover, horizontal rails, immersive dark.</p></div>
+  <div class="window" data-choice="cinematic" onclick="pick(this)">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app B">
+      <div class="topbar">
+        <div class="kw"><span class="mark">C</span>ComiKaiju</div>
+        <div class="r"><span>1.2 / 3.0 GB</span><span>◐</span><span>⚙</span><button class="addbtn">+ Add</button></div>
+      </div>
+      <div class="hero">
+        <div class="bg" style="--art:linear-gradient(120deg,#7a2d1a,#2a0f08)"></div>
+        <div class="scrim"></div>
+        <div class="inner">
+          <div class="cover fcov" style="--art:linear-gradient(150deg,#7a2d1a,#2a0f08)"><span class="glyph">#014</span><span class="ctitle">Ember Circuit</span></div>
+          <div class="info">
+            <div class="eyebrow">Continue reading</div>
+            <h1>Ember Circuit</h1>
+            <div class="by">Vol. 2 · 100 pages</div>
+            <div class="pbar"><div class="track"><i></i></div><div class="cap">page 64 of 100 · 64%</div></div>
+            <div class="cta"><button class="resume">Resume reading</button><button class="sec2">Library</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="rh"><h3>Recently added</h3><span class="more">See all →</span></div>
+        <div class="strip">
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"><span class="glyph">#207</span><span class="ctitle">Tidewatch</span></div><div class="t">Tidewatch</div><div class="s">just now</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"><span class="glyph">#003</span><span class="ctitle">Nightglass</span></div><div class="t">Nightglass</div><div class="s">2h ago</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"><span class="glyph">#031</span><span class="ctitle">Verdant</span></div><div class="t">Verdant</div><div class="s">yesterday</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"><span class="glyph">#128</span><span class="ctitle">Rosewire</span></div><div class="t">Rosewire</div><div class="s">2d ago</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"><span class="glyph">#077</span><span class="ctitle">Goldfall</span></div><div class="t">Goldfall</div><div class="s">3d ago</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#16404a,#08191d)"><span class="glyph">#090</span><span class="ctitle">Coldharbor</span></div><div class="t">Coldharbor</div><div class="s">4d ago</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3a2a5c,#150f22)"><span class="glyph">#012</span><span class="ctitle">Dust</span></div><div class="t">Dust &amp; Signal</div><div class="s">5d ago</div></div>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="rh"><h3>Your library · 48</h3><span class="more">See all →</span></div>
+        <div class="strip">
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c3a16,#221608)"><span class="glyph">#155</span><span class="ctitle">Kilnhouse</span></div><div class="t">Kilnhouse</div><div class="s">29 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"><span class="glyph">#207</span><span class="ctitle">Tidewatch</span></div><div class="t">Tidewatch</div><div class="s">55 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"><span class="glyph">#003</span><span class="ctitle">Nightglass</span></div><div class="t">Nightglass</div><div class="s">61 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"><span class="glyph">#031</span><span class="ctitle">Verdant</span></div><div class="t">Verdant</div><div class="s">42 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"><span class="glyph">#128</span><span class="ctitle">Rosewire</span></div><div class="t">Rosewire</div><div class="s">38 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"><span class="glyph">#077</span><span class="ctitle">Goldfall</span></div><div class="t">Goldfall</div><div class="s">47 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#16404a,#08191d)"><span class="glyph">#090</span><span class="ctitle">Coldharbor</span></div><div class="t">Coldharbor</div><div class="s">33 MB</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+  function pick(el){
+    document.querySelectorAll('.window').forEach(w=>w.classList.remove('selected'));
+    el.classList.add('selected');
+  }
+</script>
+</body>
+</html>

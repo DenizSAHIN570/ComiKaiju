@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Menu with theme selector</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px 20px 90px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 18px;color:#9a9aa4;font-size:.93rem;max-width:82ch;line-height:1.5}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  .app{--primary:#ff6600;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;--text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font);min-height:560px}
+
+  .mast{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 30px 18px}
+  .nav{display:flex;gap:24px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);align-items:center}
+  .nav.right{justify-content:flex-end;gap:20px}
+  .nav a{color:var(--text2);text-decoration:none}.nav a.active{color:var(--text)}
+  .nav a.active::after{content:"";display:block;height:2px;background:var(--primary);margin-top:5px}
+  .word{font-family:var(--mono);font-weight:700;font-size:1.4rem;letter-spacing:.32em;text-transform:uppercase;text-indent:.32em;text-shadow:1px 0 0 var(--text)}
+  .rule{height:1px;background:var(--border);margin:0 30px}
+
+  .menuwrap{position:relative}
+  .menubtn{width:34px;height:34px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text);display:grid;place-items:center;cursor:pointer;transition:border-color .15s}
+  .menubtn:hover,.menubtn.on{border-color:var(--primary)}
+  .menubtn svg{width:16px;height:16px}
+  .dropdown{position:absolute;top:calc(100% + 8px);right:0;width:264px;background:var(--bg);border:1px solid var(--border);border-radius:4px;box-shadow:0 10px 28px -12px rgba(0,0,0,.2);overflow:hidden;z-index:20;text-align:left}
+  .dd-label{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);padding:14px 16px 8px;display:flex;justify-content:space-between;align-items:center}
+  .dd-label .mk{color:var(--primary);text-transform:none;letter-spacing:0;font-size:.68rem;cursor:pointer}
+  .seg{display:flex;margin:0 16px 12px;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .seg button{flex:1;background:transparent;border:none;border-left:1px solid var(--border);color:var(--text2);font-family:var(--font);font-size:.74rem;padding:8px 0;cursor:pointer}
+  .seg button:first-child{border-left:none}
+  .seg button.active{background:var(--primary);color:#fff}
+  .dd-div{height:1px;background:var(--border)}
+
+  .themes{padding:2px 8px 6px;max-height:196px;overflow-y:auto}
+  .theme{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:3px;cursor:pointer}
+  .theme:hover{background:var(--surface)}
+  .theme.active{background:var(--surface)}
+  .swatches{display:flex;gap:3px;flex:none}
+  .sw{width:12px;height:12px;border-radius:2px;border:1px solid rgba(0,0,0,.12)}
+  .theme .nm{font-size:.82rem;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .theme .tag{font-family:var(--mono);font-size:.56rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .theme .chk{color:var(--primary);font-weight:700;flex:none;width:14px;text-align:center}
+  .theme:not(.active) .chk{visibility:hidden}
+
+  .dd-item{display:flex;align-items:center;gap:11px;padding:12px 16px;color:var(--text);cursor:pointer;font-size:.86rem;text-decoration:none}
+  .dd-item:hover{background:var(--surface)}
+  .dd-item .ic{width:16px;height:16px;color:var(--text2);display:grid;place-items:center}
+  .dd-item .arr{margin-left:auto;color:var(--muted);font-family:var(--mono);font-size:.8rem}
+  .dd-item .sub{display:block;font-family:var(--mono);font-size:.62rem;color:var(--muted);margin-top:1px}
+
+  .stage{padding:34px 30px;color:var(--muted);font-family:var(--mono);font-size:.74rem;letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Menu button — mode switch + theme selector + settings</h1>
+  <p class="pagesub">One dropdown now carries: a light/dark/system mode switch, the theme picker (presets + your own, each with a live swatch), a jump to the full Theme Builder, then Settings and Install-app. The deep editing still happens on the Settings page — this is the fast switch.</p>
+
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#" class="active">Home</a><a href="#">Library</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right">
+          <a href="#">Search</a>
+          <a href="#">Add</a>
+          <div class="menuwrap">
+            <button class="menubtn on" aria-label="Menu"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+            <div class="dropdown">
+              <div class="dd-label">Appearance</div>
+              <div class="seg"><button>☀ Light</button><button class="active">☾ Dark</button><button>◐ System</button></div>
+              <div class="dd-div"></div>
+              <div class="dd-label">Theme <span class="mk">Builder →</span></div>
+              <div class="themes">
+                <div class="theme active">
+                  <span class="swatches"><span class="sw" style="background:#ff6600"></span><span class="sw" style="background:#4f9cf9"></span><span class="sw" style="background:#000"></span><span class="sw" style="background:#0a0a0a"></span><span class="sw" style="background:#fff"></span></span>
+                  <span class="nm">Default</span><span class="tag">Preset</span><span class="chk">✓</span>
+                </div>
+                <div class="theme">
+                  <span class="swatches"><span class="sw" style="background:#a0522d"></span><span class="sw" style="background:#8a6d3b"></span><span class="sw" style="background:#f4ecd8"></span><span class="sw" style="background:#ede0c8"></span><span class="sw" style="background:#3b2f2f"></span></span>
+                  <span class="nm">Sepia</span><span class="tag">Preset</span><span class="chk">✓</span>
+                </div>
+                <div class="theme">
+                  <span class="swatches"><span class="sw" style="background:#b34700"></span><span class="sw" style="background:#0033cc"></span><span class="sw" style="background:#fff"></span><span class="sw" style="background:#f0f0f0"></span><span class="sw" style="background:#000"></span></span>
+                  <span class="nm">High Contrast</span><span class="tag">Preset</span><span class="chk">✓</span>
+                </div>
+                <div class="theme">
+                  <span class="swatches"><span class="sw" style="background:#7c5cff"></span><span class="sw" style="background:#22d3ee"></span><span class="sw" style="background:#0b0e1a"></span><span class="sw" style="background:#12172a"></span><span class="sw" style="background:#e6e8f0"></span></span>
+                  <span class="nm">Midnight</span><span class="tag">Yours</span><span class="chk">✓</span>
+                </div>
+                <div class="theme">
+                  <span class="swatches"><span class="sw" style="background:#111"></span><span class="sw" style="background:#b45309"></span><span class="sw" style="background:#faf7ef"></span><span class="sw" style="background:#efe9dc"></span><span class="sw" style="background:#1a1a1a"></span></span>
+                  <span class="nm">Newsprint</span><span class="tag">Yours</span><span class="chk">✓</span>
+                </div>
+              </div>
+              <div class="dd-div"></div>
+              <a class="dd-item" href="#"><span class="ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></span>Settings<span class="arr">→</span></a>
+              <a class="dd-item" href="#"><span class="ic"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2"/></svg></span><span>Install app<span class="sub">read from your home screen</span></span></a>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="rule"></div>
+      <div class="stage">— home content below —</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

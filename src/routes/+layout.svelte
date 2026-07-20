@@ -122,10 +122,19 @@
 {/if}
 
 <style>
+	/* Flex column so pages can push their footer to the bottom on short content. */
 	main {
+		display: flex;
+		flex-direction: column;
 		min-height: 100vh;
+		min-height: 100dvh;
 		background-color: var(--color-bg-main);
 		color: var(--color-text-main);
+	}
+
+	/* Keep page sections at their natural height instead of squashing to fit. */
+	main > :global(*) {
+		flex-shrink: 0;
 	}
 
 	.loading-overlay {
@@ -134,7 +143,7 @@
 		left: 0;
 		width: 100vw;
 		height: 100vh;
-		background: color-mix(in srgb, #000 70%, transparent);
+		background: color-mix(in srgb, var(--color-text-main) 55%, transparent);
 		display: flex;
 		align-items: center;
 		justify-content: center;
@@ -146,7 +155,7 @@
 		text-align: center;
 		padding: 2rem;
 		border-radius: 12px;
-		box-shadow: 0 10px 25px -5px color-mix(in srgb, #000 10%, transparent), 0 8px 10px -6px color-mix(in srgb, #000 10%, transparent);
+		box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent), 0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
 		min-width: 200px;
 		background-color: var(--color-bg-surface);
 		color: var(--color-text-main);
@@ -206,15 +215,15 @@
 		width: 90%;
 		max-width: 400px;
 		border-radius: 6px;
-		box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
+		box-shadow: 0 4px 6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
 		animation: slideIn 0.3s ease-out;
 		overflow: hidden;
 	}
 
-	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 60%, #000); color: white; }
-	.global-error.error { background: var(--color-status-error); color: white; }
-	.global-error.warning { background: var(--color-status-warning); color: black; }
-	.global-error.info { background: var(--color-primary); color: white; }
+	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 78%, transparent); color: var(--color-bg-main); }
+	.global-error.error { background: var(--color-status-error); color: var(--color-bg-main); }
+	.global-error.warning { background: var(--color-status-warning); color: var(--color-bg-main); }
+	.global-error.info { background: var(--color-primary); color: var(--color-bg-main); }
 	
 	@keyframes slideIn {
 		from { transform: translateX(100%); opacity: 0; }

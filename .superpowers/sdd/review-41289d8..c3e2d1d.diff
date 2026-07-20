@@ -1,0 +1,85 @@
+# Review package: 41289d8..HEAD
+
+## Commits
+c3e2d1d fix(ui): de-hardcode layout overlay/toast colors to theme tokens
+
+## Files changed
+ src/routes/+layout.svelte | 14 +++++++-------
+ 1 file changed, 7 insertions(+), 7 deletions(-)
+
+## Diff
+diff --git a/src/routes/+layout.svelte b/src/routes/+layout.svelte
+index 8f7caba..0e3b4bd 100644
+--- a/src/routes/+layout.svelte
++++ b/src/routes/+layout.svelte
+@@ -127,33 +127,33 @@
+ 		background-color: var(--color-bg-main);
+ 		color: var(--color-text-main);
+ 	}
+ 
+ 	.loading-overlay {
+ 		position: fixed;
+ 		top: 0;
+ 		left: 0;
+ 		width: 100vw;
+ 		height: 100vh;
+-		background: color-mix(in srgb, #000 70%, transparent);
++		background: color-mix(in srgb, var(--color-text-main) 55%, transparent);
+ 		display: flex;
+ 		align-items: center;
+ 		justify-content: center;
+ 		z-index: 9999;
+ 		backdrop-filter: blur(2px);
+ 	}
+ 
+ 	.loading-content {
+ 		text-align: center;
+ 		padding: 2rem;
+ 		border-radius: 12px;
+-		box-shadow: 0 10px 25px -5px color-mix(in srgb, #000 10%, transparent), 0 8px 10px -6px color-mix(in srgb, #000 10%, transparent);
++		box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent), 0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+ 		min-width: 200px;
+ 		background-color: var(--color-bg-surface);
+ 		color: var(--color-text-main);
+ 	}
+ 
+ 	.loading-spinner {
+ 		width: 40px;
+ 		height: 40px;
+ 		border: 4px solid var(--color-border);
+ 		border-top: 4px solid var(--color-primary);
+@@ -199,29 +199,29 @@
+ 	}
+ 	
+ 	.global-error {
+ 		position: fixed;
+ 		top: 1rem;
+ 		right: 1rem;
+ 		z-index: 10000;
+ 		width: 90%;
+ 		max-width: 400px;
+ 		border-radius: 6px;
+-		box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
++		box-shadow: 0 4px 6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+ 		animation: slideIn 0.3s ease-out;
+ 		overflow: hidden;
+ 	}
+ 
+-	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 60%, #000); color: white; }
+-	.global-error.error { background: var(--color-status-error); color: white; }
+-	.global-error.warning { background: var(--color-status-warning); color: black; }
+-	.global-error.info { background: var(--color-primary); color: white; }
++	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 78%, transparent); color: var(--color-bg-main); }
++	.global-error.error { background: var(--color-status-error); color: var(--color-bg-main); }
++	.global-error.warning { background: var(--color-status-warning); color: var(--color-bg-main); }
++	.global-error.info { background: var(--color-primary); color: var(--color-bg-main); }
+ 	
+ 	@keyframes slideIn {
+ 		from { transform: translateX(100%); opacity: 0; }
+ 		to { transform: translateX(0); opacity: 1; }
+ 	}
+ 	
+ 	.error-content {
+ 		display: flex;
+ 		align-items: flex-start;
+ 		padding: 1rem;

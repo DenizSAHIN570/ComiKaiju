@@ -1,0 +1,308 @@
+# Review package: e2c91c6..4c1e4dc
+
+## Commits
+4c1e4dc chore(ui): CBZ/CBR copy sweep, de-hardcode stragglers, a11y polish
+
+## Files changed
+ src/lib/services/comicProcessor.ts |  2 +-
+ src/lib/ui/ImportPanel.svelte      | 12 +++++++++++-
+ src/lib/ui/UrlImportConfirm.svelte |  8 +++++---
+ src/routes/settings/+page.svelte   | 12 ++++++------
+ 4 files changed, 23 insertions(+), 11 deletions(-)
+
+## Diff
+diff --git a/src/lib/services/comicProcessor.ts b/src/lib/services/comicProcessor.ts
+index 280244d..f5687af 100644
+--- a/src/lib/services/comicProcessor.ts
++++ b/src/lib/services/comicProcessor.ts
+@@ -106,21 +106,21 @@ export async function createThumbnail(
+   });
+ }
+ 
+ export async function handleFile(file: File, loadComics: () => Promise<void>) {
+   if (!archiveManager) {
+     archiveManager = new ArchiveManager();
+   }
+ 
+   const isSupported = await archiveManager.isSupported(file);
+   if (!isSupported) {
+-    setError("Please select a CBZ, ZIP, CBR, or RAR file.");
++    setError("Please select a CBZ or CBR file.");
+     setLoading(false);
+     return;
+   }
+ 
+   clearError();
+   setLoading(true, "Processing archive...");
+ 
+   try {
+     // 0. Check for duplicate before processing
+     const existingItem = await comicStorage.findDuplicate(file);
+diff --git a/src/lib/ui/ImportPanel.svelte b/src/lib/ui/ImportPanel.svelte
+index 4b245a8..b9040e6 100644
+--- a/src/lib/ui/ImportPanel.svelte
++++ b/src/lib/ui/ImportPanel.svelte
+@@ -1,13 +1,15 @@
+ <script lang="ts">
+   import { handleFile, handleUrlImport, isHttpUrl } from "$lib/services/comicProcessor";
+   import { directoryService } from "$lib/services/directoryService";
++  import { setError } from "$lib/store/session";
++  import { logger } from "$lib/services/logger";
+   import UrlImportConfirm from "$lib/ui/UrlImportConfirm.svelte";
+ 
+   let { oncomplete }: { oncomplete?: () => void } = $props();
+ 
+   let fileInput = $state<HTMLInputElement>();
+   let dragActive = $state(false);
+   let urlValue = $state("");
+   let urlHint = $state<string | null>(null);
+   let pendingUrl = $state<string | null>(null);
+   let syncing = $state(false);
+@@ -77,37 +79,45 @@
+   }
+ 
+   async function syncFolder() {
+     if (!supportsFolderSync || syncing) return;
+     syncing = true;
+     try {
+       const handle = await directoryService.openComicsFolder();
+       if (handle) {
+         await complete();
+       }
++    } catch (err) {
++      logger.error("ImportPanel", "Failed to sync folder", err);
++      setError("Failed to sync folder. Please try again.");
+     } finally {
+       syncing = false;
+     }
+   }
+ </script>
+ 
+ <div class="import">
+   <div
+     class="drop"
+     class:active={dragActive}
+     ondragover={onDragOver}
+     ondragleave={onDragLeave}
+     ondrop={onDrop}
+     role="button"
+     tabindex="0"
+     onclick={openFilePicker}
+-    onkeydown={(e) => e.key === "Enter" && openFilePicker()}
++    onkeydown={(e) => {
++      if (e.key === "Enter" || e.key === " ") {
++        if (e.key === " ") e.preventDefault();
++        openFilePicker();
++      }
++    }}
+   >
+     <div class="ic" aria-hidden="true">⤓</div>
+     <div>
+       <div class="h">Drop a comic, or choose a file</div>
+       <div class="p">CBZ · CBR</div>
+     </div>
+     <div class="cta">
+       <button type="button" class="btn" onclick={(e) => { e.stopPropagation(); openFilePicker(); }}>
+         Choose file
+       </button>
+diff --git a/src/lib/ui/UrlImportConfirm.svelte b/src/lib/ui/UrlImportConfirm.svelte
+index f15461f..217d516 100644
+--- a/src/lib/ui/UrlImportConfirm.svelte
++++ b/src/lib/ui/UrlImportConfirm.svelte
+@@ -19,36 +19,38 @@
+   </div>
+ </div>
+ 
+ <style>
+   .url-import-overlay {
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100vw;
+     height: 100vh;
+-    background: rgba(0, 0, 0, 0.7);
++    background: color-mix(in srgb, var(--color-text-main) 70%, transparent);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     z-index: 9999;
+     backdrop-filter: blur(2px);
+   }
+ 
+   .url-import-card {
+     background-color: var(--color-bg-surface);
+     color: var(--color-text-main);
+     border-radius: 12px;
+     padding: 1.5rem;
+     max-width: 90vw;
+     width: 420px;
+-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
++    box-shadow:
++      0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent),
++      0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+   }
+ 
+   .url-import-card h3 {
+     margin: 0 0 0.75rem;
+     font-size: 1.1rem;
+   }
+ 
+   .url-import-url {
+     word-break: break-all;
+     background: var(--color-bg-main);
+@@ -75,13 +77,13 @@
+   }
+ 
+   .url-import-cancel {
+     background: transparent;
+     color: var(--color-text-main);
+     border: 1px solid var(--color-border);
+   }
+ 
+   .url-import-confirm {
+     background: var(--color-primary);
+-    color: white;
++    color: var(--color-bg-main);
+   }
+ </style>
+diff --git a/src/routes/settings/+page.svelte b/src/routes/settings/+page.svelte
+index 891c200..7e987a9 100644
+--- a/src/routes/settings/+page.svelte
++++ b/src/routes/settings/+page.svelte
+@@ -519,21 +519,21 @@
+ 		color: var(--color-text-secondary);
+ 		font-size: 0.86rem;
+ 		max-width: 40rem;
+ 	}
+ 
+ 	.btn-primary {
+ 		flex-shrink: 0;
+ 		background: var(--color-primary);
+ 		border: 1px solid var(--color-primary);
+ 		border-radius: 3px;
+-		color: #fff;
++		color: var(--color-bg-main);
+ 		font-family: var(--font-base);
+ 		font-weight: 650;
+ 		font-size: 0.82rem;
+ 		padding: 9px 15px;
+ 		cursor: pointer;
+ 	}
+ 	.btn-primary:hover {
+ 		background: var(--color-primary-hover);
+ 	}
+ 
+@@ -589,21 +589,21 @@
+ 		font-family: var(--font-base);
+ 		font-size: 0.6rem;
+ 		letter-spacing: 0.08em;
+ 		text-transform: uppercase;
+ 		color: var(--color-text-muted);
+ 	}
+ 
+ 	/* Inline editor */
+ 	.editor {
+ 		border: 1px solid var(--color-border);
+-		border-radius: 4px;
++		border-radius: 3px;
+ 		background: var(--color-bg-surface);
+ 		padding: 20px;
+ 	}
+ 	.etop {
+ 		display: flex;
+ 		gap: 12px;
+ 		align-items: center;
+ 		margin-bottom: 20px;
+ 	}
+ 	.name-input {
+@@ -631,21 +631,21 @@
+ 		color: var(--color-text-secondary);
+ 		font-family: var(--font-base);
+ 		font-size: 0.78rem;
+ 		cursor: pointer;
+ 	}
+ 	.modetabs button:first-child {
+ 		border-left: none;
+ 	}
+ 	.modetabs button.sel {
+ 		background: var(--color-primary);
+-		color: #fff;
++		color: var(--color-bg-main);
+ 	}
+ 	.groups {
+ 		display: grid;
+ 		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+ 		gap: 20px 28px;
+ 	}
+ 	.gt {
+ 		font-family: var(--font-base);
+ 		font-size: 0.65rem;
+ 		letter-spacing: 0.1em;
+@@ -738,21 +738,21 @@
+ 		border: 1px solid var(--color-status-error);
+ 		border-radius: 3px;
+ 		color: var(--color-status-error);
+ 		font-family: var(--font-base);
+ 		font-size: 0.8rem;
+ 		padding: 8px 14px;
+ 		cursor: pointer;
+ 	}
+ 	.danger:hover {
+ 		background: var(--color-status-error);
+-		color: #fff;
++		color: var(--color-bg-main);
+ 	}
+ 
+ 	/* Reader + filters shared */
+ 	.glabel {
+ 		font-family: var(--font-base);
+ 		font-size: 0.8rem;
+ 		letter-spacing: 0.04em;
+ 		text-transform: uppercase;
+ 		color: var(--color-text-muted);
+ 		margin: 26px 0 12px;
+@@ -818,42 +818,42 @@
+ 		border: 1px solid var(--color-border);
+ 		border-radius: 3px;
+ 		background: var(--color-bg-main);
+ 		color: var(--color-text-secondary);
+ 		font-family: var(--font-base);
+ 		font-size: 0.82rem;
+ 		cursor: pointer;
+ 	}
+ 	.segmented button.sel {
+ 		background: var(--color-primary);
+-		color: #fff;
++		color: var(--color-bg-main);
+ 		border-color: var(--color-primary);
+ 	}
+ 
+ 	/* Filters */
+ 	.fhead {
+ 		display: flex;
+ 		align-items: flex-start;
+ 		justify-content: space-between;
+ 		gap: 1rem;
+ 	}
+ 	.fhead .shead {
+ 		margin-bottom: 0;
+ 	}
+ 	.fgrid {
+ 		display: grid;
+ 		grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+ 		gap: 14px;
+ 	}
+ 	.fcard {
+ 		border: 1px solid var(--color-border);
+-		border-radius: 4px;
++		border-radius: 3px;
+ 		background: var(--color-bg-main);
+ 		padding: 14px;
+ 	}
+ 	.fcard .fn {
+ 		color: var(--color-text-main);
+ 		font-weight: 650;
+ 		font-size: 0.88rem;
+ 	}
+ 	.fcard .fd {
+ 		color: var(--color-text-secondary);

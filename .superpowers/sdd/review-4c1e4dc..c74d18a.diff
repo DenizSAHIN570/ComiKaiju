@@ -1,0 +1,386 @@
+# Review package: 4c1e4dc..c74d18a
+
+## Commits
+c74d18a fix(ui): address final-review findings (reader capture race, dead controls, menu/progress/a11y polish)
+
+## Files changed
+ src/lib/ui/AppBar.svelte       |  8 ++++++--
+ src/lib/ui/AppMenu.svelte      |  4 +++-
+ src/lib/ui/ComicShelf.svelte   |  2 +-
+ src/lib/ui/ContinueBand.svelte | 29 +++++++++++++++++++++--------
+ src/lib/ui/CoverArt.svelte     | 13 ++++++-------
+ src/lib/ui/CoverCard.svelte    |  2 +-
+ src/routes/+page.svelte        | 25 +++++++++++++++----------
+ src/routes/reader/+page.svelte |  9 +++++----
+ 8 files changed, 58 insertions(+), 34 deletions(-)
+
+## Diff
+diff --git a/src/lib/ui/AppBar.svelte b/src/lib/ui/AppBar.svelte
+index 3729bbf..25c0b0d 100644
+--- a/src/lib/ui/AppBar.svelte
++++ b/src/lib/ui/AppBar.svelte
+@@ -13,22 +13,26 @@
+   } = $props();
+ </script>
+ 
+ <div class="mast">
+   <div class="nav">
+     <a href={resolve("/")} class:active={active === "home"}>Home</a>
+     <a href={resolve("/library")} class:active={active === "library"}>Library</a>
+   </div>
+   <div class="word">ComiKaiju</div>
+   <div class="nav right">
+-    <button type="button" onclick={() => onsearch?.()}>Search</button>
+-    <button type="button" onclick={() => onadd?.()}>Add</button>
++    {#if onsearch}
++      <button type="button" onclick={() => onsearch?.()}>Search</button>
++    {/if}
++    {#if onadd}
++      <button type="button" onclick={() => onadd?.()}>Add</button>
++    {/if}
+     <AppMenu />
+   </div>
+ </div>
+ <div class="rule"></div>
+ 
+ <style>
+   .mast {
+     display: grid;
+     grid-template-columns: 1fr auto 1fr;
+     align-items: center;
+diff --git a/src/lib/ui/AppMenu.svelte b/src/lib/ui/AppMenu.svelte
+index 04f3e11..496aba4 100644
+--- a/src/lib/ui/AppMenu.svelte
++++ b/src/lib/ui/AppMenu.svelte
+@@ -73,21 +73,23 @@
+     aria-label="Menu"
+     aria-expanded={open}
+     onclick={toggle}
+   >
+     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+       <path d="M4 6h16M4 12h16M4 18h16" />
+     </svg>
+   </button>
+ 
+   {#if open}
+-    <div class="dropdown">
++    <!-- svelte-ignore a11y_click_events_have_key_events -->
++    <!-- svelte-ignore a11y_no_static_element_interactions -->
++    <div class="dropdown" onclick={(e) => e.stopPropagation()}>
+       <div class="dd-label">Appearance</div>
+       <div class="seg">
+         {#each MODES as m (m.id)}
+           <button class:active={themeState.mode === m.id} onclick={() => setMode(m.id)}>
+             {m.icon} {m.label}
+           </button>
+         {/each}
+       </div>
+       <div class="dd-div"></div>
+       <div class="dd-label">
+diff --git a/src/lib/ui/ComicShelf.svelte b/src/lib/ui/ComicShelf.svelte
+index 0d4ee4d..cca1250 100644
+--- a/src/lib/ui/ComicShelf.svelte
++++ b/src/lib/ui/ComicShelf.svelte
+@@ -118,21 +118,21 @@
+             >
+               Read →
+             </button>
+             <button
+               type="button"
+               class="del"
+               onclick={(e) => {
+                 e.stopPropagation();
+                 ondelete?.(comic.id);
+               }}
+-              aria-label="More options"
++              aria-label="Delete"
+             >
+               ⋯
+             </button>
+           </div>
+         </div>
+       {/if}
+     </div>
+   {/each}
+ </div>
+ 
+diff --git a/src/lib/ui/ContinueBand.svelte b/src/lib/ui/ContinueBand.svelte
+index 2928d3f..d2916d2 100644
+--- a/src/lib/ui/ContinueBand.svelte
++++ b/src/lib/ui/ContinueBand.svelte
+@@ -4,65 +4,78 @@
+     pageImage,
+     onresume,
+     onlibrary,
+   }: {
+     comic: { title: string; currentPage: number; totalPages: number; updatedAt?: number };
+     pageImage?: string;
+     onresume?: () => void;
+     onlibrary?: () => void;
+   } = $props();
+ 
+-  const progressPercent = $derived(
+-    comic.totalPages > 0
+-      ? Math.min(100, Math.max(0, ((comic.currentPage + 1) / comic.totalPages) * 100))
+-      : 0,
+-  );
++  function progressCaption(current: number, total: number): string {
++    if (!total) return "";
++    if (current != null && current + 1 >= total) return "finished";
++    if (current == null || current === 0) return "not started";
++    return `page ${current + 1} of ${total}`;
++  }
++
++  function progressPct(current: number, total: number): number {
++    if (!total) return 0;
++    if (current != null && current + 1 >= total) return 100;
++    if (current == null || current === 0) return 0;
++    return Math.min(100, Math.max(0, ((current + 1) / total) * 100));
++  }
++
++  const caption = $derived(progressCaption(comic.currentPage, comic.totalPages));
++  const progressPercent = $derived(progressPct(comic.currentPage, comic.totalPages));
+ 
+   function relativeTime(ms?: number): string {
+     if (ms == null) return "";
+     const diffMs = Date.now() - ms;
+     const day = 24 * 60 * 60 * 1000;
+     if (diffMs < 0 || diffMs < 60 * 60 * 1000) return "just now";
+     if (diffMs < day) {
+       const hours = Math.round(diffMs / (60 * 60 * 1000));
+       return `${hours} hour${hours === 1 ? "" : "s"} ago`;
+     }
+     const days = Math.round(diffMs / day);
+     if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
+     const months = Math.round(days / 30);
+     return `${months} month${months === 1 ? "" : "s"} ago`;
+   }
+ 
+   const leftOff = $derived(relativeTime(comic.updatedAt));
++
++  const subLine = $derived(
++    [caption, leftOff ? `left off ${leftOff}` : ""].filter(Boolean).join(" · "),
++  );
+ </script>
+ 
+ <div class="continue">
+   <div class="pagebg">
+     {#if pageImage}
+       <div class="page-image" style="background-image:url({pageImage})"></div>
+     {:else}
+       <div class="page">
+         <div class="panel wide"></div>
+         <div class="panel"></div>
+         <div class="panel"></div>
+         <div class="panel"></div>
+         <div class="panel"></div>
+       </div>
+     {/if}
+   </div>
+   <div class="scrim"></div>
+   <div class="c-inner">
+     <div class="eye">Continue reading</div>
+     <h2>{comic.title}</h2>
+-    <div class="c-sub">
+-      page {comic.currentPage + 1} of {comic.totalPages}{leftOff ? ` · left off ${leftOff}` : ""}
+-    </div>
++    <div class="c-sub">{subLine}</div>
+     <div class="c-line"><i style="width:{progressPercent}%"></i></div>
+     <div class="c-cta">
+       <button type="button" class="btn" onclick={() => onresume?.()}>▶ Resume</button>
+       <button type="button" class="btn ghost" onclick={() => onlibrary?.()}>Library</button>
+     </div>
+   </div>
+ </div>
+ 
+ <style>
+   .continue {
+diff --git a/src/lib/ui/CoverArt.svelte b/src/lib/ui/CoverArt.svelte
+index d4a5dae..92719a0 100644
+--- a/src/lib/ui/CoverArt.svelte
++++ b/src/lib/ui/CoverArt.svelte
+@@ -1,37 +1,36 @@
+ <script lang="ts">
+   let { title, thumbnail, index }: { title: string; thumbnail?: string; index?: number } = $props();
+ 
+   // Deterministic hue from title (placeholder art only — content, not chrome)
+   const hue = $derived([...title].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7));
+   const idx = $derived(index != null ? "#" + String(index).padStart(3, "0") : "");
++
++  const bg = $derived(`hsl(${hue} 45% 18%)`);
++  const band = $derived(`hsl(${hue} 60% 42%)`);
++  const text = $derived(`hsl(${hue} 30% 92%)`);
++  const coverStyle = $derived(`--bg:${bg};--band:${band};--text:${text}`);
+ </script>
+ 
+ {#if thumbnail}
+   <img src={thumbnail} alt={title} style="width:100%;height:100%;object-fit:cover" />
+ {:else}
+-  <div class="cover" style="--hue:{hue}">
++  <div class="cover" style={coverStyle}>
+     <div class="band"></div>
+     <div class="title">{title}</div>
+     {#if idx}
+       <div class="index">{idx}</div>
+     {/if}
+   </div>
+ {/if}
+ 
+ <style>
+-  :global([style*="--hue"]) {
+-    --bg: hsl(var(--hue) 45% 18%);
+-    --band: hsl(var(--hue) 60% 42%);
+-    --text: hsl(var(--hue) 30% 92%);
+-  }
+-
+   .cover {
+     position: absolute;
+     inset: 0;
+     background: var(--bg);
+     display: flex;
+     flex-direction: column;
+   }
+ 
+   .band {
+     position: absolute;
+diff --git a/src/lib/ui/CoverCard.svelte b/src/lib/ui/CoverCard.svelte
+index f89f4c1..1b6c278 100644
+--- a/src/lib/ui/CoverCard.svelte
++++ b/src/lib/ui/CoverCard.svelte
+@@ -37,21 +37,21 @@
+   class="card"
+   role="button"
+   tabindex="0"
+   aria-label={title}
+   onclick={() => onopen?.()}
+   onkeydown={handleKeydown}
+ >
+   <div class="cover">
+     <CoverArt {title} {thumbnail} {index} />
+     {#if ondelete}
+-      <button type="button" class="menu" onclick={handleDelete} aria-label="More options">
++      <button type="button" class="menu" onclick={handleDelete} aria-label="Delete">
+         ⋯
+       </button>
+     {/if}
+     {#if progress && progress > 0}
+       <div class="pbar"><i style="width:{Math.min(100, Math.round(progress * 100))}%"></i></div>
+     {/if}
+   </div>
+   <div class="t">{title}</div>
+   {#if meta}
+     <div class="m">{meta}</div>
+diff --git a/src/routes/+page.svelte b/src/routes/+page.svelte
+index f3375ee..a32f871 100644
+--- a/src/routes/+page.svelte
++++ b/src/routes/+page.svelte
+@@ -149,29 +149,32 @@
+ 		}
+ 	}
+ 
+ 	function cancelUrlImport() {
+ 		pendingImportUrl = null;
+ 	}
+ 
+ 	const hasComics = $derived(recentComics.length > 0);
+ 
+ 	const lastRead = $derived.by(() => {
+-		if (recentComics.length === 0) return null;
+-		return recentComics.reduce((best, item) => {
++		const candidates = recentComics.filter((item) => (item.metadata?.currentPage ?? 0) > 0);
++		if (candidates.length === 0) return null;
++		return candidates.reduce((best, item) => {
+ 			const itemTime = item.metadata?.lastRead ? new Date(item.metadata.lastRead).getTime() : item.updatedAt;
+ 			const bestTime = best.metadata?.lastRead ? new Date(best.metadata.lastRead).getTime() : best.updatedAt;
+ 			return itemTime > bestTime ? item : best;
+ 		});
+ 	});
+ 
+-	const shelfComics = $derived(recentComics.filter((c) => c.id !== lastRead?.id));
++	const shelfComics = $derived(
++		lastRead ? recentComics.filter((c) => c.id !== lastRead.id) : recentComics
++	);
+ 
+ 	const lastReadComic = $derived(
+ 		lastRead
+ 			? {
+ 					title: lastRead.metadata?.title ?? lastRead.name.replace(/\.(cbz|zip|cbr|rar)$/i, ''),
+ 					currentPage: lastRead.metadata?.currentPage ?? 0,
+ 					totalPages: lastRead.metadata?.totalPages ?? 0,
+ 					updatedAt: lastRead.metadata?.lastRead
+ 						? new Date(lastRead.metadata.lastRead).getTime()
+ 						: lastRead.updatedAt
+@@ -188,27 +191,29 @@
+ 	<title>ComiKaiju - Offline Comic Reader</title>
+ 	<meta
+ 		name="description"
+ 		content="A private, offline-first comic book reader for the web. Supports CBZ/CBR files, works offline via PWA, and respects your privacy."
+ 	/>
+ </svelte:head>
+ 
+ <div class="page">
+ 	<AppBar active="home" onadd={() => (addOpen = true)} />
+ 
+-	{#if hasComics && lastRead && lastReadComic}
+-		<ContinueBand
+-			comic={lastReadComic}
+-			pageImage={lastReadPageImage}
+-			onresume={() => openById(lastRead.id)}
+-			onlibrary={() => goto(resolve('/library'))}
+-		/>
++	{#if hasComics}
++		{#if lastRead && lastReadComic}
++			<ContinueBand
++				comic={lastReadComic}
++				pageImage={lastReadPageImage}
++				onresume={() => openById(lastRead.id)}
++				onlibrary={() => goto(resolve('/library'))}
++			/>
++		{/if}
+ 		<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
+ 	{:else}
+ 		<section class="home-hero">
+ 			<div class="hero-scrim"></div>
+ 			<div class="hero-inner">
+ 				<h1 class="hero-title">
+ 					<span style="color:var(--color-secondary)">Read</span> your
+ 					<span style="color:var(--color-secondary)">comics</span> right in your browser
+ 				</h1>
+ 				<p class="hero-lead">
+diff --git a/src/routes/reader/+page.svelte b/src/routes/reader/+page.svelte
+index 4a8ee57..cfeabcd 100644
+--- a/src/routes/reader/+page.svelte
++++ b/src/routes/reader/+page.svelte
+@@ -64,27 +64,28 @@
+ 			} catch (e) {
+ 				logger.error('Reader', 'Failed to load archive', e);
+ 				requestFileReload();
+ 			}
+ 		} else if (comic && !file) {
+ 			requestFileReload();
+ 		}
+ 	});
+ 
+ 	onDestroy(() => {
+-		void saveProgress();
++		void saveProgress().finally(() => {
++			if (archiveManager) {
++				archiveManager.cleanup();
++			}
++		});
+ 		unsubscribeComic();
+ 		unsubscribeFile();
+ 		unsubscribePage();
+-		if (archiveManager) {
+-			archiveManager.cleanup();
+-		}
+ 	});
+ 
+ async function saveProgress(): Promise<void> {
+ 	if (!comic) return;
+ 	const pageIndex = get(currentPageIndex);
+ 	comic.currentPage = pageIndex;
+ 	comic.lastRead = new Date();
+ 	const totalPages = comic.totalPages || comic.pages?.length || 0;
+ 	try {
+ 		const pageBlob = await onExtractPage(pageIndex);

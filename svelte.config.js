@@ -6,6 +6,10 @@ const config = {
   preprocess: vitePreprocess(),
 
   kit: {
+    // SvelteKit auto-registers src/service-worker.ts on every origin, including the
+    // dev server, where its cache-first strategy pins stale CSS/JS across reloads.
+    // +layout.svelte registers it explicitly for production only.
+    serviceWorker: { register: false },
     adapter: adapter({
       pages: "build",
       assets: "build",

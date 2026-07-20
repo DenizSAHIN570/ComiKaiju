@@ -1,0 +1,99 @@
+# Review package: fb28b2a..12272c6
+
+## Commits
+12272c6 fix(ui): ComicShelf on-accent token, progress edge case, pristine check
+
+## Files changed
+ src/lib/ui/ComicShelf.svelte | 19 +++++++++++--------
+ 1 file changed, 11 insertions(+), 8 deletions(-)
+
+## Diff
+diff --git a/src/lib/ui/ComicShelf.svelte b/src/lib/ui/ComicShelf.svelte
+index 7e26185..0d4ee4d 100644
+--- a/src/lib/ui/ComicShelf.svelte
++++ b/src/lib/ui/ComicShelf.svelte
+@@ -18,20 +18,21 @@
+         currentPage?: number;
+         totalPages?: number;
+         coverThumbnail?: string;
+       };
+     }>;
+     autoOpenFirst?: boolean;
+     onopen?: (id: string) => void;
+     ondelete?: (id: string) => void;
+   } = $props();
+ 
++  // svelte-ignore state_referenced_locally
+   let openId = $state<string | null>(autoOpenFirst ? (comics[0]?.id ?? null) : null);
+ 
+   function open(id: string) {
+     openId = id;
+   }
+ 
+   function extension(name: string): string {
+     const i = name.lastIndexOf(".");
+     return i === -1 ? "" : name.slice(i + 1).toUpperCase();
+   }
+@@ -43,30 +44,32 @@
+     const kb = bytes / 1024;
+     return `${kb.toFixed(1)} KB`;
+   }
+ 
+   function formatDate(ms?: number): string {
+     if (ms == null) return "—";
+     return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
+   }
+ 
+   function progressCaption(current?: number, total?: number): string {
+-    if (!total) return "not started";
+-    if (!current) return "not started";
+-    if (current + 1 >= total) return "finished";
+-    const pct = Math.round((current / total) * 100);
+-    return `page ${current} / ${total} · ${pct}%`;
++    if (!total) return "";
++    if (current != null && current + 1 >= total) return "finished";
++    if (current == null || current === 0) return "not started";
++    const pct = Math.round(((current + 1) / total) * 100);
++    return `page ${current + 1} / ${total} · ${pct}%`;
+   }
+ 
+   function progressPercent(current?: number, total?: number): number {
+-    if (!total || !current) return 0;
+-    return Math.min(100, Math.round((current / total) * 100));
++    if (!total) return 0;
++    if (current != null && current + 1 >= total) return 100;
++    if (current == null || current === 0) return 0;
++    return Math.min(100, Math.round(((current + 1) / total) * 100));
+   }
+ </script>
+ 
+ <div class="shelf">
+   {#each comics as comic, i (comic.id)}
+     {@const isOpen = openId === comic.id}
+     {@const title = comic.metadata?.title ?? comic.name}
+     {@const thumb = comic.metadata?.coverThumbnail ?? comic.thumbnail}
+     {@const total = comic.metadata?.totalPages}
+     {@const current = comic.metadata?.currentPage}
+@@ -265,21 +268,21 @@
+   .info .actions {
+     margin-top: auto;
+     display: flex;
+     gap: 10px;
+     padding-top: 16px;
+   }
+ 
+   .info .read {
+     flex: 1;
+     background: var(--color-primary);
+-    color: white;
++    color: var(--color-bg-main);
+     border: none;
+     border-radius: 3px;
+     padding: 10px;
+     font-weight: 700;
+     font-size: 0.8rem;
+     cursor: pointer;
+     font-family: var(--font-base);
+   }
+ 
+   .info .del {

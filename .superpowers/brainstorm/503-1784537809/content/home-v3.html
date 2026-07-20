@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home v3</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px 20px 70px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 20px;color:#9a9aa4;font-size:.93rem;max-width:80ch;line-height:1.5}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  .app{--primary:#ff6600;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;
+    --text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font)}
+
+  .mast{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 30px 18px}
+  .nav{display:flex;gap:24px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)}
+  .nav.right{justify-content:flex-end}
+  .nav a{color:var(--text2);text-decoration:none}.nav a.active{color:var(--text)}
+  .nav a.active::after{content:"";display:block;height:2px;background:var(--primary);margin-top:5px}
+  .word{font-family:var(--mono);font-weight:700;font-size:1.4rem;letter-spacing:.32em;text-transform:uppercase;text-indent:.32em;text-shadow:1px 0 0 var(--text)}
+  .rule{height:1px;background:var(--border);margin:0 30px}
+
+  .continue{position:relative;margin:0 30px;height:280px;border-bottom:1px solid var(--border);overflow:hidden}
+  .pagebg{position:absolute;top:0;right:0;bottom:0;width:62%;background:#0d0d0f;overflow:hidden}
+  .page{position:absolute;inset:14px;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:1.1fr .9fr .9fr;gap:10px}
+  .panel{background:#20232b;border:1px solid #333;position:relative;overflow:hidden}
+  .panel::after{content:"";position:absolute;inset:0;background:linear-gradient(120deg,transparent 40%,rgba(255,255,255,.05) 41% 43%,transparent 44%),radial-gradient(60% 50% at 30% 30%,rgba(255,255,255,.06),transparent 70%)}
+  .panel.wide{grid-column:1 / 3}
+  .scrim{position:absolute;inset:0;background:linear-gradient(90deg,var(--bg) 34%,rgba(255,255,255,.85) 44%,rgba(255,255,255,0) 62%)}
+  .c-inner{position:relative;z-index:2;height:100%;display:flex;flex-direction:column;justify-content:center;max-width:52%;padding:0 4px}
+  .eye{font-family:var(--mono);font-size:.66rem;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+  .c-inner h2{margin:9px 0 4px;font-size:1.9rem;font-weight:900;letter-spacing:-.035em;line-height:.95}
+  .c-sub{font-family:var(--mono);font-size:.76rem;color:var(--text2)}
+  .c-line{margin:16px 0 18px;height:2px;background:var(--inset);max-width:340px}.c-line i{display:block;height:100%;width:64%;background:var(--primary)}
+  .c-cta{display:flex;gap:14px;align-items:center}
+  .btn{background:var(--primary);color:#fff;border:none;border-radius:3px;padding:11px 20px;font-weight:700;font-size:.84rem}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+
+  .shelf-wrap{padding:22px 30px 26px}
+  .shelf-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .shelf-head h3{margin:0;font-size:.82rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+  .shelf-head .more{font-family:var(--mono);font-size:.72rem;color:var(--text2)}
+  /* small consistent gap between slivers; no dead space */
+  .shelf{display:flex;gap:5px;height:360px}
+  .spine{flex:1 1 0;min-width:0;position:relative;overflow:hidden;cursor:pointer;display:flex;align-items:stretch;
+    transition:flex-basis .42s cubic-bezier(.2,.7,.2,1),flex-grow .42s cubic-bezier(.2,.7,.2,1)}
+  /* open unit hugs its content (240 cover + 250 info) */
+  .spine.open{flex:0 0 490px}
+  .shelf:hover .spine{flex:1 1 0}
+  .shelf:hover .spine:hover{flex:0 0 490px}
+  .art{flex:none;width:240px;position:relative;overflow:hidden}
+  .num{position:absolute;top:9px;left:0;right:0;text-align:center;font-family:var(--mono);font-size:.6rem;color:var(--muted);z-index:4;transition:opacity .2s}
+  .spine:hover .num,.spine.open .num{opacity:0}
+
+  .info{flex:none;width:250px;background:var(--surface);border-left:1px solid var(--border);padding:18px 20px;display:flex;flex-direction:column}
+  .info .k{font-family:var(--mono);font-size:.6rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted)}
+  .info h4{margin:6px 0 2px;font-size:1.15rem;font-weight:800;letter-spacing:-.02em;line-height:1.05}
+  .info .vol{font-family:var(--mono);font-size:.72rem;color:var(--text2);margin-bottom:16px}
+  .info .meta{display:flex;flex-direction:column;border-top:1px solid var(--border)}
+  .info .row{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border);font-size:.78rem}
+  .info .row .lab{color:var(--muted)}.info .row .val{font-family:var(--mono);color:var(--text)}
+  .info .prog{margin:16px 0 6px;height:2px;background:var(--inset)}.info .prog i{display:block;height:100%;width:64%;background:var(--primary)}
+  .info .pcap{font-family:var(--mono);font-size:.66rem;color:var(--text2)}
+  .info .actions{margin-top:auto;display:flex;gap:10px;padding-top:16px}
+  .info .read{flex:1;background:var(--primary);color:#fff;border:none;border-radius:3px;padding:10px;font-weight:700;font-size:.8rem}
+  .info .del{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:3px;padding:10px 12px;font-size:.8rem}
+
+  .cv{position:absolute;inset:0;background:var(--c1)}
+  .cv .band{position:absolute;left:0;right:0;height:32%;background:var(--c2)}
+  .cv .ttl{position:absolute;left:14px;right:14px;font-weight:900;line-height:.86;letter-spacing:-.02em;font-size:2.4rem;text-transform:uppercase;color:var(--ct,#fff)}
+  .cv .foot{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;color:var(--ct,#fff);opacity:.85}
+
+  /* stealth feature strip — ruled columns, barely-there */
+  .colophon{margin:0 30px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr)}
+  .col{padding:22px 26px 24px;border-left:1px solid var(--border);transition:background .18s}
+  .col:first-child{border-left:none;padding-left:0}
+  .col:hover{background:var(--surface)}
+  .col .kick{font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+  .col .kick .n{color:var(--primary)}
+  .col h5{margin:12px 0 6px;font-size:1rem;font-weight:750;letter-spacing:-.01em}
+  .col p{margin:0;font-size:.82rem;line-height:1.5;color:var(--text2)}
+
+  footer{margin-top:6px;padding:26px 30px 20px;border-top:1px solid var(--border);text-align:center;color:var(--muted)}
+  footer .cp{font-size:.8rem}
+  footer .pw{margin-top:6px;font-size:.72rem;opacity:.8}
+  footer .pw a{color:var(--primary);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Home v3 — tightened shelf + stealth feature strip + footer</h1>
+  <p class="pagesub">Open unit now hugs cover + info (no dead space; a small gap to the next sliver). Under the library: the old feature cards reborn as a barely-there ruled strip. Original-style footer restored. Shelf is live — hover across it.</p>
+
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#" class="active">Home</a><a href="#">Library</a><a href="#">Settings</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><a href="#">◐</a></div>
+      </div>
+      <div class="rule"></div>
+
+      <div class="continue">
+        <div class="pagebg"><div class="page"><div class="panel wide"></div><div class="panel"></div><div class="panel"></div><div class="panel"></div><div class="panel"></div></div></div>
+        <div class="scrim"></div>
+        <div class="c-inner">
+          <div class="eye">Continue reading</div>
+          <h2>Ember Circuit</h2>
+          <div class="c-sub">page 64 of 100 · left off 2 days ago</div>
+          <div class="c-line"><i></i></div>
+          <div class="c-cta"><button class="btn">▶ Resume</button><button class="btn ghost">Library</button></div>
+        </div>
+      </div>
+
+      <div class="shelf-wrap">
+        <div class="shelf-head"><h3>Library · 48</h3><span class="more">view all →</span></div>
+        <div class="shelf">
+          <div class="spine open">
+            <span class="num">01</span>
+            <div class="art"><div class="cv" style="--c1:#111;--c2:#ff6600;--ct:#fff"><div class="band" style="top:32%"></div><div class="ttl" style="top:16%">Ember Circuit</div><div class="foot">Vol.2 · 100p</div></div></div>
+            <div class="info"><div class="k">Now reading</div><h4>Ember Circuit</h4><div class="vol">Volume 2</div>
+              <div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">100</span></div><div class="row"><span class="lab">Size</span><span class="val">42.6 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">Jul 12</span></div></div>
+              <div class="prog"><i></i></div><div class="pcap">page 64 / 100 · 64%</div>
+              <div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div>
+            </div>
+          </div>
+          <div class="spine"><span class="num">02</span><div class="art"><div class="cv" style="--c1:#123a2a;--c2:#e8d24a;--ct:#eafff2"><div class="band" style="bottom:0"></div><div class="ttl" style="top:12%">Verdant Line</div><div class="foot">98p</div></div></div><div class="info"><div class="k">Comic</div><h4>Verdant Line</h4><div class="vol">Issue #2</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">98</span></div><div class="row"><span class="lab">Size</span><span class="val">37.1 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBR</span></div><div class="row"><span class="lab">Added</span><span class="val">Jul 09</span></div></div><div class="prog"><i style="width:22%"></i></div><div class="pcap">page 22 / 98 · 22%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">03</span><div class="art"><div class="cv" style="--c1:#0d1526;--c2:#4f9cf9;--ct:#fff"><div class="band" style="top:44%"></div><div class="ttl" style="top:10%">Tidewatch</div><div class="foot">#4</div></div></div><div class="info"><div class="k">Comic</div><h4>Tidewatch</h4><div class="vol">Issue #4</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">84</span></div><div class="row"><span class="lab">Size</span><span class="val">55.0 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">Jul 03</span></div></div><div class="prog"><i style="width:0%"></i></div><div class="pcap">not started</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">04</span><div class="art"><div class="cv" style="--c1:#3d1020;--c2:#ff5a7a;--ct:#fff"><div class="band" style="bottom:0;height:22%"></div><div class="ttl" style="top:18%">Rosewire</div><div class="foot">Vol.1</div></div></div><div class="info"><div class="k">Comic</div><h4>Rosewire</h4><div class="vol">Volume 1</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">120</span></div><div class="row"><span class="lab">Size</span><span class="val">61.4 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">Jun 28</span></div></div><div class="prog"><i style="width:47%"></i></div><div class="pcap">page 56 / 120 · 47%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">05</span><div class="art"><div class="cv" style="--c1:#f2ede0;--c2:#111;--ct:#111"><div class="band" style="top:0;height:20%"></div><div class="ttl" style="top:30%;color:#111">Paper Kite</div><div class="foot" style="color:#111">72p</div></div></div><div class="info"><div class="k">Comic</div><h4>Paper Kite</h4><div class="vol">One-shot</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">72</span></div><div class="row"><span class="lab">Size</span><span class="val">28.3 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBR</span></div><div class="row"><span class="lab">Added</span><span class="val">Jun 20</span></div></div><div class="prog"><i style="width:100%"></i></div><div class="pcap">finished</div><div class="actions"><button class="read">Re-read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">06</span><div class="art"><div class="cv" style="--c1:#241a3a;--c2:#a06bff;--ct:#fff"><div class="band" style="top:50%"></div><div class="ttl" style="top:14%">Nightglass</div><div class="foot">#003</div></div></div><div class="info"><div class="k">Comic</div><h4>Nightglass</h4><div class="vol">Issue #3</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">100</span></div><div class="row"><span class="lab">Size</span><span class="val">48.9 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">Jun 15</span></div></div><div class="prog"><i style="width:88%"></i></div><div class="pcap">page 88 / 100 · 88%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">07</span><div class="art"><div class="cv" style="--c1:#5c1400;--c2:#ffb020;--ct:#fff"><div class="band" style="bottom:0;height:30%"></div><div class="ttl" style="top:12%">Kiln House</div><div class="foot">Vol.3</div></div></div><div class="info"><div class="k">Comic</div><h4>Kiln House</h4><div class="vol">Volume 3</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">64</span></div><div class="row"><span class="lab">Size</span><span class="val">29.0 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBR</span></div><div class="row"><span class="lab">Added</span><span class="val">Jun 10</span></div></div><div class="prog"><i style="width:5%"></i></div><div class="pcap">page 3 / 64 · 5%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">08</span><div class="art"><div class="cv" style="--c1:#08191d;--c2:#25c0c8;--ct:#eafeff"><div class="band" style="top:40%;height:10%"></div><div class="ttl" style="top:16%">Coldharbor</div><div class="foot">110p</div></div></div><div class="info"><div class="k">Comic</div><h4>Coldharbor</h4><div class="vol">Issue #1</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">110</span></div><div class="row"><span class="lab">Size</span><span class="val">33.2 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">Jun 02</span></div></div><div class="prog"><i style="width:0%"></i></div><div class="pcap">not started</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">09</span><div class="art"><div class="cv" style="--c1:#1a1708;--c2:#e8c33a;--ct:#fff"><div class="band" style="bottom:0"></div><div class="ttl" style="top:14%">Goldfall</div><div class="foot">#012</div></div></div><div class="info"><div class="k">Comic</div><h4>Goldfall</h4><div class="vol">Issue #12</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">90</span></div><div class="row"><span class="lab">Size</span><span class="val">47.0 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBR</span></div><div class="row"><span class="lab">Added</span><span class="val">May 27</span></div></div><div class="prog"><i style="width:33%"></i></div><div class="pcap">page 30 / 90 · 33%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+          <div class="spine"><span class="num">10</span><div class="art"><div class="cv" style="--c1:#101820;--c2:#ff6600;--ct:#fff"><div class="band" style="top:0;height:16%"></div><div class="ttl" style="top:26%">Dust &amp; Signal</div><div class="foot">Vol.1</div></div></div><div class="info"><div class="k">Comic</div><h4>Dust &amp; Signal</h4><div class="vol">Volume 1</div><div class="meta"><div class="row"><span class="lab">Pages</span><span class="val">76</span></div><div class="row"><span class="lab">Size</span><span class="val">39.5 MB</span></div><div class="row"><span class="lab">Format</span><span class="val">CBZ</span></div><div class="row"><span class="lab">Added</span><span class="val">May 19</span></div></div><div class="prog"><i style="width:12%"></i></div><div class="pcap">page 9 / 76 · 12%</div><div class="actions"><button class="read">Read →</button><button class="del">⋯</button></div></div></div>
+        </div>
+      </div>
+
+      <!-- stealth feature strip -->
+      <div class="colophon">
+        <div class="col"><div class="kick"><span class="n">01</span>Offline</div><h5>Reads without a connection</h5><p>Your whole library lives in the browser and works on a plane. Install it as an app for a native feel.</p></div>
+        <div class="col"><div class="kick"><span class="n">02</span>Private</div><h5>Nothing leaves your device</h5><p>No accounts, no servers, no tracking. Comics are yours alone — reading stays personal.</p></div>
+        <div class="col"><div class="kick"><span class="n">03</span>Fast</div><h5>Instant pages, deduped storage</h5><p>WebAssembly extraction and smart caching keep turns instant and storage lean.</p></div>
+      </div>
+
+      <footer>
+        <div class="cp">© 2026 ComiKaiju. Built for readers.</div>
+        <div class="pw">Powered by <a href="#">Svelte</a>.</div>
+      </footer>
+    </div>
+  </div>
+</div>
+</body>
+</html>

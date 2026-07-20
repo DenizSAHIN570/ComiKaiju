@@ -10,6 +10,7 @@
 	import type { ComicBook } from '../../types/comic.js';
 	import { comicStorage } from '$lib/storage/comicStorage.js';
 	import { logger } from '$lib/services/logger';
+	import { createThumbnail } from '$lib/services/comicProcessor';
 
 	let archiveManager: ArchiveManager;
 	let comic: ComicBook | null = null;
@@ -70,13 +71,14 @@
 	});
 
 	onDestroy(() => {
-		void saveProgress();
+		void saveProgress().finally(() => {
+			if (archiveManager) {
+				archiveManager.cleanup();
+			}
+		});
 		unsubscribeComic();
 		unsubscribeFile();
 		unsubscribePage();
-		if (archiveManager) {
-			archiveManager.cleanup();
-		}
 	});
 
 async function saveProgress(): Promise<void> {
@@ -85,6 +87,12 @@ async function saveProgress(): Promise<void> {
 	comic.currentPage = pageIndex;
 	comic.lastRead = new Date();
 	const totalPages = comic.totalPages || comic.pages?.length || 0;
+	try {
+		const pageBlob = await onExtractPage(pageIndex);
+		if (pageBlob) comic.lastReadThumbnail = await createThumbnail(pageBlob, 640, 960);
+	} catch (e) {
+		logger.warn('Reader', 'Failed to capture last-read page thumbnail', e);
+	}
 	try {
 		await comicStorage.saveComicMetadata(structuredCloneComic(comic));
 		await comicStorage.updateProgress(comic.id, pageIndex, totalPages);
@@ -237,7 +245,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 			<div class="file-reload-actions">
 				<input
 					type="file"
-					accept=".cbz,.zip,.cbr,.rar"
+					accept=".cbz,.cbr"
 					on:change={handleFileReload}
 					id="file-reload-input"
 				/>

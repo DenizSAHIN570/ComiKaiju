@@ -17,11 +17,13 @@ import {
 import { deriveHover } from "./colorUtil";
 import { themeValidator } from "./themeValidator";
 import { themeStorage } from "./themeStorage";
+import type { ThemeMeta } from "./themeOrder";
 
 interface State {
   mode: ThemeMode;
   activeThemeId: string;
   userThemes: Theme[];
+  meta: ThemeMeta;
 }
 
 const BOOT_KEY = "ck-theme-boot";
@@ -76,6 +78,7 @@ function createThemeStore() {
     mode: "system",
     activeThemeId: DEFAULT_THEME_ID,
     userThemes: [],
+    meta: {},
   });
   const { subscribe, set, update } = store;
   let initialized = false;
@@ -93,12 +96,13 @@ function createThemeStore() {
     async init() {
       if (!browser || initialized) return;
       initialized = true;
-      const [mode, activeThemeId, userThemes] = await Promise.all([
+      const [mode, activeThemeId, userThemes, meta] = await Promise.all([
         themeStorage.getMode(),
         themeStorage.getActiveThemeId(),
         themeStorage.getThemes(),
+        themeStorage.getThemeMeta(),
       ]);
-      const state = { mode, activeThemeId, userThemes };
+      const state = { mode, activeThemeId, userThemes, meta };
       set(state);
       render(state);
       logger.info(
@@ -116,9 +120,14 @@ function createThemeStore() {
     },
     setActiveTheme(id: string) {
       update((s) => {
-        const ns = { ...s, activeThemeId: id };
+        const meta = {
+          ...s.meta,
+          [id]: { ...s.meta[id], lastUsedAt: Date.now() },
+        };
+        const ns = { ...s, activeThemeId: id, meta };
         render(ns);
         void themeStorage.setActiveThemeId(id);
+        void themeStorage.saveThemeMeta(meta);
         return ns;
       });
     },
@@ -128,10 +137,26 @@ function createThemeStore() {
         const userThemes = s.userThemes.some((t) => t.id === theme.id)
           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
           : [...s.userThemes, theme];
-        const ns = { ...s, userThemes, activeThemeId: theme.id };
+        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
+        const meta =
+          isNew && !PRESET_IDS.has(theme.id)
+            ? {
+                ...s.meta,
+                [theme.id]: {
+                  ...s.meta[theme.id],
+                  createdAt: Date.now(),
+                  lastUsedAt: Date.now(),
+                },
+              }
+            : {
+                ...s.meta,
+                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
+              };
+        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
         render(ns);
         void themeStorage.saveThemes(userThemes);
         void themeStorage.setActiveThemeId(theme.id);
+        void themeStorage.saveThemeMeta(meta);
         return ns;
       });
     },
@@ -161,10 +186,26 @@ function createThemeStore() {
         const userThemes = s.userThemes.some((t) => t.id === theme.id)
           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
           : [...s.userThemes, theme];
-        const ns = { ...s, userThemes, activeThemeId: theme.id };
+        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
+        const meta =
+          isNew && !PRESET_IDS.has(theme.id)
+            ? {
+                ...s.meta,
+                [theme.id]: {
+                  ...s.meta[theme.id],
+                  createdAt: Date.now(),
+                  lastUsedAt: Date.now(),
+                },
+              }
+            : {
+                ...s.meta,
+                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
+              };
+        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
         writeBoot(ns);
         void themeStorage.saveThemes(userThemes);
         void themeStorage.setActiveThemeId(theme.id);
+        void themeStorage.saveThemeMeta(meta);
         return ns;
       });
     },

@@ -37,6 +37,7 @@ ComiKaiju is a client-side SvelteKit PWA for reading comic book archives (CBZ/CB
 - `/` — Home page with file upload (drag & drop) and recent comics
 - `/library` — Browse and manage all stored comics
 - `/reader` — Full-screen comic viewer with zoom, pan, navigation controls
+- `/settings` — App settings with three sections: Themes (create/edit/import/export color themes and fonts), Reader (default reading layout and page fit), and Filters (manage reusable image filters)
 
 ### Error Handling
 

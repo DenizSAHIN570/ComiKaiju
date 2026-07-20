@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Empty Home v2</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px 20px 80px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 18px;color:#9a9aa4;font-size:.93rem;max-width:82ch;line-height:1.5}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  .app{--primary:#ff6600;--secondary:#4f9cf9;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;--text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font)}
+
+  .mast{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 30px 18px}
+  .nav{display:flex;gap:24px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);align-items:center}
+  .nav.right{justify-content:flex-end;gap:20px}
+  .nav a{color:var(--text2);text-decoration:none}.nav a.active{color:var(--text)}
+  .nav a.active::after{content:"";display:block;height:2px;background:var(--primary);margin-top:5px}
+  .word{font-family:var(--mono);font-weight:700;font-size:1.4rem;letter-spacing:.32em;text-transform:uppercase;text-indent:.32em;text-shadow:1px 0 0 var(--text)}
+  .menubtn{width:34px;height:34px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text);display:inline-grid;place-items:center}
+  .menubtn svg{width:16px;height:16px}
+  .rule{height:1px;background:var(--border);margin:0 30px}
+
+  /* ---------- middle hero (carries a background image) ---------- */
+  .hero{position:relative;overflow:hidden;padding:76px 30px 80px;border-bottom:1px solid var(--border);text-align:center}
+
+  /* placeholder for the image the user will drop in (scattered comics on a table) */
+  .hero .bgimg{position:absolute;inset:0;overflow:hidden}
+  .hero .bgimg .pc{position:absolute;width:120px;height:180px;border-radius:2px;box-shadow:0 8px 20px rgba(0,0,0,.35)}
+  .hero .bgnote{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:3;font-family:var(--mono);font-size:.56rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 8px;border-radius:3px;opacity:.85}
+  /* theme-safe scrim: tints toward the current theme background so text stays legible on any photo/theme */
+  .hero .scrim{position:absolute;inset:0;background:
+     color-mix(in srgb, var(--bg) 78%, transparent);
+     backdrop-filter:saturate(1.05)}
+  .hero .inner{position:relative;z-index:2;max-width:640px;margin:0 auto}
+  .hero h1{margin:0 0 14px;font-size:2.7rem;font-weight:900;letter-spacing:-.04em;line-height:1.02}
+  .hero h1 .hl{color:var(--secondary)}
+  .hero .lead{margin:0 auto 30px;font-size:1rem;line-height:1.6;color:var(--text2);max-width:44ch}
+
+  /* centered import */
+  .import{max-width:520px;margin:0 auto;border:1px solid var(--border);border-radius:4px;background:var(--surface);text-align:left}
+  .drop{display:flex;align-items:center;gap:14px;padding:18px;border-bottom:1px dashed var(--border)}
+  .drop .ic{width:44px;height:44px;border-radius:3px;background:var(--bg);border:1px solid var(--border);color:var(--primary);display:grid;place-items:center;flex:none}
+  .drop .h{font-weight:700;font-size:.92rem}.drop .p{font-size:.78rem;color:var(--text2);margin-top:2px}
+  .drop .cta{margin-left:auto}
+  .btn{background:var(--primary);color:#fff;border:none;border-radius:3px;padding:11px 18px;font-weight:700;font-size:.84rem}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .row2{display:flex;align-items:center;gap:10px;padding:14px 18px}
+  .row2 .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .row2 input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:9px 11px;font-size:.8rem}
+  .row2 .add{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:3px;padding:9px 14px;font-size:.8rem}
+  .sync{margin:16px auto 0;background:transparent;border:none;color:var(--text2);font-size:.8rem;font-family:var(--mono);letter-spacing:.03em;text-decoration:underline;text-underline-offset:3px;cursor:pointer;display:block}
+
+  /* colophon + footer (unchanged from locked design) */
+  .colophon{margin:0 30px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr)}
+  .col{padding:22px 26px 24px;border-left:1px solid var(--border)}
+  .col:first-child{border-left:none;padding-left:0}
+  .col .kick{font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+  .col .kick .n{color:var(--primary)}
+  .col h5{margin:12px 0 6px;font-size:1rem;font-weight:750;letter-spacing:-.01em}
+  .col p{margin:0;font-size:.82rem;line-height:1.5;color:var(--text2)}
+  footer{margin-top:6px;padding:26px 30px 20px;border-top:1px solid var(--border);text-align:center;color:var(--muted)}
+  footer .cp{font-size:.8rem}footer .pw{margin-top:6px;font-size:.72rem;opacity:.8}footer .pw a{color:var(--primary);text-decoration:none}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Empty Home — centered, highlighted headline, image-ready hero</h1>
+  <p class="pagesub">Preview mini-shelf removed. The middle is now a centered hero built to carry your background (scattered comics on a table). The faded scattered rectangles + label below are only a placeholder standing in for that image — a theme-safe scrim sits over it so the headline and import stay legible on any photo and in any theme. “Read” and “comics” are in the secondary color.</p>
+
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#" class="active">Home</a><a href="#">Library</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><button class="menubtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+      </div>
+      <div class="rule"></div>
+
+      <div class="hero">
+        <div class="bgimg">
+          <div class="pc" style="left:4%;top:20%;transform:rotate(-14deg);background:linear-gradient(150deg,#7a2d1a,#2a0f08)"></div>
+          <div class="pc" style="left:15%;top:52%;transform:rotate(8deg);background:linear-gradient(150deg,#1d3a5c,#08131f)"></div>
+          <div class="pc" style="left:24%;top:8%;transform:rotate(-4deg);background:linear-gradient(150deg,#265c3a,#0a1f13)"></div>
+          <div class="pc" style="right:22%;top:14%;transform:rotate(11deg);background:linear-gradient(150deg,#3d2456,#160b22)"></div>
+          <div class="pc" style="right:6%;top:44%;transform:rotate(-9deg);background:linear-gradient(150deg,#5c1d3a,#220b16)"></div>
+          <div class="pc" style="right:14%;top:70%;transform:rotate(6deg);background:linear-gradient(150deg,#4a4416,#1a1708)"></div>
+          <div class="pc" style="left:38%;top:66%;transform:rotate(-3deg);background:linear-gradient(150deg,#101820,#05080c)"></div>
+        </div>
+        <div class="bgnote">↑ your background image — scattered comics on a table</div>
+        <div class="scrim"></div>
+        <div class="inner">
+          <h1><span class="hl">Read</span> your <span class="hl">comics</span> right in your browser</h1>
+          <p class="lead">Import a CBZ or CBR and start reading instantly. Everything stays on your device — no account, no server, works offline.</p>
+          <div class="import">
+            <div class="drop">
+              <div class="ic">⤓</div>
+              <div><div class="h">Drop a comic, or choose a file</div><div class="p">CBZ · CBR</div></div>
+              <div class="cta"><button class="btn">Choose file</button></div>
+            </div>
+            <div class="row2"><span class="lbl">or link</span><input placeholder="https://…/comic.cbz"><button class="add">Add</button></div>
+          </div>
+          <button class="sync">or sync a folder from your disk</button>
+        </div>
+      </div>
+
+      <div class="colophon">
+        <div class="col"><div class="kick"><span class="n">01</span>Offline</div><h5>Reads without a connection</h5><p>Your whole library lives in the browser and works on a plane. Install it as an app for a native feel.</p></div>
+        <div class="col"><div class="kick"><span class="n">02</span>Private</div><h5>Nothing leaves your device</h5><p>No accounts, no servers, no tracking. Comics are yours alone — reading stays personal.</p></div>
+        <div class="col"><div class="kick"><span class="n">03</span>Fast</div><h5>Instant pages, deduped storage</h5><p>WebAssembly extraction and smart caching keep turns instant and storage lean.</p></div>
+      </div>
+      <footer><div class="cp">© 2026 ComiKaiju. Built for readers.</div><div class="pw">Powered by <a href="#">Svelte</a>.</div></footer>
+    </div>
+  </div>
+</div>
+</body>
+</html>

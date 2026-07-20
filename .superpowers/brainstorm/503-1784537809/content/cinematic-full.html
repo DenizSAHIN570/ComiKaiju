@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cinematic — full system</title>
+<style>
+  :root{
+    --primary:#ff6600; --primary-hover:#ff8533; --secondary:#4f9cf9;
+    --bg:#000; --surface:#0a0a0a; --inset:#111;
+    --text:#fff; --text2:#a1a1aa; --muted:#52525b; --border:#1f1f1f;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code","Roboto Mono",Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:#161618;color:#e9e9ee;font-family:var(--font);padding:32px 20px 80px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 8px;color:#9a9aa4;font-size:.95rem;max-width:74ch;line-height:1.5}
+  .caption{display:flex;align-items:baseline;gap:12px;margin:34px 0 12px}
+  .caption .tag{font-family:var(--mono);font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#0a0a0a;background:#e9e9ee;padding:3px 8px;border-radius:5px;font-weight:600}
+  .caption h2{margin:0;font-size:1.05rem;font-weight:650}
+  .caption p{margin:0;color:#8b8b95;font-size:.85rem}
+  .window{border:1px solid #2a2a2e;border-radius:14px;overflow:hidden;box-shadow:0 20px 50px -20px rgba(0,0,0,.7)}
+  .chrome{height:38px;background:#202024;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #2a2a2e}
+  .dot{width:11px;height:11px;border-radius:50%}.dot.r{background:#ff5f57}.dot.y{background:#febc2e}.dot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:var(--mono);font-size:.72rem;color:#8b8b95}
+  .app{background:var(--bg);color:var(--text);font-family:var(--font);position:relative}
+
+  .cover{aspect-ratio:2/3;border-radius:7px;position:relative;overflow:hidden;border:1px solid var(--border);background:var(--art,#12203a);isolation:isolate}
+  .cover::before{content:"";position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.14) 1px,transparent 1.4px);background-size:7px 7px;mix-blend-mode:overlay;opacity:.55}
+  .cover::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 45%,rgba(0,0,0,.55) 100%)}
+  .cover .glyph{position:absolute;top:10px;left:11px;z-index:2;font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;color:rgba(255,255,255,.82);text-transform:uppercase}
+  .cover .ctitle{position:absolute;left:11px;right:11px;bottom:10px;z-index:2;font-weight:800;font-size:.92rem;line-height:1.05;letter-spacing:-.01em;text-shadow:0 1px 6px rgba(0,0,0,.6)}
+
+  /* top bar */
+  .topbar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:16px 30px;border-bottom:1px solid transparent}
+  .kw{font-size:1.15rem;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:9px}
+  .kw .mark{width:24px;height:24px;border-radius:7px;background:var(--primary);display:grid;place-items:center;color:#fff;font-weight:900;font-size:.85rem}
+  .topbar .r{display:flex;align-items:center;gap:8px}
+  .pill{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:.72rem;color:var(--text2);font-family:var(--mono)}
+  .pill .track{width:52px;height:3px;background:var(--inset);border-radius:2px;overflow:hidden}.pill .track i{display:block;height:100%;width:42%;background:var(--text2)}
+  .icobtn{width:34px;height:34px;border:1px solid var(--border);border-radius:9px;color:var(--text2);display:grid;place-items:center;background:transparent;font-size:.95rem}
+  .addbtn{background:var(--primary);color:#fff;border:none;border-radius:9px;padding:8px 15px;font-weight:650;font-size:.8rem;display:flex;align-items:center;gap:6px}
+
+  /* hero */
+  .hero{position:relative;padding:40px 30px 44px;overflow:hidden;border-bottom:1px solid var(--border)}
+  .hero .bg{position:absolute;inset:-10%;background:var(--art,#3a1d5c);filter:blur(46px) saturate(1.25);transform:scale(1.15);opacity:.55}
+  .hero .scrim{position:absolute;inset:0;background:linear-gradient(90deg,var(--bg) 14%,rgba(0,0,0,.35) 62%,rgba(0,0,0,.72)),radial-gradient(120% 80% at 0% 100%,transparent,var(--bg) 78%)}
+  .hero .inner{position:relative;z-index:2;display:flex;gap:30px;align-items:flex-end}
+  .hero .fcov{width:168px;flex:none;border-radius:9px;box-shadow:0 18px 46px -14px rgba(0,0,0,.85)}
+  .hero .info{flex:1;padding-bottom:6px}
+  .eyebrow{font-family:var(--mono);font-size:.68rem;letter-spacing:.2em;text-transform:uppercase;color:var(--primary);font-weight:600;display:flex;align-items:center;gap:8px}
+  .eyebrow::before{content:"";width:22px;height:1px;background:var(--primary)}
+  .hero h1{margin:12px 0 7px;font-size:2.3rem;font-weight:800;letter-spacing:-.035em;line-height:.98}
+  .hero .by{color:var(--text2);font-size:.85rem;font-family:var(--mono)}
+  .pbar{margin:20px 0 18px;max-width:360px}
+  .pbar .track{height:5px;background:var(--inset);border-radius:3px;overflow:hidden}
+  .pbar .track i{display:block;height:100%;width:64%;background:linear-gradient(90deg,var(--primary),var(--primary-hover))}
+  .pbar .cap{font-family:var(--mono);font-size:.7rem;color:var(--text2);margin-top:8px;display:flex;justify-content:space-between}
+  .cta{display:flex;gap:12px;align-items:center}
+  .resume{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:12px 24px;font-weight:700;font-size:.88rem;display:flex;align-items:center;gap:8px}
+  .sec2{background:rgba(255,255,255,.06);color:var(--text);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:.85rem}
+
+  /* rails */
+  .rail{padding:26px 30px 6px}
+  .rail .rh{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .rail .rh h3{margin:0;font-size:1.05rem;font-weight:700;letter-spacing:-.015em}
+  .rail .rh .more{font-size:.75rem;color:var(--text2);font-family:var(--mono)}
+  .strip{display:flex;gap:18px;overflow:hidden;-webkit-mask-image:linear-gradient(90deg,#000 90%,transparent);mask-image:linear-gradient(90deg,#000 90%,transparent)}
+  .strip .book{width:126px;flex:none}
+  .strip .book.lift{transform:translateY(-6px)}
+  .strip .book .t{font-size:.8rem;font-weight:600;margin-top:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .strip .book .s{font-family:var(--mono);font-size:.66rem;color:var(--muted);margin-top:3px}
+  .strip .book .mini{margin-top:6px;height:3px;background:var(--inset);border-radius:2px;overflow:hidden}.strip .book .mini i{display:block;height:100%;background:var(--primary)}
+  footer{padding:34px 30px;color:var(--muted);font-size:.72rem;font-family:var(--mono);letter-spacing:.04em;border-top:1px solid var(--border);margin-top:22px}
+
+  /* empty state */
+  .empty{min-height:520px;display:grid;place-items:center;position:relative;overflow:hidden}
+  .empty .ghosts{position:absolute;inset:0;display:flex;gap:22px;justify-content:center;align-items:center;opacity:.16;filter:blur(1px)}
+  .empty .ghosts .cover{width:150px;opacity:.6}
+  .empty .ghosts::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 70% at 50% 45%,transparent,var(--bg) 72%)}
+  .empty .card{position:relative;z-index:2;width:min(560px,92%);text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.03),transparent);border:1px solid var(--border);border-radius:18px;padding:40px 36px}
+  .empty .badge{width:52px;height:52px;border-radius:14px;background:var(--primary);display:grid;place-items:center;margin:0 auto 20px;color:#fff;font-weight:900;font-size:1.3rem;box-shadow:0 10px 30px -8px color-mix(in srgb,var(--primary) 55%,transparent)}
+  .empty h1{margin:0 0 10px;font-size:1.7rem;font-weight:800;letter-spacing:-.03em}
+  .empty p{margin:0 auto 26px;color:var(--text2);max-width:42ch;line-height:1.55;font-size:.92rem}
+  .empty .drop{border:1px dashed #333;border-radius:13px;padding:26px;display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--surface);transition:border-color .18s}
+  .empty .drop .big{font-weight:700;font-size:1rem}
+  .empty .drop .sm{color:var(--text2);font-size:.8rem}
+  .empty .actions{display:flex;gap:12px;justify-content:center;margin-top:20px}
+  .empty .btn{background:var(--primary);color:#fff;border:none;border-radius:10px;padding:11px 20px;font-weight:650;font-size:.85rem}
+  .empty .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .empty .or{display:flex;align-items:center;gap:12px;margin:22px auto 0;max-width:360px;color:var(--muted);font-size:.72rem;font-family:var(--mono);letter-spacing:.14em}
+  .empty .or::before,.empty .or::after{content:"";flex:1;height:1px;background:var(--border)}
+  .empty .urlrow{display:flex;gap:8px;max-width:360px;margin:14px auto 0}
+  .empty .urlrow input{flex:1;background:var(--inset);border:1px solid var(--border);border-radius:9px;color:var(--text);padding:10px 12px;font-size:.8rem}
+  .empty .urlrow button{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:9px;padding:10px 16px;font-size:.8rem}
+
+  /* add sheet */
+  .sheetwrap{position:relative;min-height:470px}
+  .sheetwrap .dim{position:absolute;inset:0;background:rgba(0,0,0,.62);backdrop-filter:blur(3px);z-index:3}
+  .sheet{position:absolute;z-index:4;left:50%;top:50%;transform:translate(-50%,-50%);width:min(480px,92%);background:var(--surface);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 30px 70px -20px rgba(0,0,0,.9)}
+  .sheet .sh{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid var(--border)}
+  .sheet .sh h3{margin:0;font-size:1rem;font-weight:700}
+  .sheet .sh .x{color:var(--muted)}
+  .sheet .opts{padding:12px}
+  .opt{display:flex;align-items:center;gap:14px;padding:15px;border-radius:11px;border:1px solid transparent;cursor:pointer}
+  .opt:hover{background:var(--inset);border-color:var(--border)}
+  .opt .ic{width:42px;height:42px;border-radius:11px;background:var(--inset);color:var(--primary);display:grid;place-items:center;flex:none;font-size:1.1rem}
+  .opt.dropped{border:1px dashed #333;background:color-mix(in srgb,var(--primary) 7%,transparent)}
+  .opt .h{font-weight:650;font-size:.9rem}
+  .opt .p{font-size:.78rem;color:var(--text2);margin-top:2px}
+  .opt .arr{margin-left:auto;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Cinematic — the full system</h1>
+  <p class="pagesub">The returning-reader home, plus the two states the comparison skipped: the first-run empty state and the “+ Add” sheet. If these three feel right, this is the design language I’ll carry into Library and Settings.</p>
+
+  <!-- 1. RETURNING HOME -->
+  <div class="caption"><span class="tag">1</span><h2>Returning reader</h2><p>Hero built from last-read cover · rails for recent + library.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="topbar">
+        <div class="kw"><span class="mark">C</span>ComiKaiju</div>
+        <div class="r">
+          <span class="pill">1.2 / 3.0 GB<span class="track"><i></i></span></span>
+          <span class="icobtn">◐</span><span class="icobtn">⚙</span>
+          <button class="addbtn">＋ Add</button>
+        </div>
+      </div>
+      <div class="hero">
+        <div class="bg" style="--art:linear-gradient(120deg,#7a2d1a,#2a0f08)"></div>
+        <div class="scrim"></div>
+        <div class="inner">
+          <div class="cover fcov" style="--art:linear-gradient(150deg,#7a2d1a,#2a0f08)"><span class="glyph">#014</span><span class="ctitle">Ember Circuit</span></div>
+          <div class="info">
+            <div class="eyebrow">Continue reading</div>
+            <h1>Ember Circuit</h1>
+            <div class="by">Vol. 2 · 100 pages · opened 2 days ago</div>
+            <div class="pbar"><div class="track"><i></i></div><div class="cap"><span>page 64 of 100</span><span>64%</span></div></div>
+            <div class="cta"><button class="resume">▶  Resume</button><button class="sec2">View details</button></div>
+          </div>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="rh"><h3>Jump back in</h3><span class="more">see all →</span></div>
+        <div class="strip">
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"><span class="glyph">#207</span><span class="ctitle">Tidewatch</span></div><div class="t">Tidewatch</div><div class="mini"><i style="width:22%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"><span class="glyph">#003</span><span class="ctitle">Nightglass</span></div><div class="t">Nightglass</div><div class="mini"><i style="width:88%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"><span class="glyph">#031</span><span class="ctitle">Verdant</span></div><div class="t">Verdant</div><div class="mini"><i style="width:12%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"><span class="glyph">#128</span><span class="ctitle">Rosewire</span></div><div class="t">Rosewire</div><div class="mini"><i style="width:47%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"><span class="glyph">#077</span><span class="ctitle">Goldfall</span></div><div class="t">Goldfall</div><div class="mini"><i style="width:73%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#16404a,#08191d)"><span class="glyph">#090</span><span class="ctitle">Coldharbor</span></div><div class="t">Coldharbor</div><div class="mini"><i style="width:5%"></i></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3a2a5c,#150f22)"><span class="glyph">#012</span><span class="ctitle">Dust</span></div><div class="t">Dust &amp; Signal</div><div class="mini"><i style="width:33%"></i></div></div>
+        </div>
+      </div>
+      <div class="rail">
+        <div class="rh"><h3>Your library · 48</h3><span class="more">see all →</span></div>
+        <div class="strip">
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c3a16,#221608)"><span class="glyph">#155</span><span class="ctitle">Kilnhouse</span></div><div class="t">Kilnhouse</div><div class="s">29 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"><span class="glyph">#207</span><span class="ctitle">Tidewatch</span></div><div class="t">Tidewatch</div><div class="s">55 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"><span class="glyph">#003</span><span class="ctitle">Nightglass</span></div><div class="t">Nightglass</div><div class="s">61 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"><span class="glyph">#031</span><span class="ctitle">Verdant</span></div><div class="t">Verdant</div><div class="s">42 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"><span class="glyph">#128</span><span class="ctitle">Rosewire</span></div><div class="t">Rosewire</div><div class="s">38 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"><span class="glyph">#077</span><span class="ctitle">Goldfall</span></div><div class="t">Goldfall</div><div class="s">47 MB</div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#16404a,#08191d)"><span class="glyph">#090</span><span class="ctitle">Coldharbor</span></div><div class="t">Coldharbor</div><div class="s">33 MB</div></div>
+        </div>
+      </div>
+      <footer>ComiKaiju · everything stays on your device · nothing leaves the browser</footer>
+    </div>
+  </div>
+
+  <!-- 2. EMPTY STATE -->
+  <div class="caption"><span class="tag">2</span><h2>First run (empty)</h2><p>No hero to build yet — so the shelf becomes the invitation.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="topbar">
+        <div class="kw"><span class="mark">C</span>ComiKaiju</div>
+        <div class="r"><span class="icobtn">◐</span><span class="icobtn">⚙</span></div>
+      </div>
+      <div class="empty">
+        <div class="ghosts">
+          <div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"></div>
+          <div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"></div>
+          <div class="cover" style="--art:linear-gradient(150deg,#7a2d1a,#2a0f08)"></div>
+          <div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"></div>
+          <div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"></div>
+        </div>
+        <div class="card">
+          <div class="badge">C</div>
+          <h1>Start your shelf</h1>
+          <p>Drop a comic archive to read it right here in your browser. It never leaves your device.</p>
+          <div class="drop">
+            <div class="big">Drop a file to import</div>
+            <div class="sm">CBZ · CBR · ZIP · RAR</div>
+          </div>
+          <div class="actions">
+            <button class="btn">Choose file</button>
+            <button class="btn ghost">⊕ Sync a folder</button>
+          </div>
+          <div class="or">OR PASTE A LINK</div>
+          <div class="urlrow"><input placeholder="https://…/comic.cbz"><button>Add</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. ADD SHEET -->
+  <div class="caption"><span class="tag">3</span><h2>“＋ Add” sheet</h2><p>Where file / link / folder live for a returning user, over a dimmed home.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="dot r"></span><span class="dot y"></span><span class="dot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app sheetwrap">
+      <div class="topbar">
+        <div class="kw"><span class="mark">C</span>ComiKaiju</div>
+        <div class="r"><span class="pill">1.2 / 3.0 GB<span class="track"><i></i></span></span><span class="icobtn">◐</span><span class="icobtn">⚙</span><button class="addbtn">＋ Add</button></div>
+      </div>
+      <div class="rail" style="opacity:.5">
+        <div class="rh"><h3>Jump back in</h3></div>
+        <div class="strip">
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#1d3a5c,#08131f)"></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#3d2456,#160b22)"></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#265c3a,#0a1f13)"></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#5c1d3a,#220b16)"></div></div>
+          <div class="book"><div class="cover" style="--art:linear-gradient(150deg,#4a4416,#1a1708)"></div></div>
+        </div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="sh"><h3>Add comics</h3><span class="x">✕</span></div>
+        <div class="opts">
+          <div class="opt dropped"><div class="ic">⤓</div><div><div class="h">Drop a file, or click to browse</div><div class="p">CBZ · CBR · ZIP · RAR</div></div></div>
+          <div class="opt"><div class="ic">🔗</div><div><div class="h">Import from link</div><div class="p">Paste a direct download URL</div></div><span class="arr">→</span></div>
+          <div class="opt"><div class="ic">⊕</div><div><div class="h">Sync a folder</div><div class="p">Read straight from disk (Chrome / Edge)</div></div><span class="arr">→</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

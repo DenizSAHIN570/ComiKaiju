@@ -1,0 +1,5387 @@
+# Review package: 41289d8dae2f9d238466021e3a98f33af1312473..HEAD
+
+## Commits
+4c1e4dc chore(ui): CBZ/CBR copy sweep, de-hardcode stragglers, a11y polish
+e2c91c6 feat(settings): restyle themes/reader/filters into lean language
+735d94b feat(library): full-cover grid with CoverCard + local folder section
+b3d3bae feat(home): rebuild home in lean language (continue + shelf + empty state)
+eba9058 feat(reader): capture last-read page thumbnail for Continue band
+3fb5ec8 feat(ui): add ContinueBand over last-read page
+12272c6 fix(ui): ComicShelf on-accent token, progress edge case, pristine check
+fb28b2a feat(ui): add ComicShelf spine accordion (hover/focus/tap)
+5b0c85b feat(ui): add ImportPanel and AddSheet import flows (CBZ/CBR)
+5bafe57 feat(ui): add CoverArt (thumbnail or deterministic placeholder)
+d6fe7a3 feat(ui): add SiteFooter and FeatureColophon
+cac9c76 feat(ui): add AppBar masthead with centered wordmark + nav
+5757fac fix(ui): AppMenu dropdown radius 3px per design constraint
+685b57a feat(ui): add AppMenu (mode switch, theme picker, settings, install)
+12ceb71 fix(theme): stamp meta in commitTheme so builder-created themes are ordered
+0fa843a feat(theme): persist theme created/last-used meta in the store
+a5c6e42 feat(theme): add tested 3-item theme picker ordering
+c3e2d1d fix(ui): de-hardcode layout overlay/toast colors to theme tokens
+
+## Files changed
+ src/lib/services/comicProcessor.ts |   10 +-
+ src/lib/theme/themeOrder.test.ts   |   73 +++
+ src/lib/theme/themeOrder.ts        |   33 +
+ src/lib/theme/themeStorage.ts      |    8 +
+ src/lib/theme/themeStore.ts        |   51 +-
+ src/lib/ui/AddSheet.svelte         |  115 ++++
+ src/lib/ui/AppBar.svelte           |   93 +++
+ src/lib/ui/AppMenu.svelte          |  336 +++++++++++
+ src/lib/ui/ComicShelf.svelte       |  298 +++++++++
+ src/lib/ui/ContinueBand.svelte     |  193 ++++++
+ src/lib/ui/CoverArt.svelte         |   70 +++
+ src/lib/ui/CoverCard.svelte        |  151 +++++
+ src/lib/ui/FeatureColophon.svelte  |   78 +++
+ src/lib/ui/ImportPanel.svelte      |  322 ++++++++++
+ src/lib/ui/SiteFooter.svelte       |   37 ++
+ src/lib/ui/UrlImportConfirm.svelte |    8 +-
+ src/routes/+layout.svelte          |   14 +-
+ src/routes/+page.svelte            | 1174 ++++++------------------------------
+ src/routes/library/+page.svelte    |  436 ++++++-------
+ src/routes/reader/+page.svelte     |    7 +
+ src/routes/settings/+page.svelte   |  837 ++++++++++++-------------
+ src/types/comic.ts                 |    1 +
+ 22 files changed, 2652 insertions(+), 1693 deletions(-)
+
+## Diff
+diff --git a/src/lib/services/comicProcessor.ts b/src/lib/services/comicProcessor.ts
+index e825eb8..f5687af 100644
+--- a/src/lib/services/comicProcessor.ts
++++ b/src/lib/services/comicProcessor.ts
+@@ -38,29 +38,31 @@ export function deriveFilenameFromUrl(url: string): string {
+ let archiveManager: ArchiveManager | null = null;
+ 
+ // Clean pages array to remove proxy objects and make it serializable
+ function cleanPages(pages: any[]) {
+   return pages.map((p) => ({
+     filename: p.filename,
+     index: p.index,
+   }));
+ }
+ 
+-async function createThumbnail(blob: Blob): Promise<string> {
++export async function createThumbnail(
++  blob: Blob,
++  maxWidth = 200,
++  maxHeight = 300,
++): Promise<string> {
+   return new Promise((resolve, reject) => {
+     const img = new Image();
+     const canvas = document.createElement("canvas");
+     const ctx = canvas.getContext("2d");
+ 
+     img.onload = () => {
+-      const maxWidth = 200;
+-      const maxHeight = 300;
+       let width = img.width;
+       let height = img.height;
+ 
+       if (width > height) {
+         if (width > maxWidth) {
+           height *= maxWidth / width;
+           width = maxWidth;
+         }
+       } else {
+         if (height > maxHeight) {
+@@ -104,21 +106,21 @@ async function createThumbnail(blob: Blob): Promise<string> {
+   });
+ }
+ 
+ export async function handleFile(file: File, loadComics: () => Promise<void>) {
+   if (!archiveManager) {
+     archiveManager = new ArchiveManager();
+   }
+ 
+   const isSupported = await archiveManager.isSupported(file);
+   if (!isSupported) {
+-    setError("Please select a CBZ, ZIP, CBR, or RAR file.");
++    setError("Please select a CBZ or CBR file.");
+     setLoading(false);
+     return;
+   }
+ 
+   clearError();
+   setLoading(true, "Processing archive...");
+ 
+   try {
+     // 0. Check for duplicate before processing
+     const existingItem = await comicStorage.findDuplicate(file);
+diff --git a/src/lib/theme/themeOrder.test.ts b/src/lib/theme/themeOrder.test.ts
+new file mode 100644
+index 0000000..8df2004
+--- /dev/null
++++ b/src/lib/theme/themeOrder.test.ts
+@@ -0,0 +1,73 @@
++import { describe, it, expect } from "vitest";
++import { orderThemesForPicker, type ThemeMeta } from "./themeOrder";
++import type { Theme } from "./themeSchema";
++
++const t = (id: string): Theme =>
++  ({
++    id,
++    name: id,
++    builtIn: false,
++    light: {},
++    dark: {},
++    font: "system-sans",
++  }) as unknown as Theme;
++
++const presets = new Set(["preset-default", "preset-sepia", "preset-hc"]);
++const D = t("preset-default"),
++  S = t("preset-sepia"),
++  H = t("preset-hc");
++
++describe("orderThemesForPicker", () => {
++  it("no custom, no usage → first 3 in input order", () => {
++    const out = orderThemesForPicker([D, S, H], {}, presets);
++    expect(out.map((x) => x.id)).toEqual([
++      "preset-default",
++      "preset-sepia",
++      "preset-hc",
++    ]);
++  });
++
++  it("no custom → most-recently-used first", () => {
++    const meta: ThemeMeta = {
++      "preset-default": { lastUsedAt: 100 },
++      "preset-sepia": { lastUsedAt: 300 },
++      "preset-hc": { lastUsedAt: 200 },
++    };
++    const out = orderThemesForPicker([D, S, H], meta, presets);
++    expect(out.map((x) => x.id)).toEqual([
++      "preset-sepia",
++      "preset-hc",
++      "preset-default",
++    ]);
++  });
++
++  it("one custom → custom first, then recently used", () => {
++    const C = t("custom-1");
++    const meta: ThemeMeta = {
++      "custom-1": { createdAt: 999 },
++      "preset-default": { lastUsedAt: 300 },
++      "preset-sepia": { lastUsedAt: 200 },
++    };
++    const out = orderThemesForPicker([D, S, H, C], meta, presets);
++    expect(out.map((x) => x.id)).toEqual([
++      "custom-1",
++      "preset-default",
++      "preset-sepia",
++    ]);
++  });
++
++  it("4+ custom → all custom newest-first, presets drop, capped at 3", () => {
++    const c1 = t("c1"),
++      c2 = t("c2"),
++      c3 = t("c3"),
++      c4 = t("c4");
++    const meta: ThemeMeta = {
++      c1: { createdAt: 1 },
++      c2: { createdAt: 2 },
++      c3: { createdAt: 3 },
++      c4: { createdAt: 4 },
++    };
++    const out = orderThemesForPicker([D, S, H, c1, c2, c3, c4], meta, presets);
++    expect(out.map((x) => x.id)).toEqual(["c4", "c3", "c2"]);
++  });
++});
+diff --git a/src/lib/theme/themeOrder.ts b/src/lib/theme/themeOrder.ts
+new file mode 100644
+index 0000000..347ca43
+--- /dev/null
++++ b/src/lib/theme/themeOrder.ts
+@@ -0,0 +1,33 @@
++import type { Theme } from "./themeSchema";
++
++export interface ThemeMetaEntry {
++  createdAt?: number;
++  lastUsedAt?: number;
++}
++export type ThemeMeta = Record<string, ThemeMetaEntry>;
++
++/**
++ * The quick theme picker shows at most `limit` themes.
++ * User-made themes come first, newest-created first; remaining slots are filled
++ * by most-recently-used themes. With no user themes it is purely most-recently-used
++ * (input order preserved where there is no usage data, thanks to stable sort).
++ */
++export function orderThemesForPicker(
++  themes: Theme[],
++  meta: ThemeMeta,
++  presetIds: Set<string>,
++  limit = 3,
++): Theme[] {
++  const customs = themes
++    .filter((th) => !presetIds.has(th.id))
++    .sort(
++      (a, b) => (meta[b.id]?.createdAt ?? 0) - (meta[a.id]?.createdAt ?? 0),
++    );
++  const seen = new Set(customs.map((th) => th.id));
++  const rest = themes
++    .filter((th) => !seen.has(th.id))
++    .sort(
++      (a, b) => (meta[b.id]?.lastUsedAt ?? 0) - (meta[a.id]?.lastUsedAt ?? 0),
++    );
++  return [...customs, ...rest].slice(0, limit);
++}
+diff --git a/src/lib/theme/themeStorage.ts b/src/lib/theme/themeStorage.ts
+index 6bb6887..2eb25b3 100644
+--- a/src/lib/theme/themeStorage.ts
++++ b/src/lib/theme/themeStorage.ts
+@@ -1,17 +1,19 @@
+ import { comicStorage } from "$lib/storage/comicStorage";
+ import { themeValidator } from "./themeValidator";
+ import { DEFAULT_THEME_ID, type Theme, type ThemeMode } from "./themeSchema";
++import type { ThemeMeta } from "./themeOrder";
+ 
+ const K_THEMES = "themes";
+ const K_ACTIVE = "activeThemeId";
+ const K_MODE = "themeMode";
++const K_META = "themeMeta";
+ 
+ /** Persists the user theme library + active selection + mode in IndexedDB. */
+ export const themeStorage = {
+   async getThemes(): Promise<Theme[]> {
+     const raw = (await comicStorage.getSetting<unknown[]>(K_THEMES)) ?? [];
+     return raw.filter((t) => themeValidator.validate(t).valid) as Theme[];
+   },
+   saveThemes(themes: Theme[]): Promise<void> {
+     return comicStorage.saveSetting(K_THEMES, themes);
+   },
+@@ -22,11 +24,17 @@ export const themeStorage = {
+   },
+   setActiveThemeId(id: string): Promise<void> {
+     return comicStorage.saveSetting(K_ACTIVE, id);
+   },
+   async getMode(): Promise<ThemeMode> {
+     return (await comicStorage.getSetting<ThemeMode>(K_MODE)) ?? "system";
+   },
+   setMode(mode: ThemeMode): Promise<void> {
+     return comicStorage.saveSetting(K_MODE, mode);
+   },
++  async getThemeMeta(): Promise<ThemeMeta> {
++    return (await comicStorage.getSetting<ThemeMeta>(K_META)) ?? {};
++  },
++  saveThemeMeta(meta: ThemeMeta): Promise<void> {
++    return comicStorage.saveSetting(K_META, meta);
++  },
+ };
+diff --git a/src/lib/theme/themeStore.ts b/src/lib/theme/themeStore.ts
+index 74b44fd..4243492 100644
+--- a/src/lib/theme/themeStore.ts
++++ b/src/lib/theme/themeStore.ts
+@@ -10,25 +10,27 @@ import {
+ } from "./themeSchema";
+ import {
+   applyTheme,
+   resolvePalette,
+   startSystemWatch,
+   stopSystemWatch,
+ } from "./themeEngine";
+ import { deriveHover } from "./colorUtil";
+ import { themeValidator } from "./themeValidator";
+ import { themeStorage } from "./themeStorage";
++import type { ThemeMeta } from "./themeOrder";
+ 
+ interface State {
+   mode: ThemeMode;
+   activeThemeId: string;
+   userThemes: Theme[];
++  meta: ThemeMeta;
+ }
+ 
+ const BOOT_KEY = "ck-theme-boot";
+ 
+ export const PRESET_IDS = new Set(PRESETS.map((p) => p.id));
+ 
+ /**
+  * Presets are editable: a saved user theme whose id matches a preset id is an
+  * override that shadows the built-in constant. Merge so overrides replace the
+  * matching preset (keeping preset order), then append genuinely custom themes.
+@@ -69,76 +71,99 @@ function writeBoot(state: State) {
+       hovers: isDark ? darkHov : lightHov,
+     }),
+   );
+ }
+ 
+ function createThemeStore() {
+   const store = writable<State>({
+     mode: "system",
+     activeThemeId: DEFAULT_THEME_ID,
+     userThemes: [],
++    meta: {},
+   });
+   const { subscribe, set, update } = store;
+   let initialized = false;
+ 
+   function render(state: State) {
+     applyTheme(getActiveTheme(state), state.mode);
+     writeBoot(state);
+     if (state.mode === "system")
+       startSystemWatch(() => applyTheme(getActiveTheme(get(store)), "system"));
+     else stopSystemWatch();
+   }
+ 
+   return {
+     subscribe,
+     async init() {
+       if (!browser || initialized) return;
+       initialized = true;
+-      const [mode, activeThemeId, userThemes] = await Promise.all([
++      const [mode, activeThemeId, userThemes, meta] = await Promise.all([
+         themeStorage.getMode(),
+         themeStorage.getActiveThemeId(),
+         themeStorage.getThemes(),
++        themeStorage.getThemeMeta(),
+       ]);
+-      const state = { mode, activeThemeId, userThemes };
++      const state = { mode, activeThemeId, userThemes, meta };
+       set(state);
+       render(state);
+       logger.info(
+         "ThemeStore",
+         `Initialized mode=${mode} theme=${activeThemeId}`,
+       );
+     },
+     setMode(mode: ThemeMode) {
+       update((s) => {
+         const ns = { ...s, mode };
+         render(ns);
+         void themeStorage.setMode(mode);
+         return ns;
+       });
+     },
+     setActiveTheme(id: string) {
+       update((s) => {
+-        const ns = { ...s, activeThemeId: id };
++        const meta = {
++          ...s.meta,
++          [id]: { ...s.meta[id], lastUsedAt: Date.now() },
++        };
++        const ns = { ...s, activeThemeId: id, meta };
+         render(ns);
+         void themeStorage.setActiveThemeId(id);
++        void themeStorage.saveThemeMeta(meta);
+         return ns;
+       });
+     },
+     saveTheme(theme: Theme) {
+       themeValidator.validateOrThrow(theme);
+       update((s) => {
+         const userThemes = s.userThemes.some((t) => t.id === theme.id)
+           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
+           : [...s.userThemes, theme];
+-        const ns = { ...s, userThemes, activeThemeId: theme.id };
++        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
++        const meta =
++          isNew && !PRESET_IDS.has(theme.id)
++            ? {
++                ...s.meta,
++                [theme.id]: {
++                  ...s.meta[theme.id],
++                  createdAt: Date.now(),
++                  lastUsedAt: Date.now(),
++                },
++              }
++            : {
++                ...s.meta,
++                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
++              };
++        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
+         render(ns);
+         void themeStorage.saveThemes(userThemes);
+         void themeStorage.setActiveThemeId(theme.id);
++        void themeStorage.saveThemeMeta(meta);
+         return ns;
+       });
+     },
+     // Deletes a custom theme, or (for a preset id) drops the override so the
+     // built-in default is restored. A deleted preset id stays active because
+     // the constant still resolves; a deleted custom active theme falls back.
+     deleteTheme(id: string) {
+       update((s) => {
+         const userThemes = s.userThemes.filter((t) => t.id !== id);
+         const activeThemeId =
+@@ -154,24 +179,40 @@ function createThemeStore() {
+     },
+     // Persist an edit to the active theme WITHOUT re-rendering (the editor
+     // drives the live preview itself via preview()). Upserts by id, so editing
+     // a preset stores an override.
+     commitTheme(theme: Theme) {
+       themeValidator.validateOrThrow(theme);
+       update((s) => {
+         const userThemes = s.userThemes.some((t) => t.id === theme.id)
+           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
+           : [...s.userThemes, theme];
+-        const ns = { ...s, userThemes, activeThemeId: theme.id };
++        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
++        const meta =
++          isNew && !PRESET_IDS.has(theme.id)
++            ? {
++                ...s.meta,
++                [theme.id]: {
++                  ...s.meta[theme.id],
++                  createdAt: Date.now(),
++                  lastUsedAt: Date.now(),
++                },
++              }
++            : {
++                ...s.meta,
++                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
++              };
++        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
+         writeBoot(ns);
+         void themeStorage.saveThemes(userThemes);
+         void themeStorage.setActiveThemeId(theme.id);
++        void themeStorage.saveThemeMeta(meta);
+         return ns;
+       });
+     },
+     importTheme(json: string): Theme {
+       const parsed = JSON.parse(json);
+       const theme = themeValidator.validateOrThrow({
+         ...parsed,
+         id: `custom-${crypto.randomUUID()}`,
+         builtIn: false,
+       });
+diff --git a/src/lib/ui/AddSheet.svelte b/src/lib/ui/AddSheet.svelte
+new file mode 100644
+index 0000000..c345e39
+--- /dev/null
++++ b/src/lib/ui/AddSheet.svelte
+@@ -0,0 +1,115 @@
++<script lang="ts">
++  import ImportPanel from "$lib/ui/ImportPanel.svelte";
++
++  let { open, onclose, oncomplete }: {
++    open: boolean;
++    onclose?: () => void;
++    oncomplete?: () => void;
++  } = $props();
++
++  function close() {
++    onclose?.();
++  }
++
++  function onKeydown(event: KeyboardEvent) {
++    if (open && event.key === "Escape") {
++      close();
++    }
++  }
++
++  function onBackdropClick() {
++    close();
++  }
++
++  function onSheetClick(event: MouseEvent) {
++    event.stopPropagation();
++  }
++</script>
++
++<svelte:window onkeydown={onKeydown} />
++
++{#if open}
++  <div class="backdrop" onclick={onBackdropClick} role="presentation">
++    <!-- svelte-ignore a11y_click_events_have_key_events -->
++    <!-- svelte-ignore a11y_interactive_supports_focus -->
++    <div
++      class="sheet"
++      role="dialog"
++      aria-modal="true"
++      aria-label="Add comics"
++      onclick={onSheetClick}
++    >
++      <div class="header">
++        <h2>Add comics</h2>
++        <button type="button" class="close" onclick={close} aria-label="Close">✕</button>
++      </div>
++      <div class="body">
++        <ImportPanel {oncomplete} />
++      </div>
++    </div>
++  </div>
++{/if}
++
++<style>
++  .backdrop {
++    position: fixed;
++    inset: 0;
++    background: color-mix(in srgb, var(--color-text-main) 45%, transparent);
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    padding: 20px;
++    z-index: 100;
++  }
++
++  .sheet {
++    width: 100%;
++    max-width: 560px;
++    max-height: 90vh;
++    overflow-y: auto;
++    background: var(--color-bg-main);
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    box-shadow: 0 20px 40px color-mix(in srgb, var(--color-text-main) 20%, transparent);
++    font-family: var(--font-base);
++  }
++
++  .header {
++    display: flex;
++    align-items: center;
++    justify-content: space-between;
++    padding: 16px 20px;
++    border-bottom: 1px solid var(--color-border);
++  }
++
++  .header h2 {
++    margin: 0;
++    font-size: 1rem;
++    font-weight: 700;
++    color: var(--color-text-main);
++    font-family: var(--font-base);
++  }
++
++  .close {
++    width: 30px;
++    height: 30px;
++    display: grid;
++    place-items: center;
++    background: transparent;
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    color: var(--color-text-secondary);
++    cursor: pointer;
++    font-family: var(--font-base);
++    font-size: 0.85rem;
++  }
++
++  .close:hover {
++    color: var(--color-text-main);
++    border-color: var(--color-text-secondary);
++  }
++
++  .body {
++    padding: 20px;
++  }
++</style>
+diff --git a/src/lib/ui/AppBar.svelte b/src/lib/ui/AppBar.svelte
+new file mode 100644
+index 0000000..3729bbf
+--- /dev/null
++++ b/src/lib/ui/AppBar.svelte
+@@ -0,0 +1,93 @@
++<script lang="ts">
++  import { resolve } from "$app/paths";
++  import AppMenu from "$lib/ui/AppMenu.svelte";
++
++  let {
++    active = "home",
++    onadd,
++    onsearch,
++  }: {
++    active?: "home" | "library" | "settings";
++    onadd?: () => void;
++    onsearch?: () => void;
++  } = $props();
++</script>
++
++<div class="mast">
++  <div class="nav">
++    <a href={resolve("/")} class:active={active === "home"}>Home</a>
++    <a href={resolve("/library")} class:active={active === "library"}>Library</a>
++  </div>
++  <div class="word">ComiKaiju</div>
++  <div class="nav right">
++    <button type="button" onclick={() => onsearch?.()}>Search</button>
++    <button type="button" onclick={() => onadd?.()}>Add</button>
++    <AppMenu />
++  </div>
++</div>
++<div class="rule"></div>
++
++<style>
++  .mast {
++    display: grid;
++    grid-template-columns: 1fr auto 1fr;
++    align-items: center;
++    padding: 22px 30px 18px;
++  }
++
++  .nav {
++    display: flex;
++    align-items: center;
++    gap: 24px;
++    font-family: var(--font-base);
++    font-size: 0.72rem;
++    letter-spacing: 0.12em;
++    text-transform: uppercase;
++    color: var(--color-text-secondary);
++  }
++
++  .nav.right {
++    justify-content: flex-end;
++  }
++
++  .nav a,
++  .nav button {
++    color: var(--color-text-secondary);
++    text-decoration: none;
++    background: transparent;
++    border: none;
++    padding: 0;
++    font: inherit;
++    letter-spacing: inherit;
++    text-transform: inherit;
++    cursor: pointer;
++  }
++
++  .nav a.active {
++    color: var(--color-text-main);
++  }
++
++  .nav a.active::after {
++    content: "";
++    display: block;
++    height: 2px;
++    background: var(--color-primary);
++    margin-top: 5px;
++  }
++
++  .word {
++    font-family: var(--font-base);
++    font-weight: 700;
++    font-size: 1.4rem;
++    letter-spacing: 0.32em;
++    text-transform: uppercase;
++    text-indent: 0.32em;
++    color: var(--color-text-main);
++  }
++
++  .rule {
++    height: 1px;
++    background: var(--color-border);
++    margin: 0 30px;
++  }
++</style>
+diff --git a/src/lib/ui/AppMenu.svelte b/src/lib/ui/AppMenu.svelte
+new file mode 100644
+index 0000000..04f3e11
+--- /dev/null
++++ b/src/lib/ui/AppMenu.svelte
+@@ -0,0 +1,336 @@
++<script lang="ts">
++  import { themeStore, allThemesFrom, getActiveTheme, PRESET_IDS } from "$lib/theme/themeStore";
++  import { orderThemesForPicker } from "$lib/theme/themeOrder";
++  import type { ThemeMode, Palette } from "$lib/theme/themeSchema";
++  import { resolve } from "$app/paths";
++
++  interface InstallPromptEvent extends Event {
++    prompt: () => void;
++  }
++
++  let open = $state(false);
++  let deferredPrompt: InstallPromptEvent | null = $state(null);
++
++  const swatchKeys: (keyof Palette)[] = ["primary", "secondary", "bgMain", "bgSurface", "textMain"];
++  const MODES: { id: ThemeMode; label: string; icon: string }[] = [
++    { id: "light", label: "Light", icon: "☀" },
++    { id: "dark", label: "Dark", icon: "☾" },
++    { id: "system", label: "System", icon: "◐" },
++  ];
++
++  const themeState = $derived($themeStore);
++  const active = $derived(getActiveTheme(themeState));
++  const isDark = $derived(
++    themeState.mode === "dark" ||
++      (themeState.mode === "system" &&
++        typeof matchMedia !== "undefined" &&
++        matchMedia("(prefers-color-scheme: dark)").matches),
++  );
++  const picker = $derived(
++    orderThemesForPicker(allThemesFrom(themeState.userThemes), themeState.meta, PRESET_IDS, 3),
++  );
++
++  $effect(() => {
++    const h = (e: Event) => {
++      e.preventDefault();
++      deferredPrompt = e as InstallPromptEvent;
++    };
++    window.addEventListener("beforeinstallprompt", h);
++    return () => window.removeEventListener("beforeinstallprompt", h);
++  });
++
++  function toggle(e: MouseEvent) {
++    e.stopPropagation();
++    open = !open;
++  }
++
++  function close() {
++    open = false;
++  }
++
++  function setMode(m: ThemeMode) {
++    themeStore.setMode(m);
++  }
++
++  function pick(id: string) {
++    themeStore.setActiveTheme(id);
++  }
++
++  async function install() {
++    if (deferredPrompt) {
++      deferredPrompt.prompt();
++      deferredPrompt = null;
++    }
++  }
++</script>
++
++<svelte:window onclick={close} />
++
++<div class="menuwrap">
++  <button
++    class="menubtn"
++    class:on={open}
++    aria-label="Menu"
++    aria-expanded={open}
++    onclick={toggle}
++  >
++    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
++      <path d="M4 6h16M4 12h16M4 18h16" />
++    </svg>
++  </button>
++
++  {#if open}
++    <div class="dropdown">
++      <div class="dd-label">Appearance</div>
++      <div class="seg">
++        {#each MODES as m (m.id)}
++          <button class:active={themeState.mode === m.id} onclick={() => setMode(m.id)}>
++            {m.icon} {m.label}
++          </button>
++        {/each}
++      </div>
++      <div class="dd-div"></div>
++      <div class="dd-label">
++        Theme
++        <a class="mk" href={resolve("/settings")}>Builder &rarr;</a>
++      </div>
++      <div class="themes">
++        {#each picker as t (t.id)}
++          {@const palette = isDark ? t.dark : t.light}
++          {@const isActive = active.id === t.id}
++          <button class="theme" class:active={isActive} onclick={() => pick(t.id)}>
++            <span class="swatches">
++              {#each swatchKeys as key (key)}
++                <span class="sw" style:background={palette[key]}></span>
++              {/each}
++            </span>
++            <span class="nm">{t.name}</span>
++            <span class="tag">{PRESET_IDS.has(t.id) ? "Preset" : "Yours"}</span>
++            <span class="chk">&#10003;</span>
++          </button>
++        {/each}
++      </div>
++      <div class="dd-div"></div>
++      <a class="dd-item" href={resolve("/settings")}>
++        <span class="ic">
++          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
++            <circle cx="12" cy="12" r="3" />
++            <path
++              d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"
++            />
++          </svg>
++        </span>Settings<span class="arr">&rarr;</span>
++      </a>
++      {#if deferredPrompt}
++        <button class="dd-item" type="button" onclick={install}>
++          <span class="ic">
++            <svg
++              viewBox="0 0 24 24"
++              width="16"
++              height="16"
++              fill="none"
++              stroke="currentColor"
++              stroke-width="2"
++              stroke-linecap="round"
++              stroke-linejoin="round"
++            >
++              <path d="M12 3v12m0 0l-4-4m4 4l4-4M4 17v2a2 2 0 002 2h12a2 2 0 002-2v-2" />
++            </svg>
++          </span>
++          <span>Install app<span class="sub">read from your home screen</span></span>
++        </button>
++      {/if}
++    </div>
++  {/if}
++</div>
++
++<style>
++  .menuwrap {
++    position: relative;
++  }
++
++  .menubtn {
++    width: 34px;
++    height: 34px;
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    background: transparent;
++    color: var(--color-text-main);
++    display: grid;
++    place-items: center;
++    cursor: pointer;
++    transition: border-color 0.15s;
++    font-family: var(--font-base);
++  }
++  .menubtn:hover,
++  .menubtn.on {
++    border-color: var(--color-primary);
++  }
++  .menubtn svg {
++    width: 16px;
++    height: 16px;
++  }
++
++  .dropdown {
++    position: absolute;
++    top: calc(100% + 8px);
++    right: 0;
++    width: 264px;
++    background: var(--color-bg-main);
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--color-text-main) 20%, transparent);
++    overflow: hidden;
++    z-index: 20;
++    text-align: left;
++    font-family: var(--font-base);
++  }
++
++  .dd-label {
++    font-family: var(--font-base);
++    font-size: 0.6rem;
++    letter-spacing: 0.16em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++    padding: 14px 16px 8px;
++    display: flex;
++    justify-content: space-between;
++    align-items: center;
++  }
++  .dd-label .mk {
++    color: var(--color-primary);
++    text-transform: none;
++    letter-spacing: 0;
++    font-size: 0.68rem;
++    cursor: pointer;
++    text-decoration: none;
++    font-family: var(--font-base);
++  }
++
++  .seg {
++    display: flex;
++    margin: 0 16px 12px;
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    overflow: hidden;
++  }
++  .seg button {
++    flex: 1;
++    background: transparent;
++    border: none;
++    border-left: 1px solid var(--color-border);
++    color: var(--color-text-secondary);
++    font-family: var(--font-base);
++    font-size: 0.74rem;
++    padding: 8px 0;
++    cursor: pointer;
++  }
++  .seg button:first-child {
++    border-left: none;
++  }
++  .seg button.active {
++    background: var(--color-primary);
++    color: var(--color-bg-main);
++  }
++
++  .dd-div {
++    height: 1px;
++    background: var(--color-border);
++  }
++
++  .themes {
++    padding: 2px 8px 8px;
++  }
++  .theme {
++    display: flex;
++    align-items: center;
++    gap: 10px;
++    padding: 9px 8px;
++    border-radius: 3px;
++    cursor: pointer;
++    width: 100%;
++    background: transparent;
++    border: none;
++    text-align: left;
++    color: var(--color-text-main);
++    font-family: var(--font-base);
++  }
++  .theme:hover,
++  .theme.active {
++    background: var(--color-bg-surface);
++  }
++  .swatches {
++    display: flex;
++    gap: 3px;
++    flex: none;
++  }
++  .sw {
++    width: 12px;
++    height: 12px;
++    border-radius: 2px;
++    border: 1px solid color-mix(in srgb, var(--color-text-main) 12%, transparent);
++  }
++  .theme .nm {
++    font-size: 0.82rem;
++    flex: 1;
++    white-space: nowrap;
++    overflow: hidden;
++    text-overflow: ellipsis;
++  }
++  .theme .tag {
++    font-family: var(--font-base);
++    font-size: 0.56rem;
++    letter-spacing: 0.1em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++  }
++  .theme .chk {
++    color: var(--color-primary);
++    font-weight: 700;
++    flex: none;
++    width: 14px;
++    text-align: center;
++  }
++  .theme:not(.active) .chk {
++    visibility: hidden;
++  }
++
++  .dd-item {
++    display: flex;
++    align-items: center;
++    gap: 11px;
++    padding: 12px 16px;
++    color: var(--color-text-main);
++    cursor: pointer;
++    font-size: 0.86rem;
++    text-decoration: none;
++    width: 100%;
++    background: transparent;
++    border: none;
++    text-align: left;
++    font-family: var(--font-base);
++  }
++  .dd-item:hover {
++    background: var(--color-bg-surface);
++  }
++  .dd-item .ic {
++    width: 16px;
++    height: 16px;
++    color: var(--color-text-secondary);
++    display: grid;
++    place-items: center;
++  }
++  .dd-item .arr {
++    margin-left: auto;
++    color: var(--color-text-muted);
++    font-family: var(--font-base);
++    font-size: 0.8rem;
++  }
++  .dd-item .sub {
++    display: block;
++    font-family: var(--font-base);
++    font-size: 0.62rem;
++    color: var(--color-text-muted);
++    margin-top: 1px;
++  }
++</style>
+diff --git a/src/lib/ui/ComicShelf.svelte b/src/lib/ui/ComicShelf.svelte
+new file mode 100644
+index 0000000..0d4ee4d
+--- /dev/null
++++ b/src/lib/ui/ComicShelf.svelte
+@@ -0,0 +1,298 @@
++<script lang="ts">
++  import CoverArt from "$lib/ui/CoverArt.svelte";
++
++  let {
++    comics,
++    autoOpenFirst = true,
++    onopen,
++    ondelete,
++  }: {
++    comics: Array<{
++      id: string;
++      name: string;
++      size?: number;
++      updatedAt?: number;
++      thumbnail?: string;
++      metadata?: {
++        title?: string;
++        currentPage?: number;
++        totalPages?: number;
++        coverThumbnail?: string;
++      };
++    }>;
++    autoOpenFirst?: boolean;
++    onopen?: (id: string) => void;
++    ondelete?: (id: string) => void;
++  } = $props();
++
++  // svelte-ignore state_referenced_locally
++  let openId = $state<string | null>(autoOpenFirst ? (comics[0]?.id ?? null) : null);
++
++  function open(id: string) {
++    openId = id;
++  }
++
++  function extension(name: string): string {
++    const i = name.lastIndexOf(".");
++    return i === -1 ? "" : name.slice(i + 1).toUpperCase();
++  }
++
++  function formatSize(bytes?: number): string {
++    if (bytes == null) return "—";
++    const mb = bytes / (1024 * 1024);
++    if (mb >= 1) return `${mb.toFixed(1)} MB`;
++    const kb = bytes / 1024;
++    return `${kb.toFixed(1)} KB`;
++  }
++
++  function formatDate(ms?: number): string {
++    if (ms == null) return "—";
++    return new Date(ms).toLocaleDateString(undefined, { month: "short", day: "2-digit" });
++  }
++
++  function progressCaption(current?: number, total?: number): string {
++    if (!total) return "";
++    if (current != null && current + 1 >= total) return "finished";
++    if (current == null || current === 0) return "not started";
++    const pct = Math.round(((current + 1) / total) * 100);
++    return `page ${current + 1} / ${total} · ${pct}%`;
++  }
++
++  function progressPercent(current?: number, total?: number): number {
++    if (!total) return 0;
++    if (current != null && current + 1 >= total) return 100;
++    if (current == null || current === 0) return 0;
++    return Math.min(100, Math.round(((current + 1) / total) * 100));
++  }
++</script>
++
++<div class="shelf">
++  {#each comics as comic, i (comic.id)}
++    {@const isOpen = openId === comic.id}
++    {@const title = comic.metadata?.title ?? comic.name}
++    {@const thumb = comic.metadata?.coverThumbnail ?? comic.thumbnail}
++    {@const total = comic.metadata?.totalPages}
++    {@const current = comic.metadata?.currentPage}
++    {@const kicker = i === 0 && autoOpenFirst ? "Now reading" : "Comic"}
++    <div
++      role="button"
++      tabindex="0"
++      aria-expanded={isOpen}
++      aria-label={title}
++      class="spine"
++      class:open={isOpen}
++      onmouseenter={() => open(comic.id)}
++      onfocusin={() => open(comic.id)}
++      onclick={() => open(comic.id)}
++      onkeydown={(e) => {
++        if (e.key === "Enter" || e.key === " ") {
++          e.preventDefault();
++          open(comic.id);
++        }
++      }}
++    >
++      <span class="num">{String(i + 1).padStart(2, "0")}</span>
++      <div class="art">
++        <CoverArt {title} thumbnail={thumb} index={i + 1} />
++      </div>
++      {#if isOpen}
++        <div class="info">
++          <div class="k">{kicker}</div>
++          <h4>{title}</h4>
++          <div class="meta">
++            <div class="row"><span class="lab">Pages</span><span class="val">{total ?? "—"}</span></div>
++            <div class="row"><span class="lab">Size</span><span class="val">{formatSize(comic.size)}</span></div>
++            <div class="row"><span class="lab">Format</span><span class="val">{extension(comic.name)}</span></div>
++            <div class="row"><span class="lab">Added</span><span class="val">{formatDate(comic.updatedAt)}</span></div>
++          </div>
++          <div class="prog"><i style="width:{progressPercent(current, total)}%"></i></div>
++          <div class="pcap">{progressCaption(current, total)}</div>
++          <div class="actions">
++            <button
++              type="button"
++              class="read"
++              onclick={(e) => {
++                e.stopPropagation();
++                onopen?.(comic.id);
++              }}
++            >
++              Read →
++            </button>
++            <button
++              type="button"
++              class="del"
++              onclick={(e) => {
++                e.stopPropagation();
++                ondelete?.(comic.id);
++              }}
++              aria-label="More options"
++            >
++              ⋯
++            </button>
++          </div>
++        </div>
++      {/if}
++    </div>
++  {/each}
++</div>
++
++<style>
++  .shelf {
++    display: flex;
++    gap: 5px;
++    height: 360px;
++  }
++
++  .spine {
++    flex: 1 1 0;
++    min-width: 0;
++    position: relative;
++    overflow: hidden;
++    cursor: pointer;
++    display: flex;
++    align-items: stretch;
++    background: transparent;
++    border: none;
++    padding: 0;
++    margin: 0;
++    text-align: left;
++    font: inherit;
++    color: inherit;
++    transition:
++      flex-basis 0.42s cubic-bezier(0.2, 0.7, 0.2, 1),
++      flex-grow 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
++  }
++
++  .spine.open,
++  .shelf:hover .spine:hover {
++    flex: 0 0 490px;
++  }
++
++  .shelf:hover .spine {
++    flex: 1 1 0;
++  }
++
++  .art {
++    flex: none;
++    width: 240px;
++    position: relative;
++    overflow: hidden;
++  }
++
++  .num {
++    position: absolute;
++    top: 9px;
++    left: 0;
++    right: 0;
++    text-align: center;
++    font-family: var(--font-base);
++    font-size: 0.6rem;
++    color: var(--color-text-muted);
++    z-index: 4;
++    transition: opacity 0.2s;
++  }
++
++  .spine:hover .num,
++  .spine.open .num {
++    opacity: 0;
++  }
++
++  .info {
++    flex: none;
++    width: 250px;
++    background: var(--color-bg-surface);
++    border-left: 1px solid var(--color-border);
++    padding: 18px 20px;
++    display: flex;
++    flex-direction: column;
++  }
++
++  .info .k {
++    font-family: var(--font-base);
++    font-size: 0.6rem;
++    letter-spacing: 0.16em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++  }
++
++  .info h4 {
++    margin: 6px 0 2px;
++    font-size: 1.15rem;
++    font-weight: 800;
++    letter-spacing: -0.02em;
++    line-height: 1.05;
++  }
++
++  .info .meta {
++    display: flex;
++    flex-direction: column;
++    border-top: 1px solid var(--color-border);
++    margin-top: 16px;
++  }
++
++  .info .row {
++    display: flex;
++    justify-content: space-between;
++    padding: 9px 0;
++    border-bottom: 1px solid var(--color-border);
++    font-size: 0.78rem;
++  }
++
++  .info .row .lab {
++    color: var(--color-text-muted);
++  }
++
++  .info .row .val {
++    font-family: var(--font-base);
++    color: var(--color-text-main);
++  }
++
++  .info .prog {
++    margin: 16px 0 6px;
++    height: 2px;
++    background: var(--color-bg-secondary);
++  }
++
++  .info .prog i {
++    display: block;
++    height: 100%;
++    background: var(--color-primary);
++  }
++
++  .info .pcap {
++    font-family: var(--font-base);
++    font-size: 0.66rem;
++    color: var(--color-text-secondary);
++  }
++
++  .info .actions {
++    margin-top: auto;
++    display: flex;
++    gap: 10px;
++    padding-top: 16px;
++  }
++
++  .info .read {
++    flex: 1;
++    background: var(--color-primary);
++    color: var(--color-bg-main);
++    border: none;
++    border-radius: 3px;
++    padding: 10px;
++    font-weight: 700;
++    font-size: 0.8rem;
++    cursor: pointer;
++    font-family: var(--font-base);
++  }
++
++  .info .del {
++    background: transparent;
++    border: 1px solid var(--color-border);
++    color: var(--color-text-secondary);
++    border-radius: 3px;
++    padding: 10px 12px;
++    font-size: 0.8rem;
++    cursor: pointer;
++    font-family: var(--font-base);
++  }
++</style>
+diff --git a/src/lib/ui/ContinueBand.svelte b/src/lib/ui/ContinueBand.svelte
+new file mode 100644
+index 0000000..2928d3f
+--- /dev/null
++++ b/src/lib/ui/ContinueBand.svelte
+@@ -0,0 +1,193 @@
++<script lang="ts">
++  let {
++    comic,
++    pageImage,
++    onresume,
++    onlibrary,
++  }: {
++    comic: { title: string; currentPage: number; totalPages: number; updatedAt?: number };
++    pageImage?: string;
++    onresume?: () => void;
++    onlibrary?: () => void;
++  } = $props();
++
++  const progressPercent = $derived(
++    comic.totalPages > 0
++      ? Math.min(100, Math.max(0, ((comic.currentPage + 1) / comic.totalPages) * 100))
++      : 0,
++  );
++
++  function relativeTime(ms?: number): string {
++    if (ms == null) return "";
++    const diffMs = Date.now() - ms;
++    const day = 24 * 60 * 60 * 1000;
++    if (diffMs < 0 || diffMs < 60 * 60 * 1000) return "just now";
++    if (diffMs < day) {
++      const hours = Math.round(diffMs / (60 * 60 * 1000));
++      return `${hours} hour${hours === 1 ? "" : "s"} ago`;
++    }
++    const days = Math.round(diffMs / day);
++    if (days < 30) return `${days} day${days === 1 ? "" : "s"} ago`;
++    const months = Math.round(days / 30);
++    return `${months} month${months === 1 ? "" : "s"} ago`;
++  }
++
++  const leftOff = $derived(relativeTime(comic.updatedAt));
++</script>
++
++<div class="continue">
++  <div class="pagebg">
++    {#if pageImage}
++      <div class="page-image" style="background-image:url({pageImage})"></div>
++    {:else}
++      <div class="page">
++        <div class="panel wide"></div>
++        <div class="panel"></div>
++        <div class="panel"></div>
++        <div class="panel"></div>
++        <div class="panel"></div>
++      </div>
++    {/if}
++  </div>
++  <div class="scrim"></div>
++  <div class="c-inner">
++    <div class="eye">Continue reading</div>
++    <h2>{comic.title}</h2>
++    <div class="c-sub">
++      page {comic.currentPage + 1} of {comic.totalPages}{leftOff ? ` · left off ${leftOff}` : ""}
++    </div>
++    <div class="c-line"><i style="width:{progressPercent}%"></i></div>
++    <div class="c-cta">
++      <button type="button" class="btn" onclick={() => onresume?.()}>▶ Resume</button>
++      <button type="button" class="btn ghost" onclick={() => onlibrary?.()}>Library</button>
++    </div>
++  </div>
++</div>
++
++<style>
++  .continue {
++    position: relative;
++    margin: 0 30px;
++    height: 280px;
++    border-bottom: 1px solid var(--color-border);
++    overflow: hidden;
++  }
++
++  .pagebg {
++    position: absolute;
++    top: 0;
++    right: 0;
++    bottom: 0;
++    width: 62%;
++    background: var(--color-bg-surface);
++    overflow: hidden;
++  }
++
++  .page-image {
++    position: absolute;
++    inset: 0;
++    background-size: cover;
++    background-position: center;
++  }
++
++  .page {
++    position: absolute;
++    inset: 14px;
++    display: grid;
++    grid-template-columns: 1fr 1fr;
++    grid-template-rows: 1.1fr 0.9fr 0.9fr;
++    gap: 10px;
++  }
++
++  .panel {
++    background: var(--color-bg-secondary);
++    border: 1px solid var(--color-border);
++    position: relative;
++    overflow: hidden;
++  }
++
++  .panel.wide {
++    grid-column: 1 / 3;
++  }
++
++  .scrim {
++    position: absolute;
++    inset: 0;
++    background: linear-gradient(
++      90deg,
++      var(--color-bg-main) 34%,
++      color-mix(in srgb, var(--color-bg-main) 60%, transparent) 44%,
++      transparent 62%
++    );
++  }
++
++  .c-inner {
++    position: relative;
++    z-index: 2;
++    height: 100%;
++    display: flex;
++    flex-direction: column;
++    justify-content: center;
++    max-width: 52%;
++    padding: 0 4px;
++  }
++
++  .eye {
++    font-family: var(--font-base);
++    font-size: 0.66rem;
++    letter-spacing: 0.22em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++  }
++
++  .c-inner h2 {
++    margin: 9px 0 4px;
++    font-size: 1.9rem;
++    font-weight: 900;
++    letter-spacing: -0.035em;
++    line-height: 0.95;
++  }
++
++  .c-sub {
++    font-family: var(--font-base);
++    font-size: 0.76rem;
++    color: var(--color-text-secondary);
++  }
++
++  .c-line {
++    margin: 16px 0 18px;
++    height: 2px;
++    background: var(--color-bg-secondary);
++    max-width: 340px;
++  }
++
++  .c-line i {
++    display: block;
++    height: 100%;
++    background: var(--color-primary);
++  }
++
++  .c-cta {
++    display: flex;
++    gap: 14px;
++    align-items: center;
++  }
++
++  .btn {
++    background: var(--color-primary);
++    color: var(--color-bg-main);
++    border: none;
++    border-radius: 3px;
++    padding: 11px 20px;
++    font-weight: 700;
++    font-size: 0.84rem;
++    font-family: var(--font-base);
++    cursor: pointer;
++  }
++
++  .btn.ghost {
++    background: transparent;
++    border: 1px solid var(--color-border);
++    color: var(--color-text-main);
++  }
++</style>
+diff --git a/src/lib/ui/CoverArt.svelte b/src/lib/ui/CoverArt.svelte
+new file mode 100644
+index 0000000..d4a5dae
+--- /dev/null
++++ b/src/lib/ui/CoverArt.svelte
+@@ -0,0 +1,70 @@
++<script lang="ts">
++  let { title, thumbnail, index }: { title: string; thumbnail?: string; index?: number } = $props();
++
++  // Deterministic hue from title (placeholder art only — content, not chrome)
++  const hue = $derived([...title].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7));
++  const idx = $derived(index != null ? "#" + String(index).padStart(3, "0") : "");
++</script>
++
++{#if thumbnail}
++  <img src={thumbnail} alt={title} style="width:100%;height:100%;object-fit:cover" />
++{:else}
++  <div class="cover" style="--hue:{hue}">
++    <div class="band"></div>
++    <div class="title">{title}</div>
++    {#if idx}
++      <div class="index">{idx}</div>
++    {/if}
++  </div>
++{/if}
++
++<style>
++  :global([style*="--hue"]) {
++    --bg: hsl(var(--hue) 45% 18%);
++    --band: hsl(var(--hue) 60% 42%);
++    --text: hsl(var(--hue) 30% 92%);
++  }
++
++  .cover {
++    position: absolute;
++    inset: 0;
++    background: var(--bg);
++    display: flex;
++    flex-direction: column;
++  }
++
++  .band {
++    position: absolute;
++    left: 0;
++    right: 0;
++    height: 32%;
++    background: var(--band);
++    top: 32%;
++  }
++
++  .title {
++    position: absolute;
++    left: 14px;
++    right: 14px;
++    top: 50%;
++    transform: translateY(-50%);
++    font-family: var(--font-base);
++    font-weight: 900;
++    line-height: 0.86;
++    letter-spacing: -0.02em;
++    font-size: 2.4rem;
++    text-transform: uppercase;
++    color: var(--text);
++  }
++
++  .index {
++    position: absolute;
++    left: 14px;
++    top: 12px;
++    font-family: var(--font-base);
++    font-size: 0.58rem;
++    letter-spacing: 0.1em;
++    color: var(--text);
++    opacity: 0.85;
++  }
++</style>
+diff --git a/src/lib/ui/CoverCard.svelte b/src/lib/ui/CoverCard.svelte
+new file mode 100644
+index 0000000..f89f4c1
+--- /dev/null
++++ b/src/lib/ui/CoverCard.svelte
+@@ -0,0 +1,151 @@
++<script lang="ts">
++  import CoverArt from "$lib/ui/CoverArt.svelte";
++
++  let {
++    title,
++    thumbnail,
++    index,
++    meta,
++    progress,
++    onopen,
++    ondelete,
++  }: {
++    title: string;
++    thumbnail?: string;
++    index?: number;
++    meta?: string;
++    progress?: number;
++    onopen?: () => void;
++    ondelete?: () => void;
++  } = $props();
++
++  function handleKeydown(e: KeyboardEvent) {
++    if (e.key === "Enter" || e.key === " ") {
++      e.preventDefault();
++      onopen?.();
++    }
++  }
++
++  function handleDelete(e: MouseEvent) {
++    e.stopPropagation();
++    e.preventDefault();
++    ondelete?.();
++  }
++</script>
++
++<div
++  class="card"
++  role="button"
++  tabindex="0"
++  aria-label={title}
++  onclick={() => onopen?.()}
++  onkeydown={handleKeydown}
++>
++  <div class="cover">
++    <CoverArt {title} {thumbnail} {index} />
++    {#if ondelete}
++      <button type="button" class="menu" onclick={handleDelete} aria-label="More options">
++        ⋯
++      </button>
++    {/if}
++    {#if progress && progress > 0}
++      <div class="pbar"><i style="width:{Math.min(100, Math.round(progress * 100))}%"></i></div>
++    {/if}
++  </div>
++  <div class="t">{title}</div>
++  {#if meta}
++    <div class="m">{meta}</div>
++  {/if}
++</div>
++
++<style>
++  .card {
++    cursor: pointer;
++    display: block;
++    text-align: left;
++  }
++
++  .card:focus-visible {
++    outline: 2px solid var(--color-primary);
++    outline-offset: 2px;
++  }
++
++  .cover {
++    aspect-ratio: 2 / 3;
++    position: relative;
++    overflow: hidden;
++    border: 1px solid var(--color-border);
++    border-radius: 0;
++    background: var(--color-bg-surface);
++    transition: border-color 0.15s;
++  }
++
++  .card:hover .cover,
++  .card:focus-visible .cover {
++    border-color: var(--color-primary);
++  }
++
++  .menu {
++    position: absolute;
++    top: 8px;
++    right: 8px;
++    z-index: 5;
++    width: 26px;
++    height: 26px;
++    border-radius: 3px;
++    background: color-mix(in srgb, var(--color-text-main) 55%, transparent);
++    color: var(--color-bg-main);
++    border: none;
++    display: grid;
++    place-items: center;
++    opacity: 0;
++    transition: opacity 0.15s, background 0.15s;
++    cursor: pointer;
++    font-family: var(--font-base);
++    font-size: 0.9rem;
++    line-height: 1;
++  }
++
++  .card:hover .menu,
++  .card:focus-visible .menu {
++    opacity: 1;
++  }
++
++  .menu:hover {
++    background: var(--color-status-error);
++  }
++
++  .pbar {
++    position: absolute;
++    left: 0;
++    right: 0;
++    bottom: 0;
++    height: 3px;
++    background: color-mix(in srgb, var(--color-text-main) 35%, transparent);
++    z-index: 4;
++  }
++
++  .pbar i {
++    display: block;
++    height: 100%;
++    background: var(--color-primary);
++  }
++
++  .t {
++    margin-top: 10px;
++    font-family: var(--font-base);
++    font-size: 0.82rem;
++    font-weight: 650;
++    white-space: nowrap;
++    overflow: hidden;
++    text-overflow: ellipsis;
++    color: var(--color-text-main);
++  }
++
++  .m {
++    margin-top: 3px;
++    font-family: var(--font-base);
++    font-size: 0.66rem;
++    color: var(--color-text-muted);
++  }
++</style>
+diff --git a/src/lib/ui/FeatureColophon.svelte b/src/lib/ui/FeatureColophon.svelte
+new file mode 100644
+index 0000000..4d30189
+--- /dev/null
++++ b/src/lib/ui/FeatureColophon.svelte
+@@ -0,0 +1,78 @@
++<div class="colophon">
++  <div class="col">
++    <div class="kick">
++      <span class="n">01</span>Offline
++    </div>
++    <h5>Reads without a connection</h5>
++    <p>Your whole library lives in the browser and works on a plane. Install it as an app for a native feel.</p>
++  </div>
++
++  <div class="col">
++    <div class="kick">
++      <span class="n">02</span>Private
++    </div>
++    <h5>Nothing leaves your device</h5>
++    <p>No accounts, no servers, no tracking. Comics are yours alone — reading stays personal.</p>
++  </div>
++
++  <div class="col">
++    <div class="kick">
++      <span class="n">03</span>Fast
++    </div>
++    <h5>Instant pages, deduped storage</h5>
++    <p>WebAssembly extraction and smart caching keep turns instant and storage lean.</p>
++  </div>
++</div>
++
++<style>
++  .colophon {
++    margin: 0 30px;
++    border-top: 1px solid var(--color-border);
++    display: grid;
++    grid-template-columns: repeat(3, 1fr);
++  }
++
++  .col {
++    padding: 22px 26px 24px;
++    border-left: 1px solid var(--color-border);
++    transition: background 0.18s;
++  }
++
++  .col:first-child {
++    border-left: none;
++    padding-left: 0;
++  }
++
++  .col:hover {
++    background: var(--color-bg-secondary);
++  }
++
++  .col .kick {
++    font-family: var(--font-base);
++    font-size: 0.62rem;
++    letter-spacing: 0.16em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++    display: flex;
++    gap: 8px;
++    align-items: center;
++  }
++
++  .col .kick .n {
++    color: var(--color-primary);
++  }
++
++  .col h5 {
++    margin: 12px 0 6px;
++    font-size: 1rem;
++    font-weight: 750;
++    letter-spacing: -0.01em;
++  }
++
++  .col p {
++    margin: 0;
++    font-size: 0.82rem;
++    line-height: 1.5;
++    color: var(--color-text-secondary);
++  }
++</style>
+diff --git a/src/lib/ui/ImportPanel.svelte b/src/lib/ui/ImportPanel.svelte
+new file mode 100644
+index 0000000..b9040e6
+--- /dev/null
++++ b/src/lib/ui/ImportPanel.svelte
+@@ -0,0 +1,322 @@
++<script lang="ts">
++  import { handleFile, handleUrlImport, isHttpUrl } from "$lib/services/comicProcessor";
++  import { directoryService } from "$lib/services/directoryService";
++  import { setError } from "$lib/store/session";
++  import { logger } from "$lib/services/logger";
++  import UrlImportConfirm from "$lib/ui/UrlImportConfirm.svelte";
++
++  let { oncomplete }: { oncomplete?: () => void } = $props();
++
++  let fileInput = $state<HTMLInputElement>();
++  let dragActive = $state(false);
++  let urlValue = $state("");
++  let urlHint = $state<string | null>(null);
++  let pendingUrl = $state<string | null>(null);
++  let syncing = $state(false);
++
++  const supportsFolderSync = typeof window !== "undefined" && "showDirectoryPicker" in window;
++
++  async function complete() {
++    await oncomplete?.();
++  }
++
++  function openFilePicker() {
++    fileInput?.click();
++  }
++
++  async function onFileChange(event: Event) {
++    const input = event.target as HTMLInputElement;
++    const file = input.files?.[0];
++    if (file) {
++      await handleFile(file, complete);
++    }
++    input.value = "";
++  }
++
++  function onDragOver(event: DragEvent) {
++    event.preventDefault();
++    dragActive = true;
++  }
++
++  function onDragLeave() {
++    dragActive = false;
++  }
++
++  async function onDrop(event: DragEvent) {
++    event.preventDefault();
++    dragActive = false;
++
++    const file = event.dataTransfer?.files?.[0];
++    if (file) {
++      await handleFile(file, complete);
++    }
++  }
++
++  function submitUrl() {
++    const trimmed = urlValue.trim();
++    if (!trimmed) return;
++
++    if (!isHttpUrl(trimmed)) {
++      urlHint = "Enter a valid http:// or https:// link.";
++      return;
++    }
++
++    urlHint = null;
++    pendingUrl = trimmed;
++    urlValue = "";
++  }
++
++  async function confirmUrlImport() {
++    const url = pendingUrl;
++    pendingUrl = null;
++    if (url) {
++      await handleUrlImport(url, complete);
++    }
++  }
++
++  function cancelUrlImport() {
++    pendingUrl = null;
++  }
++
++  async function syncFolder() {
++    if (!supportsFolderSync || syncing) return;
++    syncing = true;
++    try {
++      const handle = await directoryService.openComicsFolder();
++      if (handle) {
++        await complete();
++      }
++    } catch (err) {
++      logger.error("ImportPanel", "Failed to sync folder", err);
++      setError("Failed to sync folder. Please try again.");
++    } finally {
++      syncing = false;
++    }
++  }
++</script>
++
++<div class="import">
++  <div
++    class="drop"
++    class:active={dragActive}
++    ondragover={onDragOver}
++    ondragleave={onDragLeave}
++    ondrop={onDrop}
++    role="button"
++    tabindex="0"
++    onclick={openFilePicker}
++    onkeydown={(e) => {
++      if (e.key === "Enter" || e.key === " ") {
++        if (e.key === " ") e.preventDefault();
++        openFilePicker();
++      }
++    }}
++  >
++    <div class="ic" aria-hidden="true">⤓</div>
++    <div>
++      <div class="h">Drop a comic, or choose a file</div>
++      <div class="p">CBZ · CBR</div>
++    </div>
++    <div class="cta">
++      <button type="button" class="btn" onclick={(e) => { e.stopPropagation(); openFilePicker(); }}>
++        Choose file
++      </button>
++    </div>
++  </div>
++  <input
++    bind:this={fileInput}
++    type="file"
++    accept=".cbz,.cbr"
++    class="visually-hidden"
++    onchange={onFileChange}
++  />
++
++  <div class="row2">
++    <span class="lbl">or link</span>
++    <input
++      type="text"
++      placeholder="https://…/comic.cbz"
++      bind:value={urlValue}
++      onkeydown={(e) => e.key === "Enter" && submitUrl()}
++    />
++    <button type="button" class="add" onclick={submitUrl}>Add</button>
++  </div>
++  {#if urlHint}
++    <p class="hint">{urlHint}</p>
++  {/if}
++</div>
++
++{#if supportsFolderSync}
++  <button type="button" class="sync" onclick={syncFolder} disabled={syncing}>
++    or sync a folder from your disk
++  </button>
++{:else}
++  <div class="sync-disabled">
++    <span class="sync sync--disabled">or sync a folder from your disk</span>
++    <p class="note">Requires a Chromium browser (Chrome/Edge).</p>
++  </div>
++{/if}
++
++{#if pendingUrl}
++  <UrlImportConfirm url={pendingUrl} onConfirm={confirmUrlImport} onCancel={cancelUrlImport} />
++{/if}
++
++<style>
++  .import {
++    max-width: 520px;
++    margin: 0 auto;
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    background: var(--color-bg-surface);
++    text-align: left;
++    font-family: var(--font-base);
++  }
++
++  .drop {
++    display: flex;
++    align-items: center;
++    gap: 14px;
++    padding: 18px;
++    border-bottom: 1px dashed var(--color-border);
++    cursor: pointer;
++  }
++
++  .drop.active {
++    background: var(--color-bg-secondary);
++  }
++
++  .drop .ic {
++    width: 44px;
++    height: 44px;
++    border-radius: 3px;
++    background: var(--color-bg-main);
++    border: 1px solid var(--color-border);
++    color: var(--color-primary);
++    display: grid;
++    place-items: center;
++    flex: none;
++    font-family: var(--font-base);
++  }
++
++  .drop .h {
++    font-weight: 700;
++    font-size: 0.92rem;
++    color: var(--color-text-main);
++    font-family: var(--font-base);
++  }
++
++  .drop .p {
++    font-size: 0.78rem;
++    color: var(--color-text-secondary);
++    margin-top: 2px;
++    font-family: var(--font-base);
++  }
++
++  .drop .cta {
++    margin-left: auto;
++  }
++
++  .btn {
++    background: var(--color-primary);
++    color: var(--color-bg-main);
++    border: none;
++    border-radius: 3px;
++    padding: 11px 18px;
++    font-weight: 700;
++    font-size: 0.84rem;
++    cursor: pointer;
++    font-family: var(--font-base);
++  }
++
++  .visually-hidden {
++    position: absolute;
++    width: 1px;
++    height: 1px;
++    overflow: hidden;
++    clip: rect(0, 0, 0, 0);
++    white-space: nowrap;
++  }
++
++  .row2 {
++    display: flex;
++    align-items: center;
++    gap: 10px;
++    padding: 14px 18px;
++  }
++
++  .row2 .lbl {
++    font-family: var(--font-base);
++    font-size: 0.6rem;
++    letter-spacing: 0.14em;
++    text-transform: uppercase;
++    color: var(--color-text-muted);
++    white-space: nowrap;
++  }
++
++  .row2 input {
++    flex: 1;
++    background: var(--color-bg-main);
++    border: 1px solid var(--color-border);
++    border-radius: 3px;
++    color: var(--color-text-main);
++    padding: 9px 11px;
++    font-size: 0.8rem;
++    font-family: var(--font-base);
++  }
++
++  .row2 .add {
++    background: transparent;
++    border: 1px solid var(--color-border);
++    color: var(--color-text-secondary);
++    border-radius: 3px;
++    padding: 9px 14px;
++    font-size: 0.8rem;
++    cursor: pointer;
++    font-family: var(--font-base);
++  }
++
++  .hint {
++    margin: 0;
++    padding: 0 18px 14px;
++    font-size: 0.76rem;
++    color: var(--color-status-error);
++    font-family: var(--font-base);
++  }
++
++  .sync {
++    margin: 16px auto 0;
++    background: transparent;
++    border: none;
++    color: var(--color-text-secondary);
++    font-size: 0.8rem;
++    font-family: var(--font-base);
++    letter-spacing: 0.03em;
++    text-decoration: underline;
++    text-underline-offset: 3px;
++    cursor: pointer;
++    display: block;
++  }
++
++  .sync:disabled {
++    cursor: default;
++    opacity: 0.6;
++  }
++
++  .sync-disabled {
++    margin: 16px auto 0;
++    text-align: center;
++  }
++
++  .sync--disabled {
++    color: var(--color-text-muted);
++    cursor: default;
++    pointer-events: none;
++  }
++
++  .note {
++    margin: 4px 0 0;
++    font-size: 0.7rem;
++    color: var(--color-text-muted);
++    font-family: var(--font-base);
++  }
++</style>
+diff --git a/src/lib/ui/SiteFooter.svelte b/src/lib/ui/SiteFooter.svelte
+new file mode 100644
+index 0000000..637a8e1
+--- /dev/null
++++ b/src/lib/ui/SiteFooter.svelte
+@@ -0,0 +1,37 @@
++<script lang="ts">
++  const year = new Date().getFullYear();
++</script>
++
++<footer>
++  <div class="cp">© {year} ComiKaiju. Built for readers.</div>
++  <div class="pw">
++    Powered by
++    <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer">Svelte</a>
++    .
++  </div>
++</footer>
++
++<style>
++  footer {
++    margin-top: 6px;
++    padding: 26px 30px 20px;
++    border-top: 1px solid var(--color-border);
++    text-align: center;
++    color: var(--color-text-muted);
++  }
++
++  .cp {
++    font-size: 0.8rem;
++  }
++
++  .pw {
++    margin-top: 6px;
++    font-size: 0.72rem;
++    opacity: 0.8;
++  }
++
++  .pw a {
++    color: var(--color-primary);
++    text-decoration: none;
++  }
++</style>
+diff --git a/src/lib/ui/UrlImportConfirm.svelte b/src/lib/ui/UrlImportConfirm.svelte
+index f15461f..217d516 100644
+--- a/src/lib/ui/UrlImportConfirm.svelte
++++ b/src/lib/ui/UrlImportConfirm.svelte
+@@ -19,36 +19,38 @@
+   </div>
+ </div>
+ 
+ <style>
+   .url-import-overlay {
+     position: fixed;
+     top: 0;
+     left: 0;
+     width: 100vw;
+     height: 100vh;
+-    background: rgba(0, 0, 0, 0.7);
++    background: color-mix(in srgb, var(--color-text-main) 70%, transparent);
+     display: flex;
+     align-items: center;
+     justify-content: center;
+     z-index: 9999;
+     backdrop-filter: blur(2px);
+   }
+ 
+   .url-import-card {
+     background-color: var(--color-bg-surface);
+     color: var(--color-text-main);
+     border-radius: 12px;
+     padding: 1.5rem;
+     max-width: 90vw;
+     width: 420px;
+-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
++    box-shadow:
++      0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent),
++      0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+   }
+ 
+   .url-import-card h3 {
+     margin: 0 0 0.75rem;
+     font-size: 1.1rem;
+   }
+ 
+   .url-import-url {
+     word-break: break-all;
+     background: var(--color-bg-main);
+@@ -75,13 +77,13 @@
+   }
+ 
+   .url-import-cancel {
+     background: transparent;
+     color: var(--color-text-main);
+     border: 1px solid var(--color-border);
+   }
+ 
+   .url-import-confirm {
+     background: var(--color-primary);
+-    color: white;
++    color: var(--color-bg-main);
+   }
+ </style>
+diff --git a/src/routes/+layout.svelte b/src/routes/+layout.svelte
+index 8f7caba..0e3b4bd 100644
+--- a/src/routes/+layout.svelte
++++ b/src/routes/+layout.svelte
+@@ -127,33 +127,33 @@
+ 		background-color: var(--color-bg-main);
+ 		color: var(--color-text-main);
+ 	}
+ 
+ 	.loading-overlay {
+ 		position: fixed;
+ 		top: 0;
+ 		left: 0;
+ 		width: 100vw;
+ 		height: 100vh;
+-		background: color-mix(in srgb, #000 70%, transparent);
++		background: color-mix(in srgb, var(--color-text-main) 55%, transparent);
+ 		display: flex;
+ 		align-items: center;
+ 		justify-content: center;
+ 		z-index: 9999;
+ 		backdrop-filter: blur(2px);
+ 	}
+ 
+ 	.loading-content {
+ 		text-align: center;
+ 		padding: 2rem;
+ 		border-radius: 12px;
+-		box-shadow: 0 10px 25px -5px color-mix(in srgb, #000 10%, transparent), 0 8px 10px -6px color-mix(in srgb, #000 10%, transparent);
++		box-shadow: 0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent), 0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+ 		min-width: 200px;
+ 		background-color: var(--color-bg-surface);
+ 		color: var(--color-text-main);
+ 	}
+ 
+ 	.loading-spinner {
+ 		width: 40px;
+ 		height: 40px;
+ 		border: 4px solid var(--color-border);
+ 		border-top: 4px solid var(--color-primary);
+@@ -199,29 +199,29 @@
+ 	}
+ 	
+ 	.global-error {
+ 		position: fixed;
+ 		top: 1rem;
+ 		right: 1rem;
+ 		z-index: 10000;
+ 		width: 90%;
+ 		max-width: 400px;
+ 		border-radius: 6px;
+-		box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
++		box-shadow: 0 4px 6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
+ 		animation: slideIn 0.3s ease-out;
+ 		overflow: hidden;
+ 	}
+ 
+-	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 60%, #000); color: white; }
+-	.global-error.error { background: var(--color-status-error); color: white; }
+-	.global-error.warning { background: var(--color-status-warning); color: black; }
+-	.global-error.info { background: var(--color-primary); color: white; }
++	.global-error.critical { background: color-mix(in srgb, var(--color-status-error) 78%, transparent); color: var(--color-bg-main); }
++	.global-error.error { background: var(--color-status-error); color: var(--color-bg-main); }
++	.global-error.warning { background: var(--color-status-warning); color: var(--color-bg-main); }
++	.global-error.info { background: var(--color-primary); color: var(--color-bg-main); }
+ 	
+ 	@keyframes slideIn {
+ 		from { transform: translateX(100%); opacity: 0; }
+ 		to { transform: translateX(0); opacity: 1; }
+ 	}
+ 	
+ 	.error-content {
+ 		display: flex;
+ 		align-items: flex-start;
+ 		padding: 1rem;
+diff --git a/src/routes/+page.svelte b/src/routes/+page.svelte
+index 55f9877..f3375ee 100644
+--- a/src/routes/+page.svelte
++++ b/src/routes/+page.svelte
+@@ -1,1124 +1,294 @@
+ <script lang="ts">
+ 	import { onMount } from 'svelte';
+ 	import { comicStorage } from '$lib/storage/comicStorage.js';
+ 	import { setLoading, setError, setComic } from '$lib/store/session.js';
+-	import {
+-		handleFile,
+-		handleUrlImport,
+-		isHttpUrl
+-	} from '$lib/services/comicProcessor.js';
+-	import { directoryService, type DirectoryFile } from '$lib/services/directoryService';
+-	import ThemeMenu from '$lib/ui/ThemeMenu.svelte';
+-	import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
++	import { handleUrlImport, isHttpUrl } from '$lib/services/comicProcessor.js';
+ 	import { logger } from '$lib/services/logger';
+-    import ArchiveManager from '$lib/archive/archiveManager.js';
+-    import { goto } from '$app/navigation';
+-    import { resolve } from '$app/paths';
+-    import type { ComicBook, FileSystemItem } from '../types/comic';
++	import ArchiveManager from '$lib/archive/archiveManager.js';
++	import { goto } from '$app/navigation';
++	import { resolve } from '$app/paths';
++	import type { ComicBook, FileSystemItem } from '../types/comic';
++	import AppBar from '$lib/ui/AppBar.svelte';
++	import ContinueBand from '$lib/ui/ContinueBand.svelte';
++	import ComicShelf from '$lib/ui/ComicShelf.svelte';
++	import FeatureColophon from '$lib/ui/FeatureColophon.svelte';
++	import SiteFooter from '$lib/ui/SiteFooter.svelte';
++	import AddSheet from '$lib/ui/AddSheet.svelte';
++	import ImportPanel from '$lib/ui/ImportPanel.svelte';
++	import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
+ 
+-	let fileInput = $state<HTMLInputElement>();
+-	let dragActive = $state(false);
++	let addOpen = $state(false);
+ 	let pendingImportUrl = $state<string | null>(null);
+ 	let recentComics = $state<(FileSystemItem & { metadata?: ComicBook })[]>([]);
+-    let localFiles = $state<(DirectoryFile & { metadata?: ComicBook })[]>([]);
+-    let localFolderHandle = $state<FileSystemDirectoryHandle | null>(null);
+-	let storageInfo = $state({ usage: 0, quota: 0, percentage: 0 });
+-    let openMenuId = $state<string | null>(null);
+-    let fileSystemSupported = $state(false);
+ 
+ 	onMount(async () => {
+ 		const urlParam = new URL(window.location.href).searchParams.get('url');
+ 		if (urlParam && isHttpUrl(urlParam)) {
+ 			pendingImportUrl = urlParam;
+ 			const cleanUrl = new URL(window.location.href);
+ 			cleanUrl.searchParams.delete('url');
+ 			window.history.replaceState({}, '', cleanUrl.toString());
+ 		}
+ 
+ 		try {
+-            fileSystemSupported = 'showDirectoryPicker' in window;
+-
+-            await comicStorage.init();
+-			await Promise.all([
+-                loadComics(),
+-                fileSystemSupported ? loadLocalLibrary() : Promise.resolve()
+-            ]);
++			await comicStorage.init();
++			await loadComics();
+ 		} catch (error) {
+ 			logger.error('Home', 'Failed to initialize', error);
+ 			setError('Failed to initialize application', 'error');
+ 		}
+ 	});
+ 
+-    async function loadLocalLibrary() {
+-        try {
+-            const handle = await directoryService.getStoredFolder();
+-            if (handle) {
+-                localFolderHandle = handle;
+-                const files = await directoryService.listComics(handle);
+-                
+-                // Load metadata for local files to show progress
+-                localFiles = await Promise.all(files.map(async (f) => {
+-                    const id = `local-${f.name}`;
+-                    const metadata = await comicStorage.getComicMetadata(id);
+-                    return { ...f, metadata: metadata || undefined };
+-                }));
+-            }
+-        } catch (err) {
+-            logger.error('Home', 'Failed to load local library', err);
+-        }
+-    }
+-
+-    async function openLocalFolder() {
+-        try {
+-            const handle = await directoryService.openComicsFolder();
+-            if (handle) {
+-                localFolderHandle = handle;
+-                setLoading(true, 'Scanning folder...');
+-                await loadLocalLibrary();
+-            }
+-        } catch (err: any) {
+-            logger.error('Home', 'Failed to open local folder', err);
+-            setError(`Failed to open folder: ${err.message || 'Unknown error'}`, 'error');
+-        } finally {
+-            setLoading(false);
+-        }
+-    }
+-
+-    async function openLocalComic(item: DirectoryFile & { metadata?: ComicBook }) {
+-        try {
+-            logger.info('Home', `Opening local comic: ${item.name}`);
+-            setLoading(true, 'Opening local comic...');
+-            
+-            const file = await item.handle.getFile();
+-            const id = `local-${item.name}`;
+-            
+-            let comic = item.metadata;
+-            
+-            // If no metadata, or no pages, we need to parse the archive
+-            if (!comic || !comic.pages || comic.pages.length === 0) {
+-                 const archiveManager = new ArchiveManager();
+-                 const pages = await archiveManager.openArchive(file);
+-                 
+-                 comic = {
+-                    id,
+-                    title: item.name.replace(/\.(cbz|zip|cbr|rar)$/i, ''),
+-                    filename: item.name,
+-                    pages: pages.map(p => ({ filename: p.filename, index: p.index })),
+-                    currentPage: 0,
+-                    totalPages: pages.length,
+-                    lastRead: new Date()
+-                 };
+-                 await comicStorage.saveComicMetadata(comic);
+-            } else {
+-                comic.lastRead = new Date();
+-                await comicStorage.saveComicMetadata(comic);
+-            }
+-
+-            if (!comic) throw new Error('Failed to initialize comic metadata');
+-
+-            setComic(comic, file);
+-            await goto(resolve('/reader'));
+-        } catch (error) {
+-            logger.error('Home', 'Failed to open local comic', error);
+-            setError('Failed to open local comic', 'error');
+-        } finally {
+-            setLoading(false);
+-        }
+-    }
+-
+ 	async function loadComics() {
+ 		try {
+ 			const files = await comicStorage.getRecentFiles(12);
+-			
+-			// Calculate total usage based on files instead of disk quota
+-			let totalUsage = 0;
+-			
+-			recentComics = await Promise.all(files.map(async file => {
+-				const metadata = await comicStorage.getComicMetadata(file.id);
+-				if (file.size) totalUsage += file.size;
+-				return {
+-					...file,
+-					metadata: metadata || undefined
+-				};
+-			}));
+-			
+-			// Use manually calculated usage to match file sizes
+-			const estimate = await comicStorage.getStorageEstimate();
+-			storageInfo = {
+-				...estimate,
+-				usage: totalUsage // Override usage
+-			};
++
++			recentComics = await Promise.all(
++				files.map(async (file) => {
++					const metadata = await comicStorage.getComicMetadata(file.id);
++					return {
++						...file,
++						metadata: metadata || undefined
++					};
++				})
++			);
+ 		} catch (err) {
+ 			logger.error('Home', 'Failed to load comics', err);
+ 		}
+ 	}
+ 
+-	async function handleFileInput(event: Event) {
+-		const input = event.target as HTMLInputElement;
+-		const file = input.files?.[0];
+-
+-		if (file) {
+-			await handleFile(file, loadComics);
+-		}
+-
+-		input.value = '';
+-	}
+-
+ 	async function openRecentComic(item: FileSystemItem & { metadata?: ComicBook }) {
+ 		try {
+ 			logger.info('Home', `Opening comic: ${item.name}`);
+ 			setLoading(true, 'Loading comic...');
+ 
+-            const file = await comicStorage.getFile(item.id);
++			const file = await comicStorage.getFile(item.id);
+ 			if (!file) {
+ 				logger.warn('Home', `File data not found: ${item.id}`);
+ 				setError('Comic data not found in storage', 'warning');
+ 				setLoading(false);
+ 				return;
+ 			}
+ 
+ 			const archiveManager = new ArchiveManager();
+-			
+-            // Unwrap proxy if it exists
+-            let comic: ComicBook | undefined;
+-            if (item.metadata) {
+-                 comic = JSON.parse(JSON.stringify(item.metadata));
+-            }
+-			
++
++			// Unwrap proxy if it exists
++			let comic: ComicBook | undefined;
++			if (item.metadata) {
++				comic = JSON.parse(JSON.stringify(item.metadata));
++			}
++
+ 			if (!comic || !comic.pages || comic.pages.length === 0) {
+ 				const pages = await archiveManager.openArchive(file);
+ 				comic = {
+ 					id: item.id,
+ 					title: item.name.replace(/\.(cbz|zip|cbr|rar)$/i, ''),
+ 					filename: item.name,
+-					pages: pages.map(p => ({ filename: p.filename, index: p.index })),
++					pages: pages.map((p) => ({ filename: p.filename, index: p.index })),
+ 					currentPage: 0,
+ 					totalPages: pages.length,
+ 					lastRead: new Date(),
+-                    coverThumbnail: item.thumbnail
++					coverThumbnail: item.thumbnail
+ 				};
+ 				await comicStorage.saveComicMetadata(comic);
+ 			} else {
+ 				comic.lastRead = new Date();
+ 				await comicStorage.saveComicMetadata(comic);
+ 			}
+-            
+-            if (!comic) throw new Error('Failed to initialize comic metadata');
++
++			if (!comic) throw new Error('Failed to initialize comic metadata');
+ 
+ 			await comicStorage.updateLastAccessed(item.id, {
+ 				currentPage: comic.currentPage ?? 0,
+ 				totalPages: comic.totalPages
+ 			});
+ 
+ 			setComic(comic, file);
+ 			logger.info('Home', 'Navigating to reader...');
+ 			await goto(resolve('/reader'));
+-			
+ 		} catch (error) {
+ 			logger.error('Home', 'Failed to open comic', error);
+ 			setLoading(false);
+ 			setError('Failed to open comic: ' + (error instanceof Error ? error.message : 'Unknown error'), 'error');
+ 		} finally {
+ 			setTimeout(() => setLoading(false), 500);
+ 		}
+ 	}
+-	
+-	function handleDragOver(event: DragEvent) {
+-		event.preventDefault();
+-		dragActive = true;
+-	}
+-
+-	function handleDragLeave() {
+-		dragActive = false;
+-	}
+ 
+-	async function handleDrop(event: DragEvent) {
+-		event.preventDefault();
+-		dragActive = false;
++	async function deleteComic(item: FileSystemItem, event?: MouseEvent) {
++		event?.stopPropagation();
++		event?.preventDefault();
+ 
+-		const files = event.dataTransfer?.files;
+-		if (files && files.length > 0) {
+-			await handleFile(files[0], loadComics);
+-			return;
++		if (confirm(`Delete "${item.name}" from library?`)) {
++			try {
++				await comicStorage.deleteComic(item.id);
++				await loadComics();
++				logger.info('Home', `Deleted comic: ${item.name}`);
++			} catch (error) {
++				logger.error('Home', 'Failed to delete comic', error);
++				setError('Failed to delete comic', 'error');
++			}
+ 		}
++	}
+ 
+-		const droppedText =
+-			event.dataTransfer?.getData('text/uri-list') ||
+-			event.dataTransfer?.getData('text/plain') ||
+-			'';
+-		if (droppedText && isHttpUrl(droppedText)) {
+-			pendingImportUrl = droppedText.trim();
+-		}
++	function openById(id: string) {
++		const item = recentComics.find((c) => c.id === id);
++		if (item) openRecentComic(item);
++	}
++
++	function deleteById(id: string) {
++		const item = recentComics.find((c) => c.id === id);
++		if (item) deleteComic(item);
+ 	}
+ 
+ 	async function confirmUrlImport() {
+ 		const url = pendingImportUrl;
+ 		pendingImportUrl = null;
+ 		if (url) {
+ 			await handleUrlImport(url, loadComics);
+ 		}
+ 	}
+ 
+ 	function cancelUrlImport() {
+ 		pendingImportUrl = null;
+ 	}
+ 
+-	let urlInputValue = $state('');
++	const hasComics = $derived(recentComics.length > 0);
+ 
+-	function submitUrlInput() {
+-		const trimmed = urlInputValue.trim();
+-		if (!trimmed) return;
+-
+-		if (!isHttpUrl(trimmed)) {
+-			setError('Please enter a valid http:// or https:// URL.');
+-			return;
+-		}
+-
+-		pendingImportUrl = trimmed;
+-		urlInputValue = '';
+-	}
+-
+-	async function deleteComic(item: FileSystemItem, event: MouseEvent) {
+-		event.stopPropagation();
+-        event.preventDefault();
+-        openMenuId = null; // Close menu
+-		
+-		if (confirm(`Delete "${item.name}" from library?`)) {
+-			try {
+-                await comicStorage.deleteComic(item.id);
+-				await loadComics();
+-				logger.info('Home', `Deleted comic: ${item.name}`);
+-			} catch (error) {
+-				logger.error('Home', 'Failed to delete comic', error);
+-				setError('Failed to delete comic', 'error');
+-			}
+-		}
+-	}
+-
+-    function toggleMenu(id: string, event: MouseEvent) {
+-        event.stopPropagation();
+-        event.preventDefault(); 
+-        if (openMenuId === id) {
+-            openMenuId = null;
+-        } else {
+-            openMenuId = id;
+-        }
+-    }
+-
+-    function closeMenu() {
+-        openMenuId = null;
+-    }
+-	
+-	function formatFileSize(bytes: number): string {
+-		if (bytes === 0) return '0 Bytes';
+-		const k = 1024;
+-		const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+-		const i = Math.floor(Math.log(bytes) / Math.log(k));
+-		return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+-	}
+-	
+-	function formatDate(timestamp: number): string {
+-		const date = new Date(timestamp);
+-		const now = new Date();
+-		const diff = now.getTime() - date.getTime();
+-		const days = Math.floor(diff / (1000 * 60 * 60 * 24));
++	const lastRead = $derived.by(() => {
++		if (recentComics.length === 0) return null;
++		return recentComics.reduce((best, item) => {
++			const itemTime = item.metadata?.lastRead ? new Date(item.metadata.lastRead).getTime() : item.updatedAt;
++			const bestTime = best.metadata?.lastRead ? new Date(best.metadata.lastRead).getTime() : best.updatedAt;
++			return itemTime > bestTime ? item : best;
++		});
++	});
+ 
+-		if (days === 0) return 'Today';
+-		if (days === 1) return 'Yesterday';
+-		if (days < 7) return `${days} days ago`;
+-		return date.toLocaleDateString();
+-	}
++	const shelfComics = $derived(recentComics.filter((c) => c.id !== lastRead?.id));
++
++	const lastReadComic = $derived(
++		lastRead
++			? {
++					title: lastRead.metadata?.title ?? lastRead.name.replace(/\.(cbz|zip|cbr|rar)$/i, ''),
++					currentPage: lastRead.metadata?.currentPage ?? 0,
++					totalPages: lastRead.metadata?.totalPages ?? 0,
++					updatedAt: lastRead.metadata?.lastRead
++						? new Date(lastRead.metadata.lastRead).getTime()
++						: lastRead.updatedAt
++				}
++			: null
++	);
++
++	const lastReadPageImage = $derived(
++		lastRead?.metadata?.lastReadThumbnail ?? lastRead?.metadata?.coverThumbnail ?? lastRead?.thumbnail
++	);
+ </script>
+ 
+ <svelte:head>
+ 	<title>ComiKaiju - Offline Comic Reader</title>
+-    <meta name="description" content="A private, offline-first comic book reader for the web. Supports CBZ/CBR files, works offline via PWA, and respects your privacy." />
++	<meta
++		name="description"
++		content="A private, offline-first comic book reader for the web. Supports CBZ/CBR files, works offline via PWA, and respects your privacy."
++	/>
+ </svelte:head>
+ 
+-<svelte:window onclick={closeMenu} />
+-
+-<div class="page-container">
+-    <!-- Navbar -->
+-	<header class="navbar">
+-		<div class="navbar-content">
+-			<div class="brand">
+-                <div class="logo shadow-glow">C</div>
+-				<h1>ComiKaiju</h1>
+-			</div>
+-			<div class="actions">
+-				{#if recentComics.length > 0}
+-                    <div class="storage-widget">
+-						<div class="storage-stats">
+-							<span class="storage-label">Storage</span>
+-							<span class="storage-numbers">{formatFileSize(storageInfo.usage)} / {formatFileSize(storageInfo.quota)}</span>
+-						</div>
+-						<div class="storage-track">
+-							<div class="storage-bar" style="width: {Math.min(storageInfo.percentage, 100)}%"></div>
+-						</div>
+-					</div>
+-				{/if}
+-				<ThemeMenu />
+-				<a class="settings-btn" href={resolve('/settings')} aria-label="Settings" title="Settings">
+-					<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+-						<circle cx="12" cy="12" r="3" stroke-width="2" />
+-						<path
+-							stroke-width="2"
+-							stroke-linecap="round"
+-							stroke-linejoin="round"
+-							d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 11-2.83 2.83l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 11-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 11-2.83-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 110-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 112.83-2.83l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 114 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 112.83 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 110 4h-.09a1.65 1.65 0 00-1.51 1z"
+-						/>
+-					</svg>
+-				</a>
++<div class="page">
++	<AppBar active="home" onadd={() => (addOpen = true)} />
++
++	{#if hasComics && lastRead && lastReadComic}
++		<ContinueBand
++			comic={lastReadComic}
++			pageImage={lastReadPageImage}
++			onresume={() => openById(lastRead.id)}
++			onlibrary={() => goto(resolve('/library'))}
++		/>
++		<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
++	{:else}
++		<section class="home-hero">
++			<div class="hero-scrim"></div>
++			<div class="hero-inner">
++				<h1 class="hero-title">
++					<span style="color:var(--color-secondary)">Read</span> your
++					<span style="color:var(--color-secondary)">comics</span> right in your browser
++				</h1>
++				<p class="hero-lead">
++					Import a CBZ or CBR and start reading instantly. Everything stays on your device — no
++					account, no server, works offline.
++				</p>
++				<ImportPanel oncomplete={loadComics} />
+ 			</div>
+-		</div>
+-	</header>
+-
+-    <main class="main-content">
+-        <!-- Local Library Shelf (If Connected) -->
+-        {#if localFiles.length > 0}
+-            <section class="recent-section local-library">
+-                <div class="section-container">
+-                    <div class="section-header">
+-                        <h3>
+-                            <span class="pill local-pill"></span>
+-                            Local: {localFolderHandle ? localFolderHandle.name : 'Unknown Folder'}
+-                        </h3>
+-                        <button class="view-all text-btn" onclick={openLocalFolder}>
+-                            Change Folder
+-                        </button>
+-                    </div>
+-                    
+-                    <div class="bookshelf">
+-                        <div class="shelf-row">
+-                            {#each localFiles as item (item.name)}
+-                                <div class="comic-book">
+-                                    <div class="comic-cover">
+-                                        <div 
+-                                            class="cover-action" 
+-                                            role="button" 
+-                                            tabindex="0" 
+-                                            onclick={() => openLocalComic(item)} 
+-                                            onkeydown={(e) => e.key === 'Enter' && openLocalComic(item)}
+-                                        >
+-                                            <div class="placeholder-cover local-cover">
+-                                                <div class="placeholder-icon">
+-                                                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+-                                                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+-                                                    </svg>
+-                                                </div>
+-                                                <div class="placeholder-title">{item.name.replace(/\.(cbz|zip|cbr|rar)$/i, '')}</div>
+-                                            </div>
+-                                            {#if item.metadata && item.metadata.totalPages > 0}
+-                                                <div class="progress-badge">
+-                                                    {Math.min(item.metadata.currentPage + 1, item.metadata.totalPages)} / {item.metadata.totalPages}
+-                                                </div>
+-                                                <div class="progress-bar-container">
+-                                                    <div class="progress-bar-fill" style="width: {((item.metadata.currentPage + 1) / item.metadata.totalPages) * 100}%"></div>
+-                                                </div>
+-                                            {/if}
+-                                        </div>
+-                                    </div>
+-                                    <div class="comic-info-container">
+-                                        <div 
+-                                            class="comic-info" 
+-                                            role="button" 
+-                                            tabindex="0" 
+-                                            onclick={() => openLocalComic(item)}
+-                                            onkeydown={(e) => e.key === 'Enter' && openLocalComic(item)}
+-                                        >
+-                                            <div class="comic-title">{item.name}</div>
+-                                            <div class="comic-meta">Local File</div>
+-                                        </div>
+-                                    </div>
+-                                </div>
+-                            {/each}
+-                        </div>
+-                        <div class="shelf-support"></div>
+-                    </div>
+-                </div>
+-            </section>
+-        {/if}
+-
+-        <!-- Recent Comics (Imported) -->
+-        {#if recentComics.length > 0}
+-            <section class="recent-section">
+-                <div class="section-container">
+-                    <div class="section-header">
+-                        <h3>
+-                            <span class="pill"></span>
+-                            Recent Imports
+-                        </h3>
+-                        <a href={resolve('/library')} class="view-all">
+-                            View All <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+-                        </a>
+-                    </div>
+-                    
+-                    <div class="bookshelf">
+-                        <div class="shelf-row">
+-                            {#each recentComics as item (item.id)}
+-                                <div class="comic-book" style:z-index={openMenuId === item.id ? 50 : undefined}>
+-                                    <div class="comic-cover">
+-                                        <div 
+-                                            class="cover-action" 
+-                                            role="button" 
+-                                            tabindex="0" 
+-                                            onclick={() => openRecentComic(item)} 
+-                                            onkeydown={(e) => e.key === 'Enter' && openRecentComic(item)}
+-                                        >
+-                                            {#if item.thumbnail}
+-                                                <img src={item.thumbnail} alt={item.name} />
+-                                            {:else}
+-                                                <div class="placeholder-cover">
+-                                                    <div class="placeholder-icon">
+-                                                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+-                                                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+-                                                            <polyline points="14,2 14,8 20,8"/>
+-                                                        </svg>
+-                                                    </div>
+-                                                    <div class="placeholder-title">{item.name.replace(/\.(cbz|zip|cbr|rar)$/i, '')}</div>
+-                                                </div>
+-                                            {/if}
+-                                            {#if item.metadata && item.metadata.totalPages > 0}
+-                                                <div class="progress-badge">
+-                                                    {Math.min(item.metadata.currentPage + 1, item.metadata.totalPages)} / {item.metadata.totalPages}
+-                                                </div>
+-                                                <div class="progress-bar-container">
+-                                                    <div class="progress-bar-fill" style="width: {((item.metadata.currentPage + 1) / item.metadata.totalPages) * 100}%"></div>
+-                                                </div>
+-                                            {/if}
+-                                        </div>
+-                                    </div>
+-                                    
+-                                    <div class="comic-info-container">
+-                                        <div 
+-                                            class="comic-info" 
+-                                            role="button" 
+-                                            tabindex="0" 
+-                                            onclick={() => openRecentComic(item)}
+-                                            onkeydown={(e) => e.key === 'Enter' && openRecentComic(item)}
+-                                        >
+-                                            <div class="comic-title">{item.name}</div>
+-                                            <div class="comic-meta">
+-                                                <span>{formatFileSize(item.size || 0)}</span>
+-                                                <span>•</span>
+-                                                <span>{formatDate(item.updatedAt)}</span>
+-                                            </div>
+-                                        </div>
+-                                        <div class="menu-container">
+-                                            <button class="menu-btn" onclick={(e) => toggleMenu(item.id, e)} aria-label="Options">
+-                                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none">
+-                                                    <circle cx="12" cy="12" r="1" />
+-                                                    <circle cx="12" cy="5" r="1" />
+-                                                    <circle cx="12" cy="19" r="1" />
+-                                                </svg>
+-                                            </button>
+-                                            {#if openMenuId === item.id}
+-                                                <div class="dropdown-menu">
+-                                                    <button class="dropdown-item delete" onclick={(e) => deleteComic(item, e)}>
+-                                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="pointer-events-none">
+-                                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M10 11v6M14 11v6" stroke-linecap="round" stroke-linejoin="round"/>
+-                                                        </svg>
+-                                                        Delete
+-                                                    </button>
+-                                                </div>
+-                                            {/if}
+-                                        </div>
+-                                    </div>
+-                                </div>
+-                            {/each}
+-                        </div>
+-                        <div class="shelf-support"></div>
+-                    </div>
+-                </div>
+-            </section>
+-        {/if}
+-
+-        <!-- Hero Section (BELOW RECENT) -->
+-        <section class="hero-section" class:compact={recentComics.length > 0}>
+-            <div class="hero-bg"></div>
+-            
+-            <div class="hero-content">
+-                {#if recentComics.length === 0}
+-                    <h2 class="hero-title">
+-                        Your Comics. <br class="mobile-hide" />
+-                        <span class="highlight">Anywhere. Offline.</span>
+-                    </h2>
+-                    <p class="hero-subtitle">
+-                        A private, browser-based reader for your CBZ and CBR collection. No tracking, no servers, just you and your stories.
+-                    </p>
+-                {:else}
+-                    <h2 class="hero-title-small">Add More Comics</h2>
+-                {/if}
+-                
+-                <!-- Upload Area -->
+-                <div class="hero-actions">
+-                    <div class="upload-container">
+-                        <div 
+-                            class="drop-zone"
+-                            class:active={dragActive}
+-                            ondragover={handleDragOver}
+-                            ondragleave={handleDragLeave}
+-                            ondrop={handleDrop}
+-                            role="button"
+-                            tabindex="0"
+-                            onclick={() => fileInput?.click()}
+-                            onkeydown={(e) => e.key === 'Enter' && fileInput?.click()}
+-                        >
+-                            <div class="drop-zone-overlay"></div>
+-                            <div class="drop-content">
+-                                <div class="upload-icon-circle">
+-                                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+-                                    </svg>
+-                                </div>
+-                                <h3>{recentComics.length > 0 ? 'Import File' : 'Import Comic'}</h3>
+-                                <p>Drag & drop or click</p>
+-                            </div>
+-                        </div>
+-                        <input
+-                            bind:this={fileInput}
+-                            type="file"
+-                            accept=".cbz,.zip,.cbr,.rar"
+-                            onchange={handleFileInput}
+-                            style="display: none;"
+-                        />
++		</section>
++	{/if}
+ 
+-                        <div class="url-input-row">
+-                            <input
+-                                type="text"
+-                                class="url-input"
+-                                placeholder="Paste a comic download link..."
+-                                bind:value={urlInputValue}
+-                                onkeydown={(e) => e.key === 'Enter' && submitUrlInput()}
+-                            />
+-                            <button class="url-input-submit" onclick={submitUrlInput}>Add</button>
+-                        </div>
+-                    </div>
+-
+-                    {#if pendingImportUrl}
+-                        <UrlImportConfirm
+-                            url={pendingImportUrl}
+-                            onConfirm={confirmUrlImport}
+-                            onCancel={cancelUrlImport}
+-                        />
+-                    {/if}
+-
+-                    <div class="or-divider">OR</div>
+-
+-                    <button 
+-                        class="sync-folder-btn" 
+-                        class:disabled={!fileSystemSupported}
+-                        onclick={fileSystemSupported ? openLocalFolder : undefined}
+-                        disabled={!fileSystemSupported}
+-                        title={!fileSystemSupported ? "Requires a Chromium-based browser (Chrome, Edge)" : "Sync a local folder"}
+-                    >
+-                        <div class="icon-circle" class:disabled-icon={!fileSystemSupported}>
+-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+-                            </svg>
+-                        </div>
+-                        <div class="btn-content">
+-                            <h3>
+-                                {#if !fileSystemSupported}
+-                                    Not Supported
+-                                {:else}
+-                                    {localFolderHandle ? 'Change Folder' : 'Sync Folder'}
+-                                {/if}
+-                            </h3>
+-                            <p>
+-                                {#if !fileSystemSupported}
+-                                    Use Chrome/Edge. (Brave requires shields down)
+-                                {:else}
+-                                    Read directly from disk
+-                                {/if}
+-                            </p>
+-                        </div>
+-                    </button>
+-                </div>
+-            </div>
+-        </section>
+-
+-        <!-- Features Grid -->
+-        <section class="features-section">
+-            <div class="features-grid">
+-                <!-- Feature 1 -->
+-                <div class="feature-card">
+-                    <div class="feature-icon">
+-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+-                        </svg>
+-                    </div>
+-                    <h3>Fully Offline</h3>
+-                    <p>Works without internet. Your library is stored in your browser using standard web technologies. Install it as a PWA for a native-like experience.</p>
+-                </div>
+-
+-                <!-- Feature 2 -->
+-                <div class="feature-card">
+-                    <div class="feature-icon">
+-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+-                        </svg>
+-                    </div>
+-                    <h3>Privacy First</h3>
+-                    <p>No servers, no tracking, Zero-knowledge about you. Your comics never leave your device. We believe reading is a personal experience.</p>
+-                </div>
+-
+-                <!-- Feature 3 -->
+-                <div class="feature-card">
+-                    <div class="feature-icon">
+-                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+-                        </svg>
+-                    </div>
+-                    <h3>Blazing Fast</h3>
+-                    <p>Powered by WebAssembly and Service Workers. Instant page loads, deduplication, and optimized caching for smooth reading.</p>
+-                </div>
+-            </div>
+-        </section>
+-        
+-        <footer>
+-            <p>&copy; {new Date().getFullYear()} ComiKaiju. Built for readers.</p>
+-            <p style="margin-top: 0.5rem; font-size: 0.75rem; opacity: 0.7;">
+-                Powered by <a href="https://svelte.dev" target="_blank" rel="noopener noreferrer" style="color: var(--color-primary);">Svelte</a>.
+-            </p>
+-        </footer>
+-    </main>
++	<FeatureColophon />
++	<SiteFooter />
+ </div>
+ 
+-<style>
+-    /* Global Layout & Typography */
+-    .page-container {
+-        min-height: 100vh;
+-        display: flex;
+-        flex-direction: column;
+-        background-color: var(--color-bg-main);
+-        color: var(--color-text-main);
+-        font-family: var(--font-base);
+-    }
+-
+-    /* Navbar */
+-    .navbar {
+-        border-bottom: 1px solid var(--color-border);
+-        position: sticky;
+-        top: 0;
+-        background-color: color-mix(in srgb, #000 80%, transparent);
+-        backdrop-filter: blur(12px);
+-        z-index: 50;
+-    }
+-
+-    .navbar-content {
+-        width: 100%;
+-        padding: 0 1.5rem;
+-        height: 4rem;
+-        display: flex;
+-        align-items: center;
+-        justify-content: space-between;
+-    }
+-
+-    .brand {
+-        display: flex;
+-        align-items: center;
+-        gap: 0.5rem;
+-    }
+-
+-    .logo {
+-        width: 2rem;
+-        height: 2rem;
+-        background-color: var(--color-primary);
+-        border-radius: 0.5rem;
+-        display: flex;
+-        align-items: center;
+-        justify-content: center;
+-        color: white;
+-        font-weight: 900;
+-        font-size: 1.125rem;
+-    }
+-
+-    .shadow-glow {
+-        box-shadow: 0 0 15px color-mix(in srgb, var(--color-primary) 30%, transparent);
+-    }
+-
+-    .brand h1 {
+-        font-size: 1.25rem;
+-        font-weight: 700;
+-        letter-spacing: -0.025em;
+-        margin: 0;
+-    }
+-
+-    .actions {
+-        display: flex;
+-        align-items: center;
+-        gap: 1rem;
+-    }
+-
+-    .settings-btn {
+-        display: inline-flex;
+-        align-items: center;
+-        justify-content: center;
+-        padding: 0.5rem;
+-        border-radius: 9999px;
+-        color: var(--color-text-secondary);
+-        background: transparent;
+-        border: 1px solid var(--color-border);
+-        transition: all 0.2s;
+-    }
+-    .settings-btn:hover {
+-        background: var(--color-bg-secondary);
+-        color: var(--color-text-main);
+-        border-color: var(--color-text-secondary);
+-    }
+-
+-    /* Storage Widget */
+-    .storage-widget {
+-        display: flex;
+-        flex-direction: column;
+-        align-items: flex-end;
+-        gap: 0.125rem;
+-    }
+-
+-    .storage-stats {
+-        display: flex;
+-        align-items: baseline;
+-        gap: 0.5rem;
+-    }
+-
+-    .storage-label {
+-        font-size: 0.625rem;
+-        text-transform: uppercase;
+-        letter-spacing: 0.1em;
+-        color: var(--color-text-muted);
+-        font-weight: 700;
+-    }
+-
+-    .storage-numbers {
+-        font-size: 0.625rem;
+-        color: var(--color-text-secondary);
+-        font-weight: 500;
+-        font-variant-numeric: tabular-nums;
+-    }
+-
+-    .storage-track {
+-        width: 6rem;
+-        height: 0.375rem;
+-        background-color: var(--color-bg-secondary);
+-        border-radius: 9999px;
+-        overflow: hidden;
+-    }
+-
+-    .storage-bar {
+-        height: 100%;
+-        background-color: var(--color-primary);
+-        transition: width 0.5s ease;
+-    }
+-
+-    @media (max-width: 640px) {
+-        .storage-widget { display: none; }
+-    }
+-
+-    /* Main Content */
+-    .main-content {
+-        flex: 1;
+-        display: flex;
+-        flex-direction: column;
+-    }
+-
+-    /* Recent Section (Now on top) */
+-    .recent-section {
+-        padding: 3rem 1.5rem;
+-        background-color: var(--color-bg-main);
+-    }
+-
+-    .section-container {
+-        max-width: 1280px;
+-        margin: 0 auto;
+-    }
+-
+-    .section-header {
+-        display: flex;
+-        align-items: center;
+-        justify-content: space-between;
+-        margin-bottom: 2rem;
+-    }
+-
+-    .section-header h3 {
+-        font-size: 1.5rem;
+-        font-weight: 700;
+-        display: flex;
+-        align-items: center;
+-        gap: 0.75rem;
+-        margin: 0;
+-    }
+-
+-    .pill {
+-        width: 0.5rem;
+-        height: 2rem;
+-        background-color: var(--color-primary);
+-        border-radius: 9999px;
+-    }
+-
+-    .view-all {
+-        font-size: 0.875rem;
+-        font-weight: 700;
+-        color: var(--color-primary);
+-        display: flex;
+-        align-items: center;
+-        gap: 0.25rem;
+-        transition: color 0.2s;
+-    }
++<AddSheet open={addOpen} onclose={() => (addOpen = false)} oncomplete={loadComics} />
+ 
+-    .view-all:hover { color: var(--color-primary-hover); }
++{#if pendingImportUrl}
++	<UrlImportConfirm url={pendingImportUrl} onConfirm={confirmUrlImport} onCancel={cancelUrlImport} />
++{/if}
+ 
+-    /* Bookshelf Styles */
+-	.bookshelf { perspective: 1000px; }
+-	.shelf-row {
++<style>
++	.page {
++		min-height: 100vh;
+ 		display: flex;
+-		gap: 1.5rem;
+-		padding: 2rem 1rem 0.5rem;
+-		overflow-x: auto;
+-		scrollbar-width: thin;
+-		scrollbar-color: var(--color-border) transparent;
+-		position: relative;
+-		background: linear-gradient(to bottom, transparent 0%, var(--color-bg-main) 95%);
+-	}
+-	.shelf-row::-webkit-scrollbar { height: 8px; }
+-	.shelf-row::-webkit-scrollbar-track { background: transparent; }
+-	.shelf-row::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 4px; }
+-	
+-    .shelf-support {
+-		height: 20px;
+-		background: linear-gradient(to bottom, var(--color-bg-secondary) 0%, var(--color-bg-surface) 30%, var(--color-bg-main) 100%);
+-		box-shadow: 0 -2px 10px color-mix(in srgb, #000 50%, transparent), 0 2px 5px color-mix(in srgb, #000 80%, transparent), inset 0 1px 0 color-mix(in srgb, var(--color-text-main) 5%, transparent);
+-		border-radius: 2px;
+-		position: relative;
+-	}
+-	.shelf-support::before {
+-		content: '';
+-		position: absolute; top: 0; left: 0; right: 0; height: 2px;
+-		background: linear-gradient(to right, transparent 0%, color-mix(in srgb, var(--color-text-main) 5%, transparent) 50%, transparent 100%);
++		flex-direction: column;
++		background-color: var(--color-bg-main);
++		color: var(--color-text-main);
++		font-family: var(--font-base);
+ 	}
+ 
+-	.comic-book {
+-		min-width: 140px; max-width: 140px;
++	/* Empty-state hero: drop a background photo (e.g. scattered comics on a table) via
++	   --home-hero-bg without touching markup. A theme-safe scrim keeps the headline and
++	   import panel legible over any photo, in either theme. */
++	.home-hero {
+ 		position: relative;
+-		transform-style: preserve-3d;
+-        transition: transform 0.3s ease;
+-	}
+-	.comic-book:hover { transform: translateY(-5px); z-index: 10; }
+-	
+-    .comic-cover {
+-		width: 140px; height: 210px;
+-		background: var(--color-bg-surface);
+-		border-radius: 4px;
+ 		overflow: hidden;
+-		position: relative;
+-		box-shadow: -5px 0 15px color-mix(in srgb, #000 80%, transparent), 2px 2px 5px color-mix(in srgb, #000 60%, transparent), 0 0 40px color-mix(in srgb, #000 50%, transparent);
+-		border: 1px solid var(--color-border);
++		padding: 76px 30px 80px;
++		border-bottom: 1px solid var(--color-border);
++		text-align: center;
++		background-image: var(--home-hero-bg, none);
++		background-size: cover;
++		background-position: center;
+ 	}
+-    .comic-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+-    .cover-action { width: 100%; height: 100%; cursor: pointer; }
+-    
+-    .progress-bar-container { position: absolute; bottom: 0; left: 0; right: 0; height: 4px; background: color-mix(in srgb, #000 30%, transparent); z-index: 3; }
+-    .progress-bar-fill { height: 100%; background: var(--color-primary); }
+-    .progress-badge {
+-        position: absolute; bottom: 0.5rem; left: 0.5rem;
+-        background: color-mix(in srgb, #000 80%, transparent); color: var(--color-primary);
+-        padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.65rem; font-weight: 700;
+-        z-index: 4; border: 1px solid var(--color-primary);
+-    }
+ 
+-    .placeholder-cover {
+-		width: 100%; height: 100%;
+-		display: flex; flex-direction: column; align-items: center; justify-content: center;
+-		background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-hover) 100%);
+-		color: white; padding: 1rem; text-align: center;
++	.hero-scrim {
++		position: absolute;
++		inset: 0;
++		background: color-mix(in srgb, var(--color-bg-main) 78%, transparent);
+ 	}
+-    .placeholder-title { font-size: 0.9rem; font-weight: 600; line-height: 1.3; max-height: 3.9em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; line-clamp: 3; -webkit-box-orient: vertical; }
+-
+-    .comic-info-container { display: flex; justify-content: space-between; margin-top: 0.75rem; }
+-    .comic-info { flex: 1; min-width: 0; text-align: left; cursor: pointer; padding-right: 0.5rem; }
+-    .comic-info .comic-title { font-size: 0.85rem; font-weight: 600; color: var(--color-text-main); margin-bottom: 0.25rem; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.2; height: 2.4em; }
+-	.comic-info .comic-meta { font-size: 0.7rem; color: var(--color-text-muted); display: flex; align-items: center; justify-content: flex-start; gap: 0.5rem; }
+-    
+-    .menu-container { position: relative; z-index: 10; }
+-    .menu-btn { background: transparent; border: none; color: var(--color-text-secondary); padding: 0.25rem; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+-    .menu-btn:hover { background: var(--color-bg-secondary); color: var(--color-text-main); }
+-    
+-    .dropdown-menu { position: absolute; bottom: calc(100% + 5px); right: 0; width: 120px; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 8px; box-shadow: 0 -4px 12px color-mix(in srgb, #000 30%, transparent), 0 4px 6px color-mix(in srgb, #000 10%, transparent); z-index: 100; overflow: hidden; }
+-    .dropdown-item { display: flex; align-items: center; gap: 0.5rem; width: 100%; padding: 0.75rem 1rem; font-size: 0.85rem; background: transparent; border: none; color: var(--color-text-main); cursor: pointer; text-align: left; transition: background 0.2s; }
+-    .dropdown-item:hover { background: var(--color-bg-secondary); }
+-    .dropdown-item.delete { color: var(--color-status-error); }
+-    .dropdown-item.delete:hover { background: color-mix(in srgb, var(--color-status-error) 10%, transparent); }
+-
+-    /* Hero Section (Responsive logic) */
+-    .hero-section {
+-        position: relative;
+-        padding: 5rem 1.5rem;
+-        text-align: center;
+-        overflow: hidden;
+-        border-top: 1px solid transparent;
+-    }
+-
+-    .hero-section.compact {
+-        padding: 3rem 1.5rem;
+-        background-color: var(--color-bg-secondary);
+-        border-top: 1px solid var(--color-border);
+-    }
+-
+-    .hero-bg {
+-        position: absolute; inset: 0; opacity: 0.03;
+-        background-image: radial-gradient(var(--color-primary) 1px, transparent 1px);
+-        background-size: 40px 40px; pointer-events: none;
+-    }
+-
+-    .hero-content { position: relative; z-index: 10; max-width: 56rem; margin: 0 auto; }
+-    .hero-title { font-size: 3rem; font-weight: 900; line-height: 1.1; margin-bottom: 1.5rem; letter-spacing: -0.05em; }
+-    .hero-title-small { font-size: 1.5rem; font-weight: 800; margin-bottom: 1.5rem; color: var(--color-text-main); }
+-    .highlight { color: transparent; background-clip: text; -webkit-background-clip: text; background-image: linear-gradient(to right, var(--color-primary), var(--color-primary-hover)); }
+-    .hero-subtitle { font-size: 1.125rem; color: var(--color-text-secondary); margin-bottom: 2.5rem; max-width: 42rem; margin-left: auto; margin-right: auto; line-height: 1.6; }
+-
+-    @media (min-width: 640px) {
+-        .hero-title { font-size: 3.75rem; }
+-        .hero-title-small { font-size: 2rem; }
+-    }
+-
+-    .hero-actions {
+-        display: flex;
+-        flex-direction: column;
+-        gap: 1.5rem;
+-        align-items: stretch; /* Ensure equal height */
+-        justify-content: center;
+-        max-width: 42rem;
+-        margin: 0 auto;
+-    }
+-
+-    @media (min-width: 640px) {
+-        .hero-actions {
+-            flex-direction: row;
+-            gap: 2rem;
+-        }
+-    }
+ 
+-    .upload-container, .sync-folder-btn {
+-        width: 100%;
+-        min-width: 200px;
+-        display: flex;
+-        flex-direction: column;
+-    }
+-
+-    @media (min-width: 640px) {
+-        .upload-container, .sync-folder-btn {
+-            flex: 1 1 0px; /* Equal width on desktop */
+-        }
+-    }
+-
+-    .drop-zone { position: relative; border: 2px dashed var(--color-border); border-radius: 1rem; padding: 1.5rem; background-color: var(--color-bg-surface); cursor: pointer; transition: all 0.3s ease; overflow: hidden; flex: 1; box-sizing: border-box; }
+-    .drop-zone:hover { border-color: var(--color-primary); transform: translateY(-2px); }
+-    .drop-content { position: relative; z-index: 10; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+-    .upload-icon-circle { width: 3rem; height: 3rem; background-color: var(--color-bg-secondary); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 0.75rem; color: var(--color-primary); transition: transform 0.3s; }
+-    .drop-zone:hover .upload-icon-circle { transform: scale(1.1); }
+-    .drop-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; margin-top: 0; }
+-    .drop-content p { font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; }
+-
+-    .url-input-row { display: flex; gap: 0.5rem; margin-top: 0.75rem; }
+-    .url-input {
+-        flex: 1;
+-        min-width: 0;
+-        padding: 0.5rem 0.75rem;
+-        border-radius: 0.5rem;
+-        border: 1px solid var(--color-border);
+-        background-color: var(--color-bg-surface);
+-        color: var(--color-text-main);
+-        font-size: 0.85rem;
+-    }
+-    .url-input:focus { outline: none; border-color: var(--color-primary); }
+-    .url-input-submit {
+-        padding: 0.5rem 1rem;
+-        border-radius: 0.5rem;
+-        border: none;
+-        background-color: var(--color-primary);
+-        color: white;
+-        font-size: 0.85rem;
+-        font-weight: 600;
+-        cursor: pointer;
+-        white-space: nowrap;
+-    }
+-    .url-input-submit:hover { opacity: 0.9; }
+-
+-    .or-divider {
+-        font-size: 0.8rem;
+-        font-weight: 700;
+-        color: var(--color-text-muted);
+-        text-transform: uppercase;
+-        letter-spacing: 0.05em;
+-    }
+-
+-    .sync-folder-btn {
+-        display: flex;
+-        flex-direction: column;
+-        align-items: center;
+-        justify-content: center;
+-        padding: 1.5rem;
+-        background: var(--color-bg-surface);
+-        border: 2px solid var(--color-border);
+-        border-radius: 1rem;
+-        color: var(--color-text-main);
+-        cursor: pointer;
+-        transition: all 0.3s ease;
+-        height: 100%;
+-        box-sizing: border-box;
+-        width: 100%;
+-    }
+-
+-    .sync-folder-btn:hover {
+-        border-color: var(--color-primary);
+-        transform: translateY(-2px);
+-    }
+-    
+-    .sync-folder-btn.disabled {
+-        opacity: 0.6;
+-        cursor: not-allowed;
+-        border-color: var(--color-border);
+-        background-color: var(--color-bg-secondary);
+-        transform: none !important;
+-    }
+-    
+-    .disabled-icon {
+-        background-color: var(--color-bg-secondary);
+-        color: var(--color-text-muted);
+-    }
+-
+-    .icon-circle {
+-        width: 3rem; height: 3rem;
+-        background-color: var(--color-bg-secondary);
+-        border-radius: 50%;
+-        display: flex; align-items: center; justify-content: center;
+-        margin-bottom: 0.75rem;
+-        color: var(--color-primary);
+-        transition: transform 0.3s;
+-    }
+-
+-    .sync-folder-btn:hover .icon-circle { transform: scale(1.1); }
+-    .btn-content h3 { font-size: 1rem; font-weight: 700; margin-bottom: 0.25rem; margin-top: 0; }
+-    .btn-content p { font-size: 0.8rem; color: var(--color-text-secondary); margin: 0; }
++	.hero-inner {
++		position: relative;
++		z-index: 2;
++		max-width: 640px;
++		margin: 0 auto;
++	}
+ 
+-    .local-library {
+-        background-color: var(--color-bg-surface); /* Slightly different bg */
+-        border-bottom: 1px solid var(--color-border);
+-    }
+-    
+-    .local-pill { background-color: var(--color-status-success); /* Green for local */ }
+-    .local-cover { background: linear-gradient(135deg, color-mix(in srgb, var(--color-status-success) 80%, #000) 0%, var(--color-status-success) 100%); }
+-    .text-btn { background: none; border: none; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; }
++	.hero-title {
++		margin: 0 0 14px;
++		font-size: 2.7rem;
++		font-weight: 900;
++		letter-spacing: -0.04em;
++		line-height: 1.02;
++		font-family: var(--font-base);
++		color: var(--color-text-main);
++	}
+ 
+-    /* Features Section */
+-    .features-section { padding: 5rem 1.5rem; border-top: 1px solid var(--color-border); }
+-    .features-grid { max-width: 1400px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 2rem; }
+-    @media (min-width: 768px) { .features-grid { grid-template-columns: repeat(3, 1fr); } }
+-    .feature-card { background-color: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; }
+-    .feature-icon { width: 3rem; height: 3rem; background-color: color-mix(in srgb, var(--color-primary) 10%, transparent); color: var(--color-primary); border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; }
+-    .feature-card h3 { font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; }
+-    .feature-card p { color: var(--color-text-secondary); font-size: 0.95rem; line-height: 1.5; }
++	.hero-lead {
++		margin: 0 auto 30px;
++		font-size: 1rem;
++		line-height: 1.6;
++		color: var(--color-text-secondary);
++		max-width: 44ch;
++		font-family: var(--font-base);
++	}
+ 
+-    footer { padding: 2rem; text-align: center; border-top: 1px solid var(--color-border); color: var(--color-text-muted); font-size: 0.875rem; }
+-    @media (max-width: 640px) { .mobile-hide { display: none; } }
+-</style>
+\ No newline at end of file
++	@media (max-width: 640px) {
++		.hero-title {
++			font-size: 2.1rem;
++		}
++	}
++</style>
+diff --git a/src/routes/library/+page.svelte b/src/routes/library/+page.svelte
+index 00b18ad..0717fb2 100644
+--- a/src/routes/library/+page.svelte
++++ b/src/routes/library/+page.svelte
+@@ -1,24 +1,43 @@
+ <script lang="ts">
+ 	import { onMount } from 'svelte';
+ 	import { goto } from '$app/navigation';
+ 	import { resolve } from '$app/paths';
+ 	import { comicStorage } from '$lib/storage/comicStorage';
+-	import type { FileSystemItem } from '../../types/comic';
++	import type { ComicBook, FileSystemItem } from '../../types/comic';
+ 	import { setComic, setLoading, setError } from '$lib/store/session';
+ 	import ArchiveManager from '$lib/archive/archiveManager';
+ 	import { logger } from '$lib/services/logger';
+ 	import { directoryService, type DirectoryFile } from '$lib/services/directoryService';
++	import AppBar from '$lib/ui/AppBar.svelte';
++	import SiteFooter from '$lib/ui/SiteFooter.svelte';
++	import AddSheet from '$lib/ui/AddSheet.svelte';
++	import CoverCard from '$lib/ui/CoverCard.svelte';
+ 
+ 	let items = $state<FileSystemItem[]>([]);
+ 	let loading = $state(true);
+-	
++	let metadataMap = $state<Record<string, ComicBook>>({});
++	let addOpen = $state(false);
++	let sort = $state<'recent' | 'name' | 'size'>('recent');
++
++	const sortedItems = $derived.by(() => {
++		const arr = [...items];
++		if (sort === 'name') {
++			arr.sort((a, b) => a.name.localeCompare(b.name));
++		} else if (sort === 'size') {
++			arr.sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
++		} else {
++			arr.sort((a, b) => b.updatedAt - a.updatedAt);
++		}
++		return arr;
++	});
++
+ 	// Local Folder State
+ 	let folderHandle = $state<FileSystemDirectoryHandle | null>(null);
+ 	let folderFiles = $state<DirectoryFile[]>([]);
+ 	let folderLoading = $state(false);
+ 
+ 	onMount(async () => {
+ 		try {
+ 			await comicStorage.init();
+ 			await Promise.all([
+ 				loadLibrary(),
+@@ -86,20 +105,28 @@
+ 			setError('Failed to open local comic', 'error');
+ 		} finally {
+ 			setLoading(false);
+ 		}
+ 	}
+ 
+ 	async function loadLibrary() {
+ 		loading = true;
+ 		try {
+ 			items = await comicStorage.getAllFiles();
++			const entries = await Promise.all(
++				items.map(async (item) => [item.id, await comicStorage.getComicMetadata(item.id)] as const)
++			);
++			const map: Record<string, ComicBook> = {};
++			for (const [id, meta] of entries) {
++				if (meta) map[id] = meta;
++			}
++			metadataMap = map;
+ 		} catch (error) {
+ 			logger.error('Library', 'Failed to load library', error);
+ 			setError('Failed to load library', 'error');
+ 		} finally {
+ 			loading = false;
+ 		}
+ 	}
+ 
+ 	async function openComic(item: FileSystemItem) {
+ 		try {
+@@ -137,341 +164,222 @@
+ 			setComic(comic, file);
+ 			await goto(resolve('/reader'));
+ 		} catch (error) {
+ 			logger.error('Library', 'Error opening comic', error);
+ 			setError('Failed to open comic', 'error');
+ 		} finally {
+ 			setLoading(false);
+ 		}
+ 	}
+ 
+-	async function deleteItem(item: FileSystemItem, e: MouseEvent) {
+-        e.stopPropagation();
+-        e.preventDefault();
++	async function deleteItem(item: FileSystemItem) {
+ 		if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+ 		try {
+ 			await comicStorage.deleteComic(item.id);
+ 			await loadLibrary();
+ 		} catch (error) {
+ 			logger.error('Library', 'Failed to delete item', error);
+ 			setError('Failed to delete item', 'error');
+ 		}
+ 	}
+ 
+ 	function formatSize(bytes?: number) {
+ 		if (bytes === undefined) return '-';
+ 		if (bytes === 0) return '0 B';
+ 		const k = 1024;
+ 		const sizes = ['B', 'KB', 'MB', 'GB'];
+ 		const i = Math.floor(Math.log(bytes) / Math.log(k));
+ 		return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i];
+ 	}
++
++	function stripExt(name: string) {
++		return name.replace(/\.(cbz|zip|cbr|rar)$/i, '');
++	}
++
++	function itemMeta(item: FileSystemItem) {
++		const meta = metadataMap[item.id];
++		const size = formatSize(item.size);
++		return meta?.totalPages ? `${meta.totalPages}p · ${size}` : size;
++	}
++
++	function itemProgress(item: FileSystemItem) {
++		const meta = metadataMap[item.id];
++		if (!meta?.totalPages) return 0;
++		const current = meta.currentPage ?? 0;
++		return Math.min(1, (current + 1) / meta.totalPages);
++	}
+ </script>
+ 
+ <svelte:head>
+ 	<title>Library - ComiKaiju</title>
+ 	<meta name="description" content="Browse your imported comic book library. All comics are stored locally on your device." />
+ </svelte:head>
+ 
+-<div class="library-container">
+-    <header class="library-header">
+-        <div class="header-left">
+-            <a href={resolve('/')} class="back-link">
+-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+-                </svg>
+-                Back
+-            </a>
+-            <h1>Full Library</h1>
+-        </div>
+-        <div class="header-right">
+-            <button class="folder-btn" onclick={openFolder}>
+-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+-                </svg>
+-                {folderHandle ? 'Change Folder' : 'Open Folder'}
+-            </button>
+-            <span class="count">{items.length} Imported</span>
+-        </div>
+-    </header>
+-
+-    <div class="library-content">
+-        {#if folderHandle}
+-            <section class="folder-section">
+-                <div class="section-header">
+-                    <h2>Local: {folderHandle.name}</h2>
+-                    <span class="count">{folderFiles.length} items</span>
+-                </div>
+-                
+-                {#if folderLoading}
+-                    <div class="loading">Scanning folder...</div>
+-                {:else if folderFiles.length === 0}
+-                     <div class="empty-folder">No comic files found in this folder.</div>
+-                {:else}
+-                    <div class="comic-grid">
+-                        {#each folderFiles as file (file.name)}
+-                             <div class="comic-card local" onclick={() => openLocalFile(file)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && openLocalFile(file)}>
+-                                <div class="card-cover">
+-                                    <div class="placeholder local-placeholder">
+-                                        <span>{file.name.slice(0, 3)}</span>
+-                                    </div>
+-                                </div>
+-                                <div class="card-info">
+-                                    <div class="title" title={file.name}>{file.name}</div>
+-                                    <div class="meta">Local File</div>
+-                                </div>
+-                            </div>
+-                        {/each}
+-                    </div>
+-                {/if}
+-            </section>
+-            <hr class="divider" />
+-        {/if}
+-
+-        <div class="section-header">
+-            <h2>Imported Library</h2>
+-        </div>
++<AppBar active="library" onadd={() => (addOpen = true)} />
++
++<div class="lib-sub">
++    <span>{items.length} comics</span>
++    <label class="sort">
++        sorted by
++        <select bind:value={sort}>
++            <option value="recent">recent</option>
++            <option value="name">name</option>
++            <option value="size">size</option>
++        </select>
++    </label>
++</div>
+ 
+-        {#if loading}
+-            <div class="loading">Loading...</div>
+-        {:else if items.length === 0}
+-            <div class="empty">
+-                <p>No comics found.</p>
+-                <a href={resolve('/')}>Go upload some!</a>
+-            </div>
+-        {:else}
+-            <div class="comic-grid">
+-                {#each items as item (item.id)}
+-                    <div class="comic-card" onclick={() => openComic(item)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && openComic(item)}>
+-                        <div class="card-cover">
+-                            {#if item.thumbnail}
+-                                <img src={item.thumbnail} alt={item.name} />
+-                            {:else}
+-                                <div class="placeholder">
+-                                    <span>{item.name.slice(0, 2)}</span>
+-                                </div>
+-                            {/if}
+-                            <button class="delete-btn" onclick={(e) => deleteItem(item, e)} title="Delete">
+-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+-                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/>
+-                                </svg>
+-                            </button>
+-                        </div>
+-                        <div class="card-info">
+-                            <div class="title" title={item.name}>{item.name}</div>
+-                            <div class="meta">{formatSize(item.size)}</div>
+-                        </div>
+-                    </div>
+-                {/each}
+-            </div>
+-        {/if}
++{#if folderHandle}
++    <div class="section-head">
++        <h2>Local · {folderHandle.name}</h2>
++        <button type="button" class="folder-btn" onclick={openFolder}>Change folder</button>
+     </div>
++    {#if folderLoading}
++        <div class="state-msg">Scanning folder…</div>
++    {:else if folderFiles.length === 0}
++        <div class="state-msg">No comic files found in this folder.</div>
++    {:else}
++        <div class="libgrid">
++            {#each folderFiles as file (file.name)}
++                <CoverCard
++                    title={stripExt(file.name)}
++                    meta="Local file"
++                    onopen={() => openLocalFile(file)}
++                />
++            {/each}
++        </div>
++    {/if}
++{:else}
++    <div class="section-head">
++        <h2>Local folder</h2>
++        <button type="button" class="folder-btn" onclick={openFolder}>Open folder</button>
++    </div>
++{/if}
++
++<div class="section-head">
++    <h2>Imported</h2>
+ </div>
+ 
+-<style>
+-    .library-container {
+-        min-height: 100vh;
+-        background-color: var(--color-bg-main);
+-        color: var(--color-text-main);
+-        font-family: var(--font-base);
+-        padding: 2rem;
+-    }
++{#if loading}
++    <div class="state-msg">Loading…</div>
++{:else if items.length === 0}
++    <div class="state-msg empty">
++        <p>No comics yet.</p>
++        <a href={resolve('/')}>Go upload some</a>
++    </div>
++{:else}
++    <div class="libgrid">
++        {#each sortedItems as item, i (item.id)}
++            <CoverCard
++                title={stripExt(item.name)}
++                thumbnail={item.thumbnail}
++                index={i + 1}
++                meta={itemMeta(item)}
++                progress={itemProgress(item)}
++                onopen={() => openComic(item)}
++                ondelete={() => deleteItem(item)}
++            />
++        {/each}
++    </div>
++{/if}
+ 
+-    .library-header {
+-        display: flex;
+-        align-items: center;
+-        justify-content: space-between;
+-        margin-bottom: 2rem;
+-        padding-bottom: 1rem;
+-        border-bottom: 1px solid var(--color-border);
+-    }
++<SiteFooter />
+ 
+-    .header-left {
+-        display: flex;
+-        align-items: center;
+-        gap: 1.5rem;
+-    }
++<AddSheet open={addOpen} onclose={() => (addOpen = false)} oncomplete={loadLibrary} />
+ 
+-    .back-link {
++<style>
++    .lib-sub {
+         display: flex;
+-        align-items: center;
+-        gap: 0.5rem;
+-        color: var(--color-text-secondary);
+-        text-decoration: none;
+-        font-weight: 500;
+-        transition: color 0.2s;
+-    }
+-
+-    .back-link:hover {
+-        color: var(--color-primary);
++        align-items: baseline;
++        justify-content: space-between;
++        margin: 0 30px;
++        padding: 16px 0 0;
++        font-family: var(--font-base);
++        font-size: 0.72rem;
++        color: var(--color-text-muted);
++        letter-spacing: 0.04em;
+     }
+ 
+-    .header-right {
++    .sort {
+         display: flex;
+         align-items: center;
+-        gap: 1.5rem;
++        gap: 6px;
+     }
+ 
+-    .folder-btn {
+-        display: flex;
+-        align-items: center;
+-        gap: 0.5rem;
+-        padding: 0.5rem 1rem;
+-        background: var(--color-bg-surface);
+-        border: 1px solid var(--color-border);
+-        border-radius: 6px;
++    .sort select {
++        background: transparent;
+         color: var(--color-text-main);
+-        font-size: 0.9rem;
++        border: 1px solid var(--color-border);
++        border-radius: 3px;
++        font-family: var(--font-base);
++        font-size: 0.72rem;
++        padding: 3px 6px;
+         cursor: pointer;
+-        transition: all 0.2s;
+     }
+ 
+-    .folder-btn:hover {
+-        border-color: var(--color-primary);
+-        color: var(--color-primary);
+-    }
+-
+-    .section-header {
++    .section-head {
+         display: flex;
+         align-items: baseline;
+-        gap: 1rem;
+-        margin-bottom: 1.5rem;
+-    }
+-
+-    .section-header h2 {
+-        font-size: 1.25rem;
+-        font-weight: 600;
+-        margin: 0;
+-    }
+-
+-    .folder-section {
+-        margin-bottom: 3rem;
+-    }
+-
+-    .divider {
+-        border: 0;
+-        border-top: 1px solid var(--color-border);
+-        margin: 2rem 0;
+-        opacity: 0.5;
+-    }
+-
+-    .local-placeholder {
+-        background: var(--color-bg-tertiary, var(--color-bg-secondary));
+-        color: var(--color-primary);
+-    }
+-
+-    .empty-folder {
+-        color: var(--color-text-muted);
+-        font-style: italic;
++        justify-content: space-between;
++        margin: 22px 30px 0;
+     }
+ 
+-    h1 {
+-        font-size: 1.5rem;
++    .section-head h2 {
++        font-family: var(--font-base);
++        font-size: 0.95rem;
+         font-weight: 700;
+         margin: 0;
++        color: var(--color-text-main);
+     }
+ 
+-    .count {
+-        color: var(--color-text-muted);
+-        font-size: 0.9rem;
+-    }
+-
+-    .comic-grid {
+-        display: grid;
+-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+-        gap: 2rem;
+-    }
+-
+-    .comic-card {
+-        cursor: pointer;
+-        transition: transform 0.2s;
+-    }
+-
+-    .comic-card:hover {
+-        transform: translateY(-5px);
+-    }
+-
+-    .card-cover {
+-        aspect-ratio: 2/3;
+-        background: var(--color-bg-surface);
++    .folder-btn {
++        background: transparent;
+         border: 1px solid var(--color-border);
+-        border-radius: 8px;
+-        overflow: hidden;
+-        position: relative;
+-        box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
+-    }
+-
+-    .card-cover img {
+-        width: 100%;
+-        height: 100%;
+-        object-fit: cover;
+-    }
+-
+-    .placeholder {
+-        width: 100%;
+-        height: 100%;
+-        display: flex;
+-        align-items: center;
+-        justify-content: center;
+-        background: var(--color-bg-secondary);
+-        color: var(--color-text-muted);
+-        font-size: 2rem;
+-        font-weight: 700;
+-        text-transform: uppercase;
+-    }
+-
+-    .delete-btn {
+-        position: absolute;
+-        top: 0.5rem;
+-        right: 0.5rem;
+-        width: 32px;
+-        height: 32px;
+-        background: color-mix(in srgb, #000 70%, transparent);
+-        border: none;
+-        border-radius: 4px;
+-        color: white;
+-        display: flex;
+-        align-items: center;
+-        justify-content: center;
+-        opacity: 0;
+-        transition: opacity 0.2s, background 0.2s;
++        border-radius: 3px;
++        color: var(--color-text-secondary);
++        font-family: var(--font-base);
++        font-size: 0.72rem;
++        padding: 6px 10px;
+         cursor: pointer;
++        transition: border-color 0.15s, color 0.15s;
+     }
+ 
+-    .comic-card:hover .delete-btn {
+-        opacity: 1;
++    .folder-btn:hover {
++        border-color: var(--color-primary);
++        color: var(--color-primary);
+     }
+ 
+-    .delete-btn:hover {
+-        background: var(--color-status-error);
++    .libgrid {
++        padding: 20px 30px 30px;
++        display: grid;
++        grid-template-columns: repeat(6, 1fr);
++        gap: 24px 22px;
+     }
+ 
+-    .card-info {
+-        margin-top: 0.75rem;
++    .state-msg {
++        margin: 20px 30px 30px;
++        color: var(--color-text-secondary);
++        font-family: var(--font-base);
+     }
+ 
+-    .title {
+-        font-size: 0.9rem;
+-        font-weight: 600;
+-        white-space: nowrap;
+-        overflow: hidden;
+-        text-overflow: ellipsis;
+-        color: var(--color-text-main);
++    .state-msg.empty {
++        text-align: center;
++        padding: 3rem 0;
+     }
+ 
+-    .meta {
+-        font-size: 0.75rem;
+-        color: var(--color-text-muted);
+-        margin-top: 0.25rem;
++    .state-msg.empty a {
++        color: var(--color-primary);
++        text-decoration: underline;
+     }
+ 
+-    .loading, .empty {
+-        text-align: center;
+-        padding: 4rem;
+-        color: var(--color-text-secondary);
++    @media (max-width: 1100px) {
++        .libgrid {
++            grid-template-columns: repeat(4, 1fr);
++        }
+     }
+ 
+-    .empty a {
+-        color: var(--color-primary);
+-        text-decoration: underline;
++    @media (max-width: 700px) {
++        .libgrid {
++            grid-template-columns: repeat(2, 1fr);
++        }
+     }
+ </style>
+diff --git a/src/routes/reader/+page.svelte b/src/routes/reader/+page.svelte
+index e6c14b4..4a8ee57 100644
+--- a/src/routes/reader/+page.svelte
++++ b/src/routes/reader/+page.svelte
+@@ -3,20 +3,21 @@
+ 	import { onMount, onDestroy } from 'svelte';
+ 	import { goto } from '$app/navigation';
+ 	import { resolve } from '$app/paths';
+ 	import { get } from 'svelte/store';
+ 	import { currentComic, currentPageIndex, isLoading, error, currentFile, setError } from '$lib/store/session.js';
+ 	import ArchiveManager from '$lib/archive/archiveManager.js';
+ 	import ReaderShell from '$lib/ui/ReaderShell.svelte';
+ 	import type { ComicBook } from '../../types/comic.js';
+ 	import { comicStorage } from '$lib/storage/comicStorage.js';
+ 	import { logger } from '$lib/services/logger';
++	import { createThumbnail } from '$lib/services/comicProcessor';
+ 
+ 	let archiveManager: ArchiveManager;
+ 	let comic: ComicBook | null = null;
+ 	let file: File | null = null;
+ 	let archiveReady = false;
+ 
+ 	const unsubscribeComic = currentComic.subscribe((value) => {
+ 		comic = value;
+ 	});
+ 
+@@ -78,20 +79,26 @@
+ 			archiveManager.cleanup();
+ 		}
+ 	});
+ 
+ async function saveProgress(): Promise<void> {
+ 	if (!comic) return;
+ 	const pageIndex = get(currentPageIndex);
+ 	comic.currentPage = pageIndex;
+ 	comic.lastRead = new Date();
+ 	const totalPages = comic.totalPages || comic.pages?.length || 0;
++	try {
++		const pageBlob = await onExtractPage(pageIndex);
++		if (pageBlob) comic.lastReadThumbnail = await createThumbnail(pageBlob, 640, 960);
++	} catch (e) {
++		logger.warn('Reader', 'Failed to capture last-read page thumbnail', e);
++	}
+ 	try {
+ 		await comicStorage.saveComicMetadata(structuredCloneComic(comic));
+ 		await comicStorage.updateProgress(comic.id, pageIndex, totalPages);
+ 	} catch (error) {
+ 		logger.error('Reader', 'Failed to persist reading progress', error);
+ 	}
+ }
+ 
+ function structuredCloneComic(comic: ComicBook): ComicBook {
+ 	return {
+diff --git a/src/routes/settings/+page.svelte b/src/routes/settings/+page.svelte
+index 932ffa1..7e987a9 100644
+--- a/src/routes/settings/+page.svelte
++++ b/src/routes/settings/+page.svelte
+@@ -1,14 +1,15 @@
+ <script lang="ts">
+ 	import { onMount, onDestroy } from 'svelte';
+ 	import { get } from 'svelte/store';
+-	import { resolve } from '$app/paths';
++	import AppBar from '$lib/ui/AppBar.svelte';
++	import SiteFooter from '$lib/ui/SiteFooter.svelte';
+ 	import { themeStore, allThemesFrom, getActiveTheme, PRESET_IDS } from '$lib/theme/themeStore';
+ 	import { themeValidator } from '$lib/theme/themeValidator';
+ 	import {
+ 		FONT_STACKS,
+ 		type Theme,
+ 		type ThemeMode,
+ 		type Palette,
+ 		type FontId
+ 	} from '$lib/theme/themeSchema';
+ 	import FilterEditor from '$lib/ui/FilterEditor.svelte';
+@@ -226,657 +227,677 @@
+ 	onApply={() => {}}
+ 	onSave={(config) => {
+ 		void customFilterStore.save(config);
+ 	}}
+ 	onDelete={(id) => {
+ 		void customFilterStore.remove(id);
+ 	}}
+ 	onClose={() => (filterEditorOpen = false)}
+ />
+ 
+-<div class="settings-layout">
+-	<aside class="sidebar">
+-		<a class="back" href={resolve('/')}>← ComiKaiju</a>
+-		<h1>Settings</h1>
+-		<nav>
+-			{#each NAV as item (item.id)}
+-				<button
+-					class="nav-item"
+-					class:active={section === item.id}
+-					onclick={() => (section = item.id)}
+-				>
+-					{item.label}
++<AppBar active="settings" />
++
++<div class="settings">
++	<nav class="snav">
++		{#each NAV as item (item.id)}
++			<button
++				type="button"
++				class:active={section === item.id}
++				onclick={() => (section = item.id)}
++			>
++				{item.label}
++			</button>
++		{/each}
++	</nav>
++
++	<div class="scontent">
++		{#if section === 'themes'}
++			<div class="shead">
++				<h2>Themes</h2>
++				<p>Pick a theme to edit it below. Changes apply live; presets can be edited and reset.</p>
++			</div>
++
++			<!-- Top: theme options -->
++			<div class="chips">
++				{#each themes as t (t.id)}
++					{@const palette = isDarkNow(themeState.mode) ? t.dark : t.light}
++					<button
++						type="button"
++						class="chip"
++						class:active={activeTheme.id === t.id}
++						onclick={() => selectTheme(t)}
++					>
++						<span class="sws">
++							{#each swatchKeys as k (k)}
++								<span class="sw" style="background:{palette[k]}"></span>
++							{/each}
++						</span>
++						<span class="nm">{t.name}</span>
++						<span class="tg">{PRESET_IDS.has(t.id) ? 'Preset' : 'Yours'}</span>
++					</button>
++				{/each}
++				<button type="button" class="chip new" onclick={newTheme}>
++					<span class="nm">+ New</span>
+ 				</button>
+-			{/each}
+-		</nav>
+-	</aside>
+-
+-	<main class="content">
+-		<div class="content-inner">
+-			{#if section === 'themes'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Themes</h2>
+-						<p class="hint">
+-							Pick a theme to edit it below. Changes apply live; presets can be edited and reset.
+-						</p>
++			</div>
++
++			<!-- Bottom: always-visible editor for the selected theme -->
++			{#if draft}
++				<div class="editor">
++					<div class="etop">
++						<input
++							class="name-input"
++							value={draft.name}
++							maxlength="60"
++							placeholder="Theme name"
++							oninput={(e) => (draft = { ...draft!, name: e.currentTarget.value })}
++							onchange={commit}
++						/>
++						<div class="modetabs">
++							<button
++								type="button"
++								class:sel={editMode === 'light'}
++								onclick={() => switchMode('light')}>Light</button
++							>
++							<button type="button" class:sel={editMode === 'dark'} onclick={() => switchMode('dark')}
++								>Dark</button
++							>
++						</div>
+ 					</div>
+-				</div>
+ 
+-				<!-- Top: theme options -->
+-				<div class="chips">
+-					{#each themes as t (t.id)}
+-						{@const palette = isDarkNow(themeState.mode) ? t.dark : t.light}
+-						<button
+-							class="chip"
+-							class:active={activeTheme.id === t.id}
+-							onclick={() => selectTheme(t)}
+-						>
+-							<span class="chip-swatches">
+-								{#each swatchKeys as k (k)}
+-									<span class="dot" style="background:{palette[k]}"></span>
++					<div class="groups">
++						{#each GROUPS as g (g.title)}
++							<div class="grp">
++								<div class="gt">{g.title}</div>
++								{#each g.keys as key (key)}
++									<label class="pick">
++										<span class="pl">{LABELS[key]}</span>
++										<input
++											class="col-input"
++											type="color"
++											value={draft[editMode][key]}
++											oninput={(e) => setColor(key, e.currentTarget.value)}
++											onchange={commit}
++										/>
++										<input
++											class="hex"
++											value={draft[editMode][key]}
++											maxlength="7"
++											onchange={(e) => {
++												setColor(key, e.currentTarget.value);
++												commit();
++											}}
++										/>
++									</label>
+ 								{/each}
+-							</span>
+-							<span class="chip-name">{t.name}</span>
+-						</button>
+-					{/each}
+-					<button class="chip new" onclick={newTheme}>+ New</button>
+-				</div>
+-
+-				<!-- Bottom: always-visible editor for the selected theme -->
+-				{#if draft}
+-					<div class="editor">
+-						<div class="editor-top">
+-							<input
+-								class="name-input"
+-								value={draft.name}
+-								maxlength="60"
+-								placeholder="Theme name"
+-								oninput={(e) => (draft = { ...draft!, name: e.currentTarget.value })}
+-								onchange={commit}
+-							/>
+-							<div class="mode-tabs">
+-								<button class:sel={editMode === 'light'} onclick={() => switchMode('light')}>Light</button>
+-								<button class:sel={editMode === 'dark'} onclick={() => switchMode('dark')}>Dark</button>
+ 							</div>
+-						</div>
++						{/each}
++					</div>
+ 
+-						<div class="groups">
+-							{#each GROUPS as g (g.title)}
+-								<div class="group">
+-									<div class="group-title">{g.title}</div>
+-									{#each g.keys as key (key)}
+-										<label class="picker">
+-											<span>{LABELS[key]}</span>
+-											<input
+-												type="color"
+-												value={draft[editMode][key]}
+-												oninput={(e) => setColor(key, e.currentTarget.value)}
+-												onchange={commit}
+-											/>
+-											<input
+-												class="hex"
+-												value={draft[editMode][key]}
+-												maxlength="7"
+-												onchange={(e) => {
+-													setColor(key, e.currentTarget.value);
+-													commit();
+-												}}
+-											/>
+-										</label>
+-									{/each}
+-								</div>
++					<div class="fontrow">
++						<div class="gt">Font</div>
++						<select
++							value={draft.font}
++							onchange={(e) => {
++								draft = { ...draft!, font: e.currentTarget.value as FontId };
++								previewNow();
++								commit();
++							}}
++						>
++							{#each FONTS as f (f.id)}
++								<option value={f.id}>{f.label}</option>
+ 							{/each}
++						</select>
++						<p class="samp" style="font-family:{FONT_STACKS[draft.font]}">
++							The quick brown fox jumps over the lazy dog
++						</p>
++					</div>
+ 
+-							<div class="group">
+-								<div class="group-title">Font</div>
+-								<select
+-									value={draft.font}
+-									onchange={(e) => {
+-										draft = { ...draft!, font: e.currentTarget.value as FontId };
+-										previewNow();
+-										commit();
+-									}}
+-								>
+-									{#each FONTS as f (f.id)}
+-										<option value={f.id}>{f.label}</option>
+-									{/each}
+-								</select>
+-								<p class="font-sample" style="font-family:{FONT_STACKS[draft.font]}">
+-									The quick brown fox jumps over the lazy dog
+-								</p>
+-							</div>
+-						</div>
++					{#if importError}<p class="err">{importError}</p>{/if}
+ 
+-						{#if importError}<p class="err">{importError}</p>{/if}
+-
+-						<div class="editor-actions">
+-							<button class="ghost" onclick={() => importInput?.click()}>Import</button>
+-							<input
+-								type="file"
+-								accept="application/json"
+-								bind:this={importInput}
+-								onchange={importFile}
+-								hidden
+-							/>
+-							<button class="ghost" onclick={exportTheme}>Export</button>
+-							<span class="spacer"></span>
+-							{#if isPreset}
+-								{#if isOverridden}
+-									<button class="danger" onclick={resetPreset}>Reset to default</button>
+-								{/if}
+-							{:else}
+-								<button class="danger" onclick={deleteCustom}>Delete theme</button>
++					<div class="eactions">
++						<button type="button" class="ghost-sm" onclick={() => importInput?.click()}>
++							Import
++						</button>
++						<input
++							type="file"
++							accept="application/json"
++							bind:this={importInput}
++							onchange={importFile}
++							hidden
++						/>
++						<button type="button" class="ghost-sm" onclick={exportTheme}>Export</button>
++						<span class="spacer"></span>
++						{#if isPreset}
++							{#if isOverridden}
++								<button type="button" class="danger" onclick={resetPreset}>Reset to default</button>
+ 							{/if}
+-						</div>
+-					</div>
+-				{/if}
+-			{:else if section === 'reader'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Reader</h2>
+-						<p class="hint">Default reading layout for newly opened comics.</p>
++						{:else}
++							<button type="button" class="danger" onclick={deleteCustom}>Delete theme</button>
++						{/if}
+ 					</div>
+ 				</div>
+-
+-				<h3 class="group-label">Reading layout</h3>
+-				<div class="radio-list">
+-					{#each LAYOUTS as l (l.id)}
+-						<button class="radio-row" class:selected={layout === l.id} onclick={() => setLayout(l.id)}>
+-							<span class="radio" class:on={layout === l.id}></span>
+-							<span class="radio-text">
+-								<span class="radio-label">{l.label}</span>
+-								<span class="radio-desc">{l.desc}</span>
+-							</span>
+-						</button>
+-					{/each}
+-				</div>
+-
+-				<h3 class="group-label">Page fit</h3>
+-				<div class="segmented">
+-					{#each FITS as f (f.id)}
+-						<button
+-							class:selected={reader.fitMode === f.id}
+-							onclick={() => readerSettings.update({ fitMode: f.id })}
+-						>
+-							{f.label}
+-						</button>
+-					{/each}
++			{/if}
++		{:else if section === 'reader'}
++			<div class="shead">
++				<h2>Reader</h2>
++				<p>Default reading layout for newly opened comics.</p>
++			</div>
++
++			<h3 class="glabel">Reading layout</h3>
++			<div class="radio-list">
++				{#each LAYOUTS as l (l.id)}
++					<button
++						type="button"
++						class="radio-row"
++						class:sel={layout === l.id}
++						onclick={() => setLayout(l.id)}
++					>
++						<span class="radio" class:on={layout === l.id}></span>
++						<span>
++							<div class="rl">{l.label}</div>
++							<div class="rd">{l.desc}</div>
++						</span>
++					</button>
++				{/each}
++			</div>
++
++			<h3 class="glabel">Page fit</h3>
++			<div class="segmented">
++				{#each FITS as f (f.id)}
++					<button
++						type="button"
++						class:sel={reader.fitMode === f.id}
++						onclick={() => readerSettings.update({ fitMode: f.id })}
++					>
++						{f.label}
++					</button>
++				{/each}
++			</div>
++		{:else if section === 'filters'}
++			<div class="fhead">
++				<div class="shead">
++					<h2>Filters</h2>
++					<p>Manage your reusable image filters. Custom filters appear in the reader's filter menu.</p>
+ 				</div>
+-			{:else if section === 'filters'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Filters</h2>
+-						<p class="hint">
+-							Manage your reusable image filters. Custom filters appear in the reader's filter menu.
+-						</p>
++				<button type="button" class="btn-primary" onclick={createFilter}>+ Create filter</button>
++			</div>
++
++			<h3 class="glabel">Presets</h3>
++			<div class="fgrid">
++				{#each premadeFilters as f (f.id)}
++					<div class="fcard">
++						<div class="fn">{f.name}</div>
++						{#if f.description}<div class="fd">{f.description}</div>{/if}
++						<div class="fa">
++							<button type="button" onclick={() => editFilter(f)}>Duplicate</button>
++						</div>
+ 					</div>
+-					<button class="btn-primary" onclick={createFilter}>+ Create filter</button>
+-				</div>
+-
+-				<h3 class="group-label">Presets</h3>
+-				<div class="grid">
+-					{#each premadeFilters as f (f.id)}
+-						<div class="card">
+-							<div class="filter-body">
+-								<span class="card-name">{f.name}</span>
+-								{#if f.description}<span class="card-desc">{f.description}</span>{/if}
+-							</div>
+-							<div class="card-actions">
+-								<button class="link" onclick={() => editFilter(f)}>Duplicate</button>
++				{/each}
++			</div>
++
++			<h3 class="glabel">My Filters</h3>
++			{#if customFilters.length === 0}
++				<p class="empty">No custom filters yet. Create one to get started.</p>
++			{:else}
++				<div class="fgrid">
++					{#each customFilters as f (f.id)}
++						<div class="fcard">
++							<div class="fn">{f.name}</div>
++							{#if f.description}<div class="fd">{f.description}</div>{/if}
++							<div class="fa">
++								<button type="button" onclick={() => editFilter(f)}>Edit</button>
++								<button
++									type="button"
++									class="danger-link"
++									onclick={() => void customFilterStore.remove(f.id)}
++								>
++									Delete
++								</button>
+ 							</div>
+ 						</div>
+ 					{/each}
+ 				</div>
+-
+-				<h3 class="group-label">My Filters</h3>
+-				{#if customFilters.length === 0}
+-					<p class="empty">No custom filters yet. Create one to get started.</p>
+-				{:else}
+-					<div class="grid">
+-						{#each customFilters as f (f.id)}
+-							<div class="card">
+-								<div class="filter-body">
+-									<span class="card-name">{f.name}</span>
+-									{#if f.description}<span class="card-desc">{f.description}</span>{/if}
+-								</div>
+-								<div class="card-actions">
+-									<button class="link" onclick={() => editFilter(f)}>Edit</button>
+-									<button class="link danger-link" onclick={() => void customFilterStore.remove(f.id)}>
+-										Delete
+-									</button>
+-								</div>
+-							</div>
+-						{/each}
+-					</div>
+-				{/if}
+ 			{/if}
+-		</div>
+-	</main>
++		{/if}
++	</div>
+ </div>
+ 
++<SiteFooter />
++
+ <style>
+-	.settings-layout {
+-		display: flex;
+-		min-height: 100vh;
+-		align-items: stretch;
++	.settings {
++		display: grid;
++		grid-template-columns: 184px 1fr;
++		min-height: 60vh;
+ 	}
+-	.sidebar {
+-		width: 15rem;
+-		flex-shrink: 0;
++
++	.snav {
+ 		border-right: 1px solid var(--color-border);
+-		padding: 1.5rem 1rem;
+-		background: var(--color-bg-surface);
+-	}
+-	.back {
+-		display: inline-block;
+-		color: var(--color-text-secondary);
+-		text-decoration: none;
+-		font-size: 0.85rem;
+-		margin-bottom: 1.5rem;
+-	}
+-	.back:hover {
+-		color: var(--color-primary);
+-	}
+-	.sidebar h1 {
+-		font-size: 1.25rem;
+-		font-weight: 700;
+-		margin: 0 0 1rem;
+-		color: var(--color-text-main);
+-	}
+-	nav {
++		padding: 22px 0;
+ 		display: flex;
+ 		flex-direction: column;
+-		gap: 0.15rem;
+ 	}
+-	.nav-item {
++	.snav button {
++		display: block;
++		width: 100%;
+ 		text-align: left;
+-		padding: 0.5rem 0.75rem;
+-		border-radius: 8px;
++		padding: 10px 22px;
+ 		border: 0;
+ 		border-left: 2px solid transparent;
+ 		background: transparent;
++		font-family: var(--font-base);
++		font-size: 0.78rem;
++		letter-spacing: 0.04em;
+ 		color: var(--color-text-secondary);
+ 		cursor: pointer;
+-		font-size: 0.95rem;
+ 	}
+-	.nav-item:hover {
+-		background: var(--color-bg-secondary);
++	.snav button:hover {
+ 		color: var(--color-text-main);
+ 	}
+-	.nav-item.active {
+-		background: var(--color-bg-secondary);
+-		color: var(--color-primary);
++	.snav button.active {
++		color: var(--color-text-main);
+ 		border-left-color: var(--color-primary);
+-		font-weight: 600;
+ 	}
+ 
+-	.content {
+-		flex: 1;
+-		min-width: 0;
+-		display: flex;
+-		justify-content: center;
+-		padding: 2rem 1.5rem;
+-	}
+-	.content-inner {
+-		width: 100%;
++	.scontent {
++		padding: 26px 30px 40px;
+ 		max-width: 52rem;
+ 	}
+-	.content-head {
+-		display: flex;
+-		align-items: flex-start;
+-		justify-content: space-between;
+-		gap: 1rem;
+-		margin-bottom: 1.5rem;
++
++	.shead {
++		margin-bottom: 22px;
+ 	}
+-	h2 {
+-		font-size: 1.4rem;
+-		font-weight: 700;
+-		margin: 0 0 0.25rem;
++	.shead h2 {
++		margin: 0 0 4px;
++		font-size: 1.35rem;
++		font-weight: 800;
++		letter-spacing: -0.02em;
+ 		color: var(--color-text-main);
+ 	}
+-	.hint {
+-		color: var(--color-text-secondary);
+-		font-size: 0.9rem;
++	.shead p {
+ 		margin: 0;
+-		max-width: 36rem;
++		color: var(--color-text-secondary);
++		font-size: 0.86rem;
++		max-width: 40rem;
+ 	}
++
+ 	.btn-primary {
+ 		flex-shrink: 0;
+-		padding: 0.5rem 1rem;
+-		border-radius: 8px;
+-		border: 1px solid var(--color-primary);
+ 		background: var(--color-primary);
+-		color: #fff;
++		border: 1px solid var(--color-primary);
++		border-radius: 3px;
++		color: var(--color-bg-main);
++		font-family: var(--font-base);
++		font-weight: 650;
++		font-size: 0.82rem;
++		padding: 9px 15px;
+ 		cursor: pointer;
+-		font-size: 0.9rem;
+ 	}
+ 	.btn-primary:hover {
+ 		background: var(--color-primary-hover);
+ 	}
+ 
+ 	/* Theme chips */
+ 	.chips {
+ 		display: flex;
+ 		flex-wrap: wrap;
+-		gap: 0.6rem;
+-		margin-bottom: 1.5rem;
++		gap: 10px;
++		margin-bottom: 26px;
+ 	}
+ 	.chip {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.55rem;
+-		padding: 0.5rem 0.75rem;
+-		border-radius: 9999px;
++		gap: 9px;
++		padding: 8px 12px;
+ 		border: 1px solid var(--color-border);
+-		background: var(--color-bg-surface);
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
+ 		cursor: pointer;
+-		font-size: 0.9rem;
+ 	}
+ 	.chip:hover {
+ 		border-color: var(--color-text-secondary);
+ 	}
+ 	.chip.active {
+ 		border-color: var(--color-primary);
+-		box-shadow: 0 0 0 1px var(--color-primary);
++		box-shadow: inset 0 0 0 1px var(--color-primary);
+ 	}
+ 	.chip.new {
+-		color: var(--color-text-secondary);
+ 		border-style: dashed;
++		color: var(--color-text-secondary);
+ 	}
+ 	.chip.new:hover {
+ 		color: var(--color-primary);
+ 		border-color: var(--color-primary);
+ 	}
+-	.chip-swatches {
++	.chip .sws {
+ 		display: flex;
+ 		gap: 3px;
+ 	}
+-	.dot {
+-		width: 0.85rem;
+-		height: 0.85rem;
+-		border-radius: 3px;
++	.chip .sw {
++		width: 11px;
++		height: 11px;
++		border-radius: 2px;
+ 		border: 1px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+ 	}
++	.chip .nm {
++		font-size: 0.82rem;
++		font-weight: 600;
++	}
++	.chip .tg {
++		font-family: var(--font-base);
++		font-size: 0.6rem;
++		letter-spacing: 0.08em;
++		text-transform: uppercase;
++		color: var(--color-text-muted);
++	}
+ 
+ 	/* Inline editor */
+ 	.editor {
+ 		border: 1px solid var(--color-border);
+-		border-radius: 12px;
++		border-radius: 3px;
+ 		background: var(--color-bg-surface);
+-		padding: 1.25rem;
++		padding: 20px;
+ 	}
+-	.editor-top {
++	.etop {
+ 		display: flex;
+-		gap: 0.75rem;
++		gap: 12px;
+ 		align-items: center;
+-		margin-bottom: 1.25rem;
++		margin-bottom: 20px;
+ 	}
+ 	.name-input {
+ 		flex: 1;
+-		background: var(--color-bg-secondary);
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 8px;
+-		padding: 0.55rem 0.75rem;
++		border-radius: 3px;
++		padding: 10px 12px;
+ 		color: var(--color-text-main);
+-		font-size: 1rem;
++		font-family: var(--font-base);
++		font-size: 0.95rem;
++		font-weight: 600;
+ 	}
+-	.mode-tabs {
++	.modetabs {
+ 		display: flex;
+-		gap: 0.25rem;
+-	}
+-	.mode-tabs button {
+-		padding: 0.5rem 1rem;
+-		border-radius: 8px;
+ 		border: 1px solid var(--color-border);
++		border-radius: 3px;
++		overflow: hidden;
++	}
++	.modetabs button {
+ 		background: transparent;
++		border: 0;
++		border-left: 1px solid var(--color-border);
++		padding: 9px 16px;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.78rem;
+ 		cursor: pointer;
+ 	}
+-	.mode-tabs button.sel {
++	.modetabs button:first-child {
++		border-left: none;
++	}
++	.modetabs button.sel {
+ 		background: var(--color-primary);
+-		color: #fff;
+-		border-color: var(--color-primary);
++		color: var(--color-bg-main);
+ 	}
+ 	.groups {
+ 		display: grid;
+-		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+-		gap: 1.25rem;
++		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++		gap: 20px 28px;
+ 	}
+-	.group-title {
+-		font-size: 0.75rem;
++	.gt {
++		font-family: var(--font-base);
++		font-size: 0.65rem;
++		letter-spacing: 0.1em;
+ 		text-transform: uppercase;
+ 		color: var(--color-text-muted);
+-		margin-bottom: 0.5rem;
++		margin-bottom: 8px;
+ 	}
+-	.picker {
++	.pick {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.5rem;
+-		padding: 0.25rem 0;
++		gap: 10px;
++		padding: 5px 0;
+ 	}
+-	.picker span {
++	.pick .pl {
+ 		flex: 1;
+ 		color: var(--color-text-secondary);
+-		font-size: 0.9rem;
++		font-size: 0.82rem;
+ 	}
+-	.picker input[type='color'] {
+-		width: 2.5rem;
+-		height: 2rem;
++	.pick .col-input {
++		width: 26px;
++		height: 22px;
++		border-radius: 3px;
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+ 		background: transparent;
+-		cursor: pointer;
+ 		padding: 0;
++		cursor: pointer;
+ 	}
+ 	.hex {
+-		width: 5.5rem;
+-		background: var(--color-bg-secondary);
++		width: 82px;
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+-		padding: 0.35rem;
++		border-radius: 3px;
++		padding: 6px 8px;
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
++		font-size: 0.72rem;
+ 	}
+-	select {
++	.fontrow {
++		margin-top: 20px;
++		padding-top: 16px;
++		border-top: 1px solid var(--color-border);
++	}
++	.fontrow select {
+ 		width: 100%;
+-		background: var(--color-bg-secondary);
++		max-width: 280px;
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+-		padding: 0.5rem;
++		border-radius: 3px;
++		padding: 9px;
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
+ 	}
+-	.font-sample {
+-		margin: 0.5rem 0 0;
++	.fontrow .samp {
++		margin: 10px 0 0;
+ 		color: var(--color-text-secondary);
+ 		font-size: 0.9rem;
+ 	}
+ 	.err {
+ 		color: var(--color-status-error);
+ 		font-size: 0.85rem;
+ 		margin: 0.75rem 0 0;
+ 	}
+-	.editor-actions {
++	.eactions {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.5rem;
+-		margin-top: 1.25rem;
+-		padding-top: 1rem;
++		gap: 10px;
++		margin-top: 20px;
++		padding-top: 16px;
+ 		border-top: 1px solid var(--color-border);
+ 	}
+ 	.spacer {
+ 		flex: 1;
+ 	}
+-	.ghost {
+-		padding: 0.45rem 0.9rem;
+-		border-radius: 8px;
+-		border: 1px solid var(--color-border);
++	.ghost-sm {
+ 		background: transparent;
++		border: 1px solid var(--color-border);
++		border-radius: 3px;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.8rem;
++		padding: 8px 14px;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+ 	}
+-	.ghost:hover {
++	.ghost-sm:hover {
+ 		color: var(--color-text-main);
+ 		border-color: var(--color-text-secondary);
+ 	}
+ 	.danger {
+-		padding: 0.45rem 0.9rem;
+-		border-radius: 8px;
++		background: transparent;
+ 		border: 1px solid var(--color-status-error);
+-		background: var(--color-status-error);
+-		color: #fff;
++		border-radius: 3px;
++		color: var(--color-status-error);
++		font-family: var(--font-base);
++		font-size: 0.8rem;
++		padding: 8px 14px;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+ 	}
+ 	.danger:hover {
+-		background: color-mix(in srgb, var(--color-status-error) 85%, #000);
++		background: var(--color-status-error);
++		color: var(--color-bg-main);
+ 	}
+ 
+-	/* Filters + shared cards */
+-	.group-label {
++	/* Reader + filters shared */
++	.glabel {
++		font-family: var(--font-base);
+ 		font-size: 0.8rem;
++		letter-spacing: 0.04em;
+ 		text-transform: uppercase;
+-		letter-spacing: 0.03em;
+ 		color: var(--color-text-muted);
+-		margin: 1.5rem 0 0.75rem;
++		margin: 26px 0 12px;
+ 	}
+-	.group-label:first-of-type {
++	.glabel:first-of-type {
+ 		margin-top: 0;
+ 	}
+ 	.empty {
+ 		color: var(--color-text-secondary);
+ 		font-size: 0.9rem;
+ 	}
+ 
+ 	/* Reader: layout radios + fit segmented */
+ 	.radio-list {
+ 		display: flex;
+ 		flex-direction: column;
+-		gap: 0.5rem;
+-		max-width: 34rem;
++		gap: 8px;
++		max-width: 440px;
++		margin-bottom: 26px;
+ 	}
+ 	.radio-row {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.85rem;
+-		padding: 0.85rem 1rem;
+-		border-radius: 10px;
++		gap: 13px;
++		padding: 13px 15px;
+ 		border: 1px solid var(--color-border);
+-		background: var(--color-bg-surface);
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		cursor: pointer;
+ 		text-align: left;
+ 	}
+-	.radio-row.selected {
++	.radio-row.sel {
+ 		border-color: var(--color-primary);
+ 	}
+ 	.radio {
+-		width: 1.1rem;
+-		height: 1.1rem;
+-		border-radius: 9999px;
++		width: 15px;
++		height: 15px;
++		border-radius: 50%;
+ 		border: 2px solid var(--color-text-muted);
+ 		flex-shrink: 0;
+ 	}
+ 	.radio.on {
+ 		border-color: var(--color-primary);
+-		background: radial-gradient(circle, var(--color-primary) 40%, transparent 45%);
++		background: radial-gradient(circle, var(--color-primary) 42%, transparent 46%);
+ 	}
+-	.radio-text {
+-		display: flex;
+-		flex-direction: column;
+-	}
+-	.radio-label {
++	.rl {
+ 		color: var(--color-text-main);
+-		font-weight: 500;
++		font-weight: 600;
++		font-size: 0.88rem;
+ 	}
+-	.radio-desc {
++	.rd {
+ 		color: var(--color-text-secondary);
+-		font-size: 0.85rem;
++		font-size: 0.8rem;
+ 	}
+ 	.segmented {
+ 		display: flex;
+-		gap: 0.5rem;
+-		max-width: 34rem;
++		gap: 8px;
++		max-width: 440px;
+ 	}
+ 	.segmented button {
+ 		flex: 1;
+-		padding: 0.55rem;
+-		border-radius: 8px;
++		padding: 10px;
+ 		border: 1px solid var(--color-border);
+-		background: transparent;
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.82rem;
+ 		cursor: pointer;
+ 	}
+-	.segmented button.selected {
++	.segmented button.sel {
+ 		background: var(--color-primary);
+-		color: #fff;
++		color: var(--color-bg-main);
+ 		border-color: var(--color-primary);
+ 	}
+-	.grid {
+-		display: grid;
+-		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
++
++	/* Filters */
++	.fhead {
++		display: flex;
++		align-items: flex-start;
++		justify-content: space-between;
+ 		gap: 1rem;
+ 	}
+-	.card {
+-		border: 1px solid var(--color-border);
+-		border-radius: 10px;
+-		overflow: hidden;
+-		background: var(--color-bg-surface);
+-		display: flex;
+-		flex-direction: column;
++	.fhead .shead {
++		margin-bottom: 0;
+ 	}
+-	.filter-body {
+-		display: flex;
+-		flex-direction: column;
+-		gap: 0.25rem;
+-		padding: 0.9rem 0.9rem 0.5rem;
+-		flex: 1;
++	.fgrid {
++		display: grid;
++		grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
++		gap: 14px;
++	}
++	.fcard {
++		border: 1px solid var(--color-border);
++		border-radius: 3px;
++		background: var(--color-bg-main);
++		padding: 14px;
+ 	}
+-	.card-name {
++	.fcard .fn {
+ 		color: var(--color-text-main);
+-		font-weight: 500;
++		font-weight: 650;
++		font-size: 0.88rem;
+ 	}
+-	.card-desc {
++	.fcard .fd {
+ 		color: var(--color-text-secondary);
+-		font-size: 0.8rem;
++		font-size: 0.76rem;
++		margin-top: 3px;
+ 	}
+-	.card-actions {
++	.fcard .fa {
++		margin-top: 12px;
+ 		display: flex;
+-		gap: 0.75rem;
+-		padding: 0 0.9rem 0.9rem;
++		gap: 14px;
+ 	}
+-	.link {
++	.fcard .fa button {
+ 		background: transparent;
+ 		border: 0;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.78rem;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+-		padding: 0.2rem 0;
++		padding: 0;
+ 	}
+-	.link:hover {
++	.fcard .fa button:hover {
+ 		color: var(--color-primary);
+ 	}
+-	.danger-link {
++	.fcard .fa .danger-link {
+ 		color: var(--color-status-error);
+ 	}
+-	.danger-link:hover {
++	.fcard .fa .danger-link:hover {
+ 		color: var(--color-status-error);
+ 	}
+ 
+ 	@media (max-width: 768px) {
+-		.settings-layout {
+-			flex-direction: column;
++		.settings {
++			grid-template-columns: 1fr;
+ 		}
+-		.sidebar {
+-			width: auto;
++		.snav {
+ 			border-right: 0;
+ 			border-bottom: 1px solid var(--color-border);
+-		}
+-		nav {
+ 			flex-direction: row;
+ 			flex-wrap: wrap;
++			padding: 10px 12px;
+ 		}
+-		.content {
+-			padding: 1.5rem 1rem;
++		.scontent {
++			padding: 20px 16px 30px;
++			max-width: none;
+ 		}
+ 	}
+ </style>
+diff --git a/src/types/comic.ts b/src/types/comic.ts
+index c00b96e..0a47ef5 100644
+--- a/src/types/comic.ts
++++ b/src/types/comic.ts
+@@ -11,20 +11,21 @@ export interface ComicPage {
+ 
+ export interface ComicBook {
+   id: string;
+   title: string;
+   filename: string;
+   pages: ComicPage[];
+   currentPage: number;
+   totalPages: number;
+   lastRead: Date;
+   coverThumbnail?: string; // Base64 encoded thumbnail
++  lastReadThumbnail?: string; // data URL of the last-read page (Continue-band background)
+ 
+   // Custom filter configuration (numeric parameters only)
+   customFilter?: FilterConfig;
+ }
+ 
+ export interface ArchiveEntry {
+   filename: string;
+   index: number;
+   size: number;
+   compressed_size?: number;

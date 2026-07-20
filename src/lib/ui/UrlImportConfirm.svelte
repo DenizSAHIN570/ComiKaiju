@@ -26,7 +26,7 @@
     left: 0;
     width: 100vw;
     height: 100vh;
-    background: rgba(0, 0, 0, 0.7);
+    background: color-mix(in srgb, var(--color-text-main) 70%, transparent);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -41,7 +41,9 @@
     padding: 1.5rem;
     max-width: 90vw;
     width: 420px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    box-shadow:
+      0 10px 25px -5px color-mix(in srgb, var(--color-text-main) 10%, transparent),
+      0 8px 10px -6px color-mix(in srgb, var(--color-text-main) 10%, transparent);
   }
 
   .url-import-card h3 {
@@ -82,6 +84,6 @@
 
   .url-import-confirm {
     background: var(--color-primary);
-    color: white;
+    color: var(--color-bg-main);
   }
 </style>

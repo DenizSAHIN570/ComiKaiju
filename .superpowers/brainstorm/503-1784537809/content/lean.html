@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Lean direction</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding:32px 20px 80px}
+  .wrap{max-width:1180px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.5rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 8px;color:#9a9aa4;font-size:.95rem;max-width:76ch;line-height:1.5}
+  .caption{display:flex;align-items:baseline;gap:12px;margin:36px 0 12px}
+  .caption .tag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:#0a0a0a;background:#e9e9ee;padding:3px 8px;border-radius:4px;font-weight:600}
+  .caption h2{margin:0;font-size:1.05rem;font-weight:650}
+  .caption p{margin:0;color:#8b8b95;font-size:.85rem}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  /* ---- shared lean app system (theme-driven) ---- */
+  .app{
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font)}
+
+  /* PAPER (light theme tokens) */
+  .paper{--primary:#ff6600;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;
+    --text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;--coverbg:#e7e5e1}
+  /* GRAPHITE (dark theme tokens, flat) */
+  .graphite{--primary:#ff6600;--bg:#000000;--surface:#0a0a0a;--inset:#111111;
+    --text:#ffffff;--text2:#a1a1aa;--muted:#52525b;--border:#1f1f1f;--coverbg:#141414}
+
+  .bar{display:flex;align-items:center;justify-content:space-between;padding:20px 34px;border-bottom:1px solid var(--border)}
+  .brand{display:flex;align-items:center;gap:10px;font-weight:800;font-size:1.05rem;letter-spacing:-.02em}
+  .brand .sq{width:11px;height:11px;background:var(--primary)}
+  .bar .r{display:flex;align-items:center;gap:20px}
+  .bar .store{font-family:var(--mono);font-size:.72rem;color:var(--muted);letter-spacing:.02em}
+  .bar .ico{font-size:.95rem;color:var(--text2)}
+  .bar .add{background:var(--primary);color:#fff;border:none;border-radius:3px;padding:8px 15px;font-weight:650;font-size:.78rem;letter-spacing:.01em}
+
+  .content{padding:0 34px 40px}
+
+  /* continue — flat, ruled, no glow */
+  .continue{display:flex;align-items:center;gap:22px;padding:26px 0;border-bottom:1px solid var(--border)}
+  .continue .cov{width:70px;height:105px;background:var(--covth,#26324a);border:1px solid var(--border);flex:none;position:relative}
+  .continue .cov .n{position:absolute;top:6px;left:7px;font-family:var(--mono);font-size:.52rem;letter-spacing:.12em;color:rgba(255,255,255,.75)}
+  .continue .mid{flex:1;min-width:0}
+  .continue .eye{font-family:var(--mono);font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .continue h2{margin:7px 0 3px;font-size:1.45rem;font-weight:800;letter-spacing:-.03em}
+  .continue .sub{font-family:var(--mono);font-size:.74rem;color:var(--text2)}
+  .continue .line{margin-top:14px;height:2px;background:var(--inset);max-width:420px}
+  .continue .line i{display:block;height:100%;width:64%;background:var(--primary)}
+  .continue .go{background:transparent;border:none;color:var(--primary);font-weight:700;font-size:.9rem;letter-spacing:.01em;white-space:nowrap;align-self:center}
+
+  .sec{padding-top:30px}
+  .sechead{display:flex;align-items:baseline;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid var(--border);margin-bottom:22px}
+  .sechead .l{display:flex;align-items:baseline;gap:12px}
+  .sechead h3{margin:0;font-size:.82rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+  .sechead .cnt{font-family:var(--mono);font-size:.74rem;color:var(--muted)}
+  .sechead .more{font-family:var(--mono);font-size:.72rem;color:var(--text2);letter-spacing:.04em}
+
+  .grid{display:grid;grid-template-columns:repeat(7,1fr);gap:22px}
+  .cell .cov{aspect-ratio:2/3;background:var(--covbg,#26324a);border:1px solid var(--border);position:relative;transition:border-color .15s}
+  .cell:hover .cov{border-color:var(--primary)}
+  .cell .cov .n{position:absolute;top:8px;left:9px;font-family:var(--mono);font-size:.56rem;letter-spacing:.12em;color:rgba(255,255,255,.72)}
+  .cell .cov .ct{position:absolute;left:9px;right:9px;bottom:9px;font-weight:700;font-size:.8rem;line-height:1.05;color:#fff;letter-spacing:-.01em}
+  .cell .t{margin-top:10px;font-size:.78rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+  .cell .m{margin-top:3px;font-family:var(--mono);font-size:.66rem;color:var(--muted)}
+  .cell .prog{margin-top:7px;height:2px;background:var(--inset)}.cell .prog i{display:block;height:100%;background:var(--primary)}
+
+  footer{margin-top:42px;padding-top:20px;border-top:1px solid var(--border);font-family:var(--mono);font-size:.7rem;color:var(--muted);letter-spacing:.05em}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Lean direction — flat, ruled, typographic</h1>
+  <p class="pagesub">No blurred glow, near-square corners (3px on buttons only), hairline rules instead of shadows, a strict grid, and orange as a single deliberate mark (Add button · continue progress · hover keyline). Covers are calm flat tiles, not glowing gradients. Same system shown in a light “paper” temperature and a flat “graphite” dark — the app stays fully themeable either way.</p>
+
+  <div class="caption"><span class="tag">Paper</span><h2>Light</h2><p>Editorial / print. The clearest statement of the lean language.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app paper">
+      <div class="bar">
+        <div class="brand"><span class="sq"></span>ComiKaiju</div>
+        <div class="r"><span class="store">1.2 / 3.0 GB</span><span class="ico">◐</span><span class="ico">⚙</span><button class="add">Add</button></div>
+      </div>
+      <div class="content">
+        <div class="continue">
+          <div class="cov" style="--covth:#7a2d1a"><span class="n">#014</span></div>
+          <div class="mid">
+            <div class="eye">Continue</div>
+            <h2>Ember Circuit</h2>
+            <div class="sub">page 64 / 100 · opened 2 days ago</div>
+            <div class="line"><i></i></div>
+          </div>
+          <button class="go">Resume →</button>
+        </div>
+        <div class="sec">
+          <div class="sechead"><div class="l"><h3>Library</h3><span class="cnt">48</span></div><span class="more">view all →</span></div>
+          <div class="grid">
+            <div class="cell"><div class="cov" style="--covbg:#7a2d1a"><span class="n">#014</span><span class="ct">Ember Circuit</span></div><div class="t">Ember Circuit</div><div class="prog"><i style="width:64%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#1d3a5c"><span class="n">#207</span><span class="ct">Tidewatch</span></div><div class="t">Tidewatch</div><div class="prog"><i style="width:22%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#3d2456"><span class="n">#003</span><span class="ct">Nightglass</span></div><div class="t">Nightglass</div><div class="prog"><i style="width:88%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#265c3a"><span class="n">#031</span><span class="ct">Verdant</span></div><div class="t">Verdant</div><div class="m">42 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#5c1d3a"><span class="n">#128</span><span class="ct">Rosewire</span></div><div class="t">Rosewire</div><div class="m">61 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#4a4416"><span class="n">#077</span><span class="ct">Goldfall</span></div><div class="t">Goldfall</div><div class="m">38 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#16404a"><span class="n">#090</span><span class="ct">Coldharbor</span></div><div class="t">Coldharbor</div><div class="m">55 MB</div></div>
+          </div>
+        </div>
+        <footer>ComiKaiju — everything stays on your device. CBZ · CBR.</footer>
+      </div>
+    </div>
+  </div>
+
+  <div class="caption"><span class="tag">Graphite</span><h2>Dark (flat)</h2><p>Same system, dark temperature — flat, no glow, hairline rules. Proves it holds without the factory sheen.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app graphite">
+      <div class="bar">
+        <div class="brand"><span class="sq"></span>ComiKaiju</div>
+        <div class="r"><span class="store">1.2 / 3.0 GB</span><span class="ico">◐</span><span class="ico">⚙</span><button class="add">Add</button></div>
+      </div>
+      <div class="content">
+        <div class="continue">
+          <div class="cov" style="--covth:#7a2d1a"><span class="n">#014</span></div>
+          <div class="mid">
+            <div class="eye">Continue</div>
+            <h2>Ember Circuit</h2>
+            <div class="sub">page 64 / 100 · opened 2 days ago</div>
+            <div class="line"><i></i></div>
+          </div>
+          <button class="go">Resume →</button>
+        </div>
+        <div class="sec">
+          <div class="sechead"><div class="l"><h3>Library</h3><span class="cnt">48</span></div><span class="more">view all →</span></div>
+          <div class="grid">
+            <div class="cell"><div class="cov" style="--covbg:#7a2d1a"><span class="n">#014</span><span class="ct">Ember Circuit</span></div><div class="t">Ember Circuit</div><div class="prog"><i style="width:64%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#1d3a5c"><span class="n">#207</span><span class="ct">Tidewatch</span></div><div class="t">Tidewatch</div><div class="prog"><i style="width:22%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#3d2456"><span class="n">#003</span><span class="ct">Nightglass</span></div><div class="t">Nightglass</div><div class="prog"><i style="width:88%"></i></div></div>
+            <div class="cell"><div class="cov" style="--covbg:#265c3a"><span class="n">#031</span><span class="ct">Verdant</span></div><div class="t">Verdant</div><div class="m">42 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#5c1d3a"><span class="n">#128</span><span class="ct">Rosewire</span></div><div class="t">Rosewire</div><div class="m">61 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#4a4416"><span class="n">#077</span><span class="ct">Goldfall</span></div><div class="t">Goldfall</div><div class="m">38 MB</div></div>
+            <div class="cell"><div class="cov" style="--covbg:#16404a"><span class="n">#090</span><span class="ct">Coldharbor</span></div><div class="t">Coldharbor</div><div class="m">55 MB</div></div>
+          </div>
+        </div>
+        <footer>ComiKaiju — everything stays on your device. CBZ · CBR.</footer>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
