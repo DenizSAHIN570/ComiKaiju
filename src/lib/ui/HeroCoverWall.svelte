@@ -7,56 +7,102 @@
   // return 404 (instead of a 1px blank served as 200), so failures are real
   // errors we can fall back on. CORS is open (access-control-allow-origin: *),
   // so we can fetch the bytes and cache them in IndexedDB.
+  //
+  // NOTE: the title after each ISBN is what Open Library ACTUALLY returns for it
+  // (verified 2026-07-20), not necessarily the edition the ISBN nominally names.
+  // Two resolve to a blank/404 and fall back to a generated cover. All are real
+  // comic covers, which is all the blurred background needs.
   const ISBNS = [
-    "9781401263409", // Batman: The Killing Joke
+    "9781401263409", // Batman: Arkham Knight
     "9781401238964", // Watchmen
-    "9781302911140", // Infinity Gauntlet
-    "9780785190219", // Civil War
+    "9781302911140", // (no cover — 404)
+    "9780785190219", // Ms. Marvel: No Normal
     "9781607066019", // Saga, Vol. 1
-    "9781401223175", // V for Vendetta
-    "9781302928185", // Spider-Man: Miles Morales
+    "9781401223175", // Batman: Hush
+    "9781302928185", // (no cover — 404)
     "9781401235420", // Batman: The Court of Owls
   ];
   const coverUrl = (isbn: string) =>
     `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
   const cacheKey = (isbn: string) => `hero-cover-${isbn}`;
 
-  const TILE_COUNT = 24;
   const ROWS = 3;
+  const TILE_W = 132;
+  const GAP = 14;
 
   // Resolved real-cover object URLs, one slot per ISBN; null = unavailable
   // (missing cover, offline, or fetch failed) and that slot renders its SVG.
   let covers = $state<(string | null)[]>(ISBNS.map(() => null));
   let objectUrls: string[] = [];
 
-  // Deterministic crude "comic cover" SVG per tile, echoing CoverArt's palette,
-  // as a data URI so it can be a plain CSS background. Used as the base layer
-  // and as the offline/fallback art.
+  // Deterministic "comic cover" placeholder per tile, echoing CoverArt's HSL
+  // palette, as a data URI so it can be a plain CSS background. Two layouts —
+  // a masthead-style cover and a title-band cover — alternate for variety.
   function svgCover(i: number): string {
     const hue = (i * 47 + 7) % 360;
-    const bg = `hsl(${hue} 45% 18%)`;
-    const band = `hsl(${hue} 60% 42%)`;
-    const line = `hsl(${hue} 40% 30%)`;
-    const num = String((i % 40) + 1).padStart(3, "0");
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'>
+    const bg = `hsl(${hue} 44% 15%)`;
+    const bg2 = `hsl(${hue} 42% 21%)`;
+    const band = `hsl(${hue} 52% 36%)`;
+    const accent = `hsl(${(hue + 26) % 360} 72% 54%)`;
+    const shadow = `hsl(${hue} 45% 10%)`;
+    const ink = `hsl(${hue} 25% 90%)`;
+    const num = "#" + String((i % 60) + 1).padStart(3, "0");
+    // faux barcode: a few thin bars
+    const bars = [0, 4, 7, 12, 15, 21, 25]
+      .map((x) => `<rect x='${152 + x}' y='272' width='2' height='18' fill='${ink}' opacity='.7'/>`)
+      .join("");
+
+    const masthead = `
       <rect width='200' height='300' fill='${bg}'/>
-      <rect x='0' y='96' width='200' height='96' fill='${band}'/>
-      <rect x='16' y='232' width='168' height='6' fill='${line}'/>
-      <rect x='16' y='250' width='120' height='6' fill='${line}'/>
-      <text x='16' y='30' font-family='monospace' font-size='13' fill='hsl(${hue} 30% 88%)'>#${num}</text>
-    </svg>`;
+      <rect y='54' width='200' height='182' fill='${band}'/>
+      <rect x='34' y='96' width='132' height='104' fill='${shadow}' opacity='.35'/>
+      <rect width='200' height='54' fill='${bg2}'/>
+      <rect y='53' width='200' height='2' fill='${accent}'/>
+      <rect x='12' y='11' width='32' height='32' fill='${accent}'/>
+      <rect x='54' y='15' width='120' height='11' rx='1' fill='${ink}' opacity='.9'/>
+      <rect x='54' y='31' width='84' height='8' rx='1' fill='${ink}' opacity='.55'/>
+      <rect y='236' width='200' height='64' fill='${bg2}'/>
+      <text x='12' y='262' font-family='monospace' font-size='13' fill='${ink}'>${num}</text>
+      ${bars}`;
+
+    const titleBand = `
+      <rect width='200' height='300' fill='${band}'/>
+      <rect y='0' width='200' height='150' fill='${shadow}' opacity='.25'/>
+      <rect y='150' width='200' height='150' fill='${bg}'/>
+      <rect y='44' width='200' height='70' fill='${accent}'/>
+      <rect x='16' y='58' width='150' height='20' rx='2' fill='${shadow}'/>
+      <rect x='16' y='84' width='104' height='12' rx='2' fill='${shadow}' opacity='.75'/>
+      <rect x='156' y='12' width='32' height='32' fill='${shadow}'/>
+      <rect x='158' y='14' width='28' height='28' fill='none' stroke='${accent}' stroke-width='2'/>
+      <rect x='16' y='210' width='168' height='3' fill='${shadow}'/>
+      <text x='16' y='276' font-family='monospace' font-size='13' fill='${ink}'>${num}</text>
+      ${bars}`;
+
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='200' height='300' viewBox='0 0 200 300'>${
+      i % 2 === 0 ? masthead : titleBand
+    }</svg>`;
     return `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
   }
 
-  // Tiles are tied to ISBN slots round-robin; each ISBN recurs ~3x across the
-  // wall. A slot shows its real cover once resolved, otherwise its SVG.
-  const tiles = Array.from({ length: TILE_COUNT }, (_, i) => ({
-    i,
-    isbnIndex: i % ISBNS.length,
-    svg: svgCover(i),
-  }));
-  const rows = Array.from({ length: ROWS }, (_, r) =>
-    tiles.filter((_, i) => i % ROWS === r),
+  // How many tiles a row needs so that ONE copy is at least as wide as the
+  // viewport. The row is rendered twice and translated by -50%, so a single
+  // copy must span the screen or a gap appears at the wrap point. Recomputed
+  // on resize. Falls back to a generous count before mount / on the server.
+  let perRow = $state(20);
+  function recomputePerRow() {
+    const w = typeof window !== "undefined" ? window.innerWidth : 1920;
+    perRow = Math.ceil(w / (TILE_W + GAP)) + 3;
+  }
+
+  // Tiles are tied to ISBN slots so real covers spread across the wall; the
+  // per-row offset keeps neighbouring rows from lining up identically.
+  const rows = $derived(
+    Array.from({ length: ROWS }, (_, r) =>
+      Array.from({ length: perRow }, (_, k) => {
+        const seed = r * 7 + k;
+        return { key: r + "-" + k, isbnIndex: seed % ISBNS.length, svg: svgCover(seed) };
+      }),
+    ),
   );
 
   async function resolveCover(isbn: string, slot: number) {
@@ -79,12 +125,15 @@
   }
 
   onMount(() => {
+    recomputePerRow();
+    window.addEventListener("resize", recomputePerRow);
     void comicStorage
       .init()
       .then(() => Promise.all(ISBNS.map((isbn, slot) => resolveCover(isbn, slot))));
   });
 
   onDestroy(() => {
+    if (typeof window !== "undefined") window.removeEventListener("resize", recomputePerRow);
     for (const url of objectUrls) URL.revokeObjectURL(url);
   });
 </script>
@@ -115,7 +164,7 @@
     justify-content: center;
     gap: 14px;
     overflow: hidden;
-    filter: blur(4px);
+    filter: blur(2.5px);
     /* Dim so it reads as ambient texture, not foreground. */
     opacity: 0.55;
     pointer-events: none;
@@ -123,7 +172,6 @@
 
   .row {
     display: flex;
-    gap: 14px;
     flex: none;
     width: max-content;
     animation: drift var(--dur) linear infinite;
@@ -139,6 +187,10 @@
     flex: none;
     width: 132px;
     height: 198px;
+    /* Spacing via margin (not flex gap) so every tile — including the last of
+       each copy — carries a trailing gap. That makes the doubled row exactly
+       two periods wide, so the -50% drift loops with no seam. */
+    margin-right: 14px;
     background-size: cover;
     background-position: center;
     position: relative;
