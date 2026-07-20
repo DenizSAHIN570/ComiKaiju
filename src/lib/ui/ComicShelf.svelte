@@ -92,7 +92,7 @@
   }
 </script>
 
-<div class="shelf" class:sparse={comics.length < 3}>
+<div class="shelf">
   {#each comics as comic, i (comic.id)}
     {@const isOpen = openId === comic.id}
     {@const title = comic.metadata?.title ?? comic.name}
@@ -166,6 +166,7 @@
 <style>
   .shelf {
     display: flex;
+    justify-content: flex-start;
     gap: 5px;
     /* 30px inset on every side, matching the Continue band's horizontal margin.
        Height carries the padding so the spines keep their 360px. */
@@ -174,7 +175,12 @@
   }
 
   .spine {
-    flex: 1 1 0;
+    /* Closed spines are exactly one cover wide and never grow past it, so there
+       is no transparent, still-hoverable dead zone beside the art. They shrink
+       (cropping the cover) only when the row is too crowded to fit them all.
+       Opening is driven solely by the .open class — which carries the JS
+       hover-intent delay — never by a bare CSS :hover. */
+    flex: 0 1 240px;
     min-width: 0;
     position: relative;
     overflow: hidden;
@@ -188,34 +194,10 @@
     text-align: left;
     font: inherit;
     color: inherit;
-    transition:
-      flex-basis 0.42s cubic-bezier(0.2, 0.7, 0.2, 1),
-      flex-grow 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
+    transition: flex-basis 0.42s cubic-bezier(0.2, 0.7, 0.2, 1);
   }
 
-  .spine.open,
-  .shelf:hover .spine:hover {
-    flex: 0 0 490px;
-  }
-
-  .shelf:hover .spine {
-    flex: 1 1 0;
-  }
-
-  /* Too few comics to fill the row: don't let closed spines stretch into fat,
-     cropped slabs. Hold each at a natural cover width, left-aligned, so 1–2
-     comics read as covers rather than distorted fills. */
-  .shelf.sparse {
-    justify-content: flex-start;
-  }
-
-  .shelf.sparse .spine,
-  .shelf.sparse:hover .spine {
-    flex: 0 0 240px;
-  }
-
-  .shelf.sparse .spine.open,
-  .shelf.sparse:hover .spine:hover {
+  .spine.open {
     flex: 0 0 490px;
   }
 
