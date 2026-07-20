@@ -1,10 +1,12 @@
 import { comicStorage } from "$lib/storage/comicStorage";
 import { themeValidator } from "./themeValidator";
 import { DEFAULT_THEME_ID, type Theme, type ThemeMode } from "./themeSchema";
+import type { ThemeMeta } from "./themeOrder";
 
 const K_THEMES = "themes";
 const K_ACTIVE = "activeThemeId";
 const K_MODE = "themeMode";
+const K_META = "themeMeta";
 
 /** Persists the user theme library + active selection + mode in IndexedDB. */
 export const themeStorage = {
@@ -28,5 +30,11 @@ export const themeStorage = {
   },
   setMode(mode: ThemeMode): Promise<void> {
     return comicStorage.saveSetting(K_MODE, mode);
+  },
+  async getThemeMeta(): Promise<ThemeMeta> {
+    return (await comicStorage.getSetting<ThemeMeta>(K_META)) ?? {};
+  },
+  saveThemeMeta(meta: ThemeMeta): Promise<void> {
+    return comicStorage.saveSetting(K_META, meta);
   },
 };
