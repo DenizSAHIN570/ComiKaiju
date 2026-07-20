@@ -1,0 +1,1113 @@
+# Review package: 735d94b..e2c91c6
+
+## Commits
+e2c91c6 feat(settings): restyle themes/reader/filters into lean language
+
+## Files changed
+ src/routes/settings/+page.svelte | 831 ++++++++++++++++++++-------------------
+ 1 file changed, 426 insertions(+), 405 deletions(-)
+
+## Diff
+diff --git a/src/routes/settings/+page.svelte b/src/routes/settings/+page.svelte
+index 932ffa1..891c200 100644
+--- a/src/routes/settings/+page.svelte
++++ b/src/routes/settings/+page.svelte
+@@ -1,14 +1,15 @@
+ <script lang="ts">
+ 	import { onMount, onDestroy } from 'svelte';
+ 	import { get } from 'svelte/store';
+-	import { resolve } from '$app/paths';
++	import AppBar from '$lib/ui/AppBar.svelte';
++	import SiteFooter from '$lib/ui/SiteFooter.svelte';
+ 	import { themeStore, allThemesFrom, getActiveTheme, PRESET_IDS } from '$lib/theme/themeStore';
+ 	import { themeValidator } from '$lib/theme/themeValidator';
+ 	import {
+ 		FONT_STACKS,
+ 		type Theme,
+ 		type ThemeMode,
+ 		type Palette,
+ 		type FontId
+ 	} from '$lib/theme/themeSchema';
+ 	import FilterEditor from '$lib/ui/FilterEditor.svelte';
+@@ -226,657 +227,677 @@
+ 	onApply={() => {}}
+ 	onSave={(config) => {
+ 		void customFilterStore.save(config);
+ 	}}
+ 	onDelete={(id) => {
+ 		void customFilterStore.remove(id);
+ 	}}
+ 	onClose={() => (filterEditorOpen = false)}
+ />
+ 
+-<div class="settings-layout">
+-	<aside class="sidebar">
+-		<a class="back" href={resolve('/')}>← ComiKaiju</a>
+-		<h1>Settings</h1>
+-		<nav>
+-			{#each NAV as item (item.id)}
+-				<button
+-					class="nav-item"
+-					class:active={section === item.id}
+-					onclick={() => (section = item.id)}
+-				>
+-					{item.label}
++<AppBar active="settings" />
++
++<div class="settings">
++	<nav class="snav">
++		{#each NAV as item (item.id)}
++			<button
++				type="button"
++				class:active={section === item.id}
++				onclick={() => (section = item.id)}
++			>
++				{item.label}
++			</button>
++		{/each}
++	</nav>
++
++	<div class="scontent">
++		{#if section === 'themes'}
++			<div class="shead">
++				<h2>Themes</h2>
++				<p>Pick a theme to edit it below. Changes apply live; presets can be edited and reset.</p>
++			</div>
++
++			<!-- Top: theme options -->
++			<div class="chips">
++				{#each themes as t (t.id)}
++					{@const palette = isDarkNow(themeState.mode) ? t.dark : t.light}
++					<button
++						type="button"
++						class="chip"
++						class:active={activeTheme.id === t.id}
++						onclick={() => selectTheme(t)}
++					>
++						<span class="sws">
++							{#each swatchKeys as k (k)}
++								<span class="sw" style="background:{palette[k]}"></span>
++							{/each}
++						</span>
++						<span class="nm">{t.name}</span>
++						<span class="tg">{PRESET_IDS.has(t.id) ? 'Preset' : 'Yours'}</span>
++					</button>
++				{/each}
++				<button type="button" class="chip new" onclick={newTheme}>
++					<span class="nm">+ New</span>
+ 				</button>
+-			{/each}
+-		</nav>
+-	</aside>
+-
+-	<main class="content">
+-		<div class="content-inner">
+-			{#if section === 'themes'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Themes</h2>
+-						<p class="hint">
+-							Pick a theme to edit it below. Changes apply live; presets can be edited and reset.
+-						</p>
++			</div>
++
++			<!-- Bottom: always-visible editor for the selected theme -->
++			{#if draft}
++				<div class="editor">
++					<div class="etop">
++						<input
++							class="name-input"
++							value={draft.name}
++							maxlength="60"
++							placeholder="Theme name"
++							oninput={(e) => (draft = { ...draft!, name: e.currentTarget.value })}
++							onchange={commit}
++						/>
++						<div class="modetabs">
++							<button
++								type="button"
++								class:sel={editMode === 'light'}
++								onclick={() => switchMode('light')}>Light</button
++							>
++							<button type="button" class:sel={editMode === 'dark'} onclick={() => switchMode('dark')}
++								>Dark</button
++							>
++						</div>
+ 					</div>
+-				</div>
+ 
+-				<!-- Top: theme options -->
+-				<div class="chips">
+-					{#each themes as t (t.id)}
+-						{@const palette = isDarkNow(themeState.mode) ? t.dark : t.light}
+-						<button
+-							class="chip"
+-							class:active={activeTheme.id === t.id}
+-							onclick={() => selectTheme(t)}
+-						>
+-							<span class="chip-swatches">
+-								{#each swatchKeys as k (k)}
+-									<span class="dot" style="background:{palette[k]}"></span>
++					<div class="groups">
++						{#each GROUPS as g (g.title)}
++							<div class="grp">
++								<div class="gt">{g.title}</div>
++								{#each g.keys as key (key)}
++									<label class="pick">
++										<span class="pl">{LABELS[key]}</span>
++										<input
++											class="col-input"
++											type="color"
++											value={draft[editMode][key]}
++											oninput={(e) => setColor(key, e.currentTarget.value)}
++											onchange={commit}
++										/>
++										<input
++											class="hex"
++											value={draft[editMode][key]}
++											maxlength="7"
++											onchange={(e) => {
++												setColor(key, e.currentTarget.value);
++												commit();
++											}}
++										/>
++									</label>
+ 								{/each}
+-							</span>
+-							<span class="chip-name">{t.name}</span>
+-						</button>
+-					{/each}
+-					<button class="chip new" onclick={newTheme}>+ New</button>
+-				</div>
+-
+-				<!-- Bottom: always-visible editor for the selected theme -->
+-				{#if draft}
+-					<div class="editor">
+-						<div class="editor-top">
+-							<input
+-								class="name-input"
+-								value={draft.name}
+-								maxlength="60"
+-								placeholder="Theme name"
+-								oninput={(e) => (draft = { ...draft!, name: e.currentTarget.value })}
+-								onchange={commit}
+-							/>
+-							<div class="mode-tabs">
+-								<button class:sel={editMode === 'light'} onclick={() => switchMode('light')}>Light</button>
+-								<button class:sel={editMode === 'dark'} onclick={() => switchMode('dark')}>Dark</button>
+ 							</div>
+-						</div>
++						{/each}
++					</div>
+ 
+-						<div class="groups">
+-							{#each GROUPS as g (g.title)}
+-								<div class="group">
+-									<div class="group-title">{g.title}</div>
+-									{#each g.keys as key (key)}
+-										<label class="picker">
+-											<span>{LABELS[key]}</span>
+-											<input
+-												type="color"
+-												value={draft[editMode][key]}
+-												oninput={(e) => setColor(key, e.currentTarget.value)}
+-												onchange={commit}
+-											/>
+-											<input
+-												class="hex"
+-												value={draft[editMode][key]}
+-												maxlength="7"
+-												onchange={(e) => {
+-													setColor(key, e.currentTarget.value);
+-													commit();
+-												}}
+-											/>
+-										</label>
+-									{/each}
+-								</div>
++					<div class="fontrow">
++						<div class="gt">Font</div>
++						<select
++							value={draft.font}
++							onchange={(e) => {
++								draft = { ...draft!, font: e.currentTarget.value as FontId };
++								previewNow();
++								commit();
++							}}
++						>
++							{#each FONTS as f (f.id)}
++								<option value={f.id}>{f.label}</option>
+ 							{/each}
++						</select>
++						<p class="samp" style="font-family:{FONT_STACKS[draft.font]}">
++							The quick brown fox jumps over the lazy dog
++						</p>
++					</div>
+ 
+-							<div class="group">
+-								<div class="group-title">Font</div>
+-								<select
+-									value={draft.font}
+-									onchange={(e) => {
+-										draft = { ...draft!, font: e.currentTarget.value as FontId };
+-										previewNow();
+-										commit();
+-									}}
+-								>
+-									{#each FONTS as f (f.id)}
+-										<option value={f.id}>{f.label}</option>
+-									{/each}
+-								</select>
+-								<p class="font-sample" style="font-family:{FONT_STACKS[draft.font]}">
+-									The quick brown fox jumps over the lazy dog
+-								</p>
+-							</div>
+-						</div>
++					{#if importError}<p class="err">{importError}</p>{/if}
+ 
+-						{#if importError}<p class="err">{importError}</p>{/if}
+-
+-						<div class="editor-actions">
+-							<button class="ghost" onclick={() => importInput?.click()}>Import</button>
+-							<input
+-								type="file"
+-								accept="application/json"
+-								bind:this={importInput}
+-								onchange={importFile}
+-								hidden
+-							/>
+-							<button class="ghost" onclick={exportTheme}>Export</button>
+-							<span class="spacer"></span>
+-							{#if isPreset}
+-								{#if isOverridden}
+-									<button class="danger" onclick={resetPreset}>Reset to default</button>
+-								{/if}
+-							{:else}
+-								<button class="danger" onclick={deleteCustom}>Delete theme</button>
++					<div class="eactions">
++						<button type="button" class="ghost-sm" onclick={() => importInput?.click()}>
++							Import
++						</button>
++						<input
++							type="file"
++							accept="application/json"
++							bind:this={importInput}
++							onchange={importFile}
++							hidden
++						/>
++						<button type="button" class="ghost-sm" onclick={exportTheme}>Export</button>
++						<span class="spacer"></span>
++						{#if isPreset}
++							{#if isOverridden}
++								<button type="button" class="danger" onclick={resetPreset}>Reset to default</button>
+ 							{/if}
+-						</div>
+-					</div>
+-				{/if}
+-			{:else if section === 'reader'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Reader</h2>
+-						<p class="hint">Default reading layout for newly opened comics.</p>
++						{:else}
++							<button type="button" class="danger" onclick={deleteCustom}>Delete theme</button>
++						{/if}
+ 					</div>
+ 				</div>
+-
+-				<h3 class="group-label">Reading layout</h3>
+-				<div class="radio-list">
+-					{#each LAYOUTS as l (l.id)}
+-						<button class="radio-row" class:selected={layout === l.id} onclick={() => setLayout(l.id)}>
+-							<span class="radio" class:on={layout === l.id}></span>
+-							<span class="radio-text">
+-								<span class="radio-label">{l.label}</span>
+-								<span class="radio-desc">{l.desc}</span>
+-							</span>
+-						</button>
+-					{/each}
+-				</div>
+-
+-				<h3 class="group-label">Page fit</h3>
+-				<div class="segmented">
+-					{#each FITS as f (f.id)}
+-						<button
+-							class:selected={reader.fitMode === f.id}
+-							onclick={() => readerSettings.update({ fitMode: f.id })}
+-						>
+-							{f.label}
+-						</button>
+-					{/each}
++			{/if}
++		{:else if section === 'reader'}
++			<div class="shead">
++				<h2>Reader</h2>
++				<p>Default reading layout for newly opened comics.</p>
++			</div>
++
++			<h3 class="glabel">Reading layout</h3>
++			<div class="radio-list">
++				{#each LAYOUTS as l (l.id)}
++					<button
++						type="button"
++						class="radio-row"
++						class:sel={layout === l.id}
++						onclick={() => setLayout(l.id)}
++					>
++						<span class="radio" class:on={layout === l.id}></span>
++						<span>
++							<div class="rl">{l.label}</div>
++							<div class="rd">{l.desc}</div>
++						</span>
++					</button>
++				{/each}
++			</div>
++
++			<h3 class="glabel">Page fit</h3>
++			<div class="segmented">
++				{#each FITS as f (f.id)}
++					<button
++						type="button"
++						class:sel={reader.fitMode === f.id}
++						onclick={() => readerSettings.update({ fitMode: f.id })}
++					>
++						{f.label}
++					</button>
++				{/each}
++			</div>
++		{:else if section === 'filters'}
++			<div class="fhead">
++				<div class="shead">
++					<h2>Filters</h2>
++					<p>Manage your reusable image filters. Custom filters appear in the reader's filter menu.</p>
+ 				</div>
+-			{:else if section === 'filters'}
+-				<div class="content-head">
+-					<div>
+-						<h2>Filters</h2>
+-						<p class="hint">
+-							Manage your reusable image filters. Custom filters appear in the reader's filter menu.
+-						</p>
++				<button type="button" class="btn-primary" onclick={createFilter}>+ Create filter</button>
++			</div>
++
++			<h3 class="glabel">Presets</h3>
++			<div class="fgrid">
++				{#each premadeFilters as f (f.id)}
++					<div class="fcard">
++						<div class="fn">{f.name}</div>
++						{#if f.description}<div class="fd">{f.description}</div>{/if}
++						<div class="fa">
++							<button type="button" onclick={() => editFilter(f)}>Duplicate</button>
++						</div>
+ 					</div>
+-					<button class="btn-primary" onclick={createFilter}>+ Create filter</button>
+-				</div>
+-
+-				<h3 class="group-label">Presets</h3>
+-				<div class="grid">
+-					{#each premadeFilters as f (f.id)}
+-						<div class="card">
+-							<div class="filter-body">
+-								<span class="card-name">{f.name}</span>
+-								{#if f.description}<span class="card-desc">{f.description}</span>{/if}
+-							</div>
+-							<div class="card-actions">
+-								<button class="link" onclick={() => editFilter(f)}>Duplicate</button>
++				{/each}
++			</div>
++
++			<h3 class="glabel">My Filters</h3>
++			{#if customFilters.length === 0}
++				<p class="empty">No custom filters yet. Create one to get started.</p>
++			{:else}
++				<div class="fgrid">
++					{#each customFilters as f (f.id)}
++						<div class="fcard">
++							<div class="fn">{f.name}</div>
++							{#if f.description}<div class="fd">{f.description}</div>{/if}
++							<div class="fa">
++								<button type="button" onclick={() => editFilter(f)}>Edit</button>
++								<button
++									type="button"
++									class="danger-link"
++									onclick={() => void customFilterStore.remove(f.id)}
++								>
++									Delete
++								</button>
+ 							</div>
+ 						</div>
+ 					{/each}
+ 				</div>
+-
+-				<h3 class="group-label">My Filters</h3>
+-				{#if customFilters.length === 0}
+-					<p class="empty">No custom filters yet. Create one to get started.</p>
+-				{:else}
+-					<div class="grid">
+-						{#each customFilters as f (f.id)}
+-							<div class="card">
+-								<div class="filter-body">
+-									<span class="card-name">{f.name}</span>
+-									{#if f.description}<span class="card-desc">{f.description}</span>{/if}
+-								</div>
+-								<div class="card-actions">
+-									<button class="link" onclick={() => editFilter(f)}>Edit</button>
+-									<button class="link danger-link" onclick={() => void customFilterStore.remove(f.id)}>
+-										Delete
+-									</button>
+-								</div>
+-							</div>
+-						{/each}
+-					</div>
+-				{/if}
+ 			{/if}
+-		</div>
+-	</main>
++		{/if}
++	</div>
+ </div>
+ 
++<SiteFooter />
++
+ <style>
+-	.settings-layout {
+-		display: flex;
+-		min-height: 100vh;
+-		align-items: stretch;
++	.settings {
++		display: grid;
++		grid-template-columns: 184px 1fr;
++		min-height: 60vh;
+ 	}
+-	.sidebar {
+-		width: 15rem;
+-		flex-shrink: 0;
++
++	.snav {
+ 		border-right: 1px solid var(--color-border);
+-		padding: 1.5rem 1rem;
+-		background: var(--color-bg-surface);
+-	}
+-	.back {
+-		display: inline-block;
+-		color: var(--color-text-secondary);
+-		text-decoration: none;
+-		font-size: 0.85rem;
+-		margin-bottom: 1.5rem;
+-	}
+-	.back:hover {
+-		color: var(--color-primary);
+-	}
+-	.sidebar h1 {
+-		font-size: 1.25rem;
+-		font-weight: 700;
+-		margin: 0 0 1rem;
+-		color: var(--color-text-main);
+-	}
+-	nav {
++		padding: 22px 0;
+ 		display: flex;
+ 		flex-direction: column;
+-		gap: 0.15rem;
+ 	}
+-	.nav-item {
++	.snav button {
++		display: block;
++		width: 100%;
+ 		text-align: left;
+-		padding: 0.5rem 0.75rem;
+-		border-radius: 8px;
++		padding: 10px 22px;
+ 		border: 0;
+ 		border-left: 2px solid transparent;
+ 		background: transparent;
++		font-family: var(--font-base);
++		font-size: 0.78rem;
++		letter-spacing: 0.04em;
+ 		color: var(--color-text-secondary);
+ 		cursor: pointer;
+-		font-size: 0.95rem;
+ 	}
+-	.nav-item:hover {
+-		background: var(--color-bg-secondary);
++	.snav button:hover {
+ 		color: var(--color-text-main);
+ 	}
+-	.nav-item.active {
+-		background: var(--color-bg-secondary);
+-		color: var(--color-primary);
++	.snav button.active {
++		color: var(--color-text-main);
+ 		border-left-color: var(--color-primary);
+-		font-weight: 600;
+ 	}
+ 
+-	.content {
+-		flex: 1;
+-		min-width: 0;
+-		display: flex;
+-		justify-content: center;
+-		padding: 2rem 1.5rem;
+-	}
+-	.content-inner {
+-		width: 100%;
++	.scontent {
++		padding: 26px 30px 40px;
+ 		max-width: 52rem;
+ 	}
+-	.content-head {
+-		display: flex;
+-		align-items: flex-start;
+-		justify-content: space-between;
+-		gap: 1rem;
+-		margin-bottom: 1.5rem;
++
++	.shead {
++		margin-bottom: 22px;
+ 	}
+-	h2 {
+-		font-size: 1.4rem;
+-		font-weight: 700;
+-		margin: 0 0 0.25rem;
++	.shead h2 {
++		margin: 0 0 4px;
++		font-size: 1.35rem;
++		font-weight: 800;
++		letter-spacing: -0.02em;
+ 		color: var(--color-text-main);
+ 	}
+-	.hint {
+-		color: var(--color-text-secondary);
+-		font-size: 0.9rem;
++	.shead p {
+ 		margin: 0;
+-		max-width: 36rem;
++		color: var(--color-text-secondary);
++		font-size: 0.86rem;
++		max-width: 40rem;
+ 	}
++
+ 	.btn-primary {
+ 		flex-shrink: 0;
+-		padding: 0.5rem 1rem;
+-		border-radius: 8px;
+-		border: 1px solid var(--color-primary);
+ 		background: var(--color-primary);
++		border: 1px solid var(--color-primary);
++		border-radius: 3px;
+ 		color: #fff;
++		font-family: var(--font-base);
++		font-weight: 650;
++		font-size: 0.82rem;
++		padding: 9px 15px;
+ 		cursor: pointer;
+-		font-size: 0.9rem;
+ 	}
+ 	.btn-primary:hover {
+ 		background: var(--color-primary-hover);
+ 	}
+ 
+ 	/* Theme chips */
+ 	.chips {
+ 		display: flex;
+ 		flex-wrap: wrap;
+-		gap: 0.6rem;
+-		margin-bottom: 1.5rem;
++		gap: 10px;
++		margin-bottom: 26px;
+ 	}
+ 	.chip {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.55rem;
+-		padding: 0.5rem 0.75rem;
+-		border-radius: 9999px;
++		gap: 9px;
++		padding: 8px 12px;
+ 		border: 1px solid var(--color-border);
+-		background: var(--color-bg-surface);
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
+ 		cursor: pointer;
+-		font-size: 0.9rem;
+ 	}
+ 	.chip:hover {
+ 		border-color: var(--color-text-secondary);
+ 	}
+ 	.chip.active {
+ 		border-color: var(--color-primary);
+-		box-shadow: 0 0 0 1px var(--color-primary);
++		box-shadow: inset 0 0 0 1px var(--color-primary);
+ 	}
+ 	.chip.new {
+-		color: var(--color-text-secondary);
+ 		border-style: dashed;
++		color: var(--color-text-secondary);
+ 	}
+ 	.chip.new:hover {
+ 		color: var(--color-primary);
+ 		border-color: var(--color-primary);
+ 	}
+-	.chip-swatches {
++	.chip .sws {
+ 		display: flex;
+ 		gap: 3px;
+ 	}
+-	.dot {
+-		width: 0.85rem;
+-		height: 0.85rem;
+-		border-radius: 3px;
++	.chip .sw {
++		width: 11px;
++		height: 11px;
++		border-radius: 2px;
+ 		border: 1px solid color-mix(in srgb, var(--color-text-main) 15%, transparent);
+ 	}
++	.chip .nm {
++		font-size: 0.82rem;
++		font-weight: 600;
++	}
++	.chip .tg {
++		font-family: var(--font-base);
++		font-size: 0.6rem;
++		letter-spacing: 0.08em;
++		text-transform: uppercase;
++		color: var(--color-text-muted);
++	}
+ 
+ 	/* Inline editor */
+ 	.editor {
+ 		border: 1px solid var(--color-border);
+-		border-radius: 12px;
++		border-radius: 4px;
+ 		background: var(--color-bg-surface);
+-		padding: 1.25rem;
++		padding: 20px;
+ 	}
+-	.editor-top {
++	.etop {
+ 		display: flex;
+-		gap: 0.75rem;
++		gap: 12px;
+ 		align-items: center;
+-		margin-bottom: 1.25rem;
++		margin-bottom: 20px;
+ 	}
+ 	.name-input {
+ 		flex: 1;
+-		background: var(--color-bg-secondary);
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 8px;
+-		padding: 0.55rem 0.75rem;
++		border-radius: 3px;
++		padding: 10px 12px;
+ 		color: var(--color-text-main);
+-		font-size: 1rem;
++		font-family: var(--font-base);
++		font-size: 0.95rem;
++		font-weight: 600;
+ 	}
+-	.mode-tabs {
++	.modetabs {
+ 		display: flex;
+-		gap: 0.25rem;
+-	}
+-	.mode-tabs button {
+-		padding: 0.5rem 1rem;
+-		border-radius: 8px;
+ 		border: 1px solid var(--color-border);
++		border-radius: 3px;
++		overflow: hidden;
++	}
++	.modetabs button {
+ 		background: transparent;
++		border: 0;
++		border-left: 1px solid var(--color-border);
++		padding: 9px 16px;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.78rem;
+ 		cursor: pointer;
+ 	}
+-	.mode-tabs button.sel {
++	.modetabs button:first-child {
++		border-left: none;
++	}
++	.modetabs button.sel {
+ 		background: var(--color-primary);
+ 		color: #fff;
+-		border-color: var(--color-primary);
+ 	}
+ 	.groups {
+ 		display: grid;
+-		grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+-		gap: 1.25rem;
++		grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
++		gap: 20px 28px;
+ 	}
+-	.group-title {
+-		font-size: 0.75rem;
++	.gt {
++		font-family: var(--font-base);
++		font-size: 0.65rem;
++		letter-spacing: 0.1em;
+ 		text-transform: uppercase;
+ 		color: var(--color-text-muted);
+-		margin-bottom: 0.5rem;
++		margin-bottom: 8px;
+ 	}
+-	.picker {
++	.pick {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.5rem;
+-		padding: 0.25rem 0;
++		gap: 10px;
++		padding: 5px 0;
+ 	}
+-	.picker span {
++	.pick .pl {
+ 		flex: 1;
+ 		color: var(--color-text-secondary);
+-		font-size: 0.9rem;
++		font-size: 0.82rem;
+ 	}
+-	.picker input[type='color'] {
+-		width: 2.5rem;
+-		height: 2rem;
++	.pick .col-input {
++		width: 26px;
++		height: 22px;
++		border-radius: 3px;
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+ 		background: transparent;
+-		cursor: pointer;
+ 		padding: 0;
++		cursor: pointer;
+ 	}
+ 	.hex {
+-		width: 5.5rem;
+-		background: var(--color-bg-secondary);
++		width: 82px;
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+-		padding: 0.35rem;
++		border-radius: 3px;
++		padding: 6px 8px;
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
++		font-size: 0.72rem;
++	}
++	.fontrow {
++		margin-top: 20px;
++		padding-top: 16px;
++		border-top: 1px solid var(--color-border);
+ 	}
+-	select {
++	.fontrow select {
+ 		width: 100%;
+-		background: var(--color-bg-secondary);
++		max-width: 280px;
++		background: var(--color-bg-main);
+ 		border: 1px solid var(--color-border);
+-		border-radius: 6px;
+-		padding: 0.5rem;
++		border-radius: 3px;
++		padding: 9px;
+ 		color: var(--color-text-main);
++		font-family: var(--font-base);
+ 	}
+-	.font-sample {
+-		margin: 0.5rem 0 0;
++	.fontrow .samp {
++		margin: 10px 0 0;
+ 		color: var(--color-text-secondary);
+ 		font-size: 0.9rem;
+ 	}
+ 	.err {
+ 		color: var(--color-status-error);
+ 		font-size: 0.85rem;
+ 		margin: 0.75rem 0 0;
+ 	}
+-	.editor-actions {
++	.eactions {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.5rem;
+-		margin-top: 1.25rem;
+-		padding-top: 1rem;
++		gap: 10px;
++		margin-top: 20px;
++		padding-top: 16px;
+ 		border-top: 1px solid var(--color-border);
+ 	}
+ 	.spacer {
+ 		flex: 1;
+ 	}
+-	.ghost {
+-		padding: 0.45rem 0.9rem;
+-		border-radius: 8px;
+-		border: 1px solid var(--color-border);
++	.ghost-sm {
+ 		background: transparent;
++		border: 1px solid var(--color-border);
++		border-radius: 3px;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.8rem;
++		padding: 8px 14px;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+ 	}
+-	.ghost:hover {
++	.ghost-sm:hover {
+ 		color: var(--color-text-main);
+ 		border-color: var(--color-text-secondary);
+ 	}
+ 	.danger {
+-		padding: 0.45rem 0.9rem;
+-		border-radius: 8px;
++		background: transparent;
+ 		border: 1px solid var(--color-status-error);
+-		background: var(--color-status-error);
+-		color: #fff;
++		border-radius: 3px;
++		color: var(--color-status-error);
++		font-family: var(--font-base);
++		font-size: 0.8rem;
++		padding: 8px 14px;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+ 	}
+ 	.danger:hover {
+-		background: color-mix(in srgb, var(--color-status-error) 85%, #000);
++		background: var(--color-status-error);
++		color: #fff;
+ 	}
+ 
+-	/* Filters + shared cards */
+-	.group-label {
++	/* Reader + filters shared */
++	.glabel {
++		font-family: var(--font-base);
+ 		font-size: 0.8rem;
++		letter-spacing: 0.04em;
+ 		text-transform: uppercase;
+-		letter-spacing: 0.03em;
+ 		color: var(--color-text-muted);
+-		margin: 1.5rem 0 0.75rem;
++		margin: 26px 0 12px;
+ 	}
+-	.group-label:first-of-type {
++	.glabel:first-of-type {
+ 		margin-top: 0;
+ 	}
+ 	.empty {
+ 		color: var(--color-text-secondary);
+ 		font-size: 0.9rem;
+ 	}
+ 
+ 	/* Reader: layout radios + fit segmented */
+ 	.radio-list {
+ 		display: flex;
+ 		flex-direction: column;
+-		gap: 0.5rem;
+-		max-width: 34rem;
++		gap: 8px;
++		max-width: 440px;
++		margin-bottom: 26px;
+ 	}
+ 	.radio-row {
+ 		display: flex;
+ 		align-items: center;
+-		gap: 0.85rem;
+-		padding: 0.85rem 1rem;
+-		border-radius: 10px;
++		gap: 13px;
++		padding: 13px 15px;
+ 		border: 1px solid var(--color-border);
+-		background: var(--color-bg-surface);
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		cursor: pointer;
+ 		text-align: left;
+ 	}
+-	.radio-row.selected {
++	.radio-row.sel {
+ 		border-color: var(--color-primary);
+ 	}
+ 	.radio {
+-		width: 1.1rem;
+-		height: 1.1rem;
+-		border-radius: 9999px;
++		width: 15px;
++		height: 15px;
++		border-radius: 50%;
+ 		border: 2px solid var(--color-text-muted);
+ 		flex-shrink: 0;
+ 	}
+ 	.radio.on {
+ 		border-color: var(--color-primary);
+-		background: radial-gradient(circle, var(--color-primary) 40%, transparent 45%);
++		background: radial-gradient(circle, var(--color-primary) 42%, transparent 46%);
+ 	}
+-	.radio-text {
+-		display: flex;
+-		flex-direction: column;
+-	}
+-	.radio-label {
++	.rl {
+ 		color: var(--color-text-main);
+-		font-weight: 500;
++		font-weight: 600;
++		font-size: 0.88rem;
+ 	}
+-	.radio-desc {
++	.rd {
+ 		color: var(--color-text-secondary);
+-		font-size: 0.85rem;
++		font-size: 0.8rem;
+ 	}
+ 	.segmented {
+ 		display: flex;
+-		gap: 0.5rem;
+-		max-width: 34rem;
++		gap: 8px;
++		max-width: 440px;
+ 	}
+ 	.segmented button {
+ 		flex: 1;
+-		padding: 0.55rem;
+-		border-radius: 8px;
++		padding: 10px;
+ 		border: 1px solid var(--color-border);
+-		background: transparent;
++		border-radius: 3px;
++		background: var(--color-bg-main);
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.82rem;
+ 		cursor: pointer;
+ 	}
+-	.segmented button.selected {
++	.segmented button.sel {
+ 		background: var(--color-primary);
+ 		color: #fff;
+ 		border-color: var(--color-primary);
+ 	}
+-	.grid {
+-		display: grid;
+-		grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
++
++	/* Filters */
++	.fhead {
++		display: flex;
++		align-items: flex-start;
++		justify-content: space-between;
+ 		gap: 1rem;
+ 	}
+-	.card {
+-		border: 1px solid var(--color-border);
+-		border-radius: 10px;
+-		overflow: hidden;
+-		background: var(--color-bg-surface);
+-		display: flex;
+-		flex-direction: column;
++	.fhead .shead {
++		margin-bottom: 0;
+ 	}
+-	.filter-body {
+-		display: flex;
+-		flex-direction: column;
+-		gap: 0.25rem;
+-		padding: 0.9rem 0.9rem 0.5rem;
+-		flex: 1;
++	.fgrid {
++		display: grid;
++		grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
++		gap: 14px;
++	}
++	.fcard {
++		border: 1px solid var(--color-border);
++		border-radius: 4px;
++		background: var(--color-bg-main);
++		padding: 14px;
+ 	}
+-	.card-name {
++	.fcard .fn {
+ 		color: var(--color-text-main);
+-		font-weight: 500;
++		font-weight: 650;
++		font-size: 0.88rem;
+ 	}
+-	.card-desc {
++	.fcard .fd {
+ 		color: var(--color-text-secondary);
+-		font-size: 0.8rem;
++		font-size: 0.76rem;
++		margin-top: 3px;
+ 	}
+-	.card-actions {
++	.fcard .fa {
++		margin-top: 12px;
+ 		display: flex;
+-		gap: 0.75rem;
+-		padding: 0 0.9rem 0.9rem;
++		gap: 14px;
+ 	}
+-	.link {
++	.fcard .fa button {
+ 		background: transparent;
+ 		border: 0;
+ 		color: var(--color-text-secondary);
++		font-family: var(--font-base);
++		font-size: 0.78rem;
+ 		cursor: pointer;
+-		font-size: 0.85rem;
+-		padding: 0.2rem 0;
++		padding: 0;
+ 	}
+-	.link:hover {
++	.fcard .fa button:hover {
+ 		color: var(--color-primary);
+ 	}
+-	.danger-link {
++	.fcard .fa .danger-link {
+ 		color: var(--color-status-error);
+ 	}
+-	.danger-link:hover {
++	.fcard .fa .danger-link:hover {
+ 		color: var(--color-status-error);
+ 	}
+ 
+ 	@media (max-width: 768px) {
+-		.settings-layout {
+-			flex-direction: column;
++		.settings {
++			grid-template-columns: 1fr;
+ 		}
+-		.sidebar {
+-			width: auto;
++		.snav {
+ 			border-right: 0;
+ 			border-bottom: 1px solid var(--color-border);
+-		}
+-		nav {
+ 			flex-direction: row;
+ 			flex-wrap: wrap;
++			padding: 10px 12px;
+ 		}
+-		.content {
+-			padding: 1.5rem 1rem;
++		.scontent {
++			padding: 20px 16px 30px;
++			max-width: none;
+ 		}
+ 	}
+ </style>

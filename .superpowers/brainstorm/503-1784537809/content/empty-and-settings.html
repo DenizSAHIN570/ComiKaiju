@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Empty Home + Settings</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px 20px 80px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 16px;color:#9a9aa4;font-size:.93rem;max-width:82ch;line-height:1.5}
+  .cap{display:flex;align-items:baseline;gap:12px;margin:32px 0 12px}
+  .cap .tag{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:#0a0a0a;background:#e9e9ee;padding:3px 8px;border-radius:4px;font-weight:600}
+  .cap h2{margin:0;font-size:1.02rem;font-weight:650}.cap p{margin:0;color:#8b8b95;font-size:.85rem}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  .app{--primary:#ff6600;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;--text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font)}
+
+  .mast{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 30px 18px}
+  .nav{display:flex;gap:24px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);align-items:center}
+  .nav.right{justify-content:flex-end;gap:20px}
+  .nav a{color:var(--text2);text-decoration:none}.nav a.active{color:var(--text)}
+  .nav a.active::after{content:"";display:block;height:2px;background:var(--primary);margin-top:5px}
+  .word{font-family:var(--mono);font-weight:700;font-size:1.4rem;letter-spacing:.32em;text-transform:uppercase;text-indent:.32em;text-shadow:1px 0 0 var(--text)}
+  .menubtn{width:34px;height:34px;border:1px solid var(--border);border-radius:3px;background:transparent;color:var(--text);display:inline-grid;place-items:center}
+  .menubtn svg{width:16px;height:16px}
+  .rule{height:1px;background:var(--border);margin:0 30px}
+
+  /* ---------- EMPTY HOME middle ---------- */
+  .intro{display:grid;grid-template-columns:1.05fr .95fr;gap:40px;align-items:center;padding:44px 30px 46px;border-bottom:1px solid var(--border)}
+  .intro .eye{font-family:var(--mono);font-size:.66rem;letter-spacing:.2em;text-transform:uppercase;color:var(--muted)}
+  .intro h1{margin:14px 0 12px;font-size:2.6rem;font-weight:900;letter-spacing:-.04em;line-height:.98}
+  .intro .lead{margin:0 0 26px;font-size:1rem;line-height:1.6;color:var(--text2);max-width:42ch}
+  .import{border:1px solid var(--border);border-radius:4px;background:var(--surface)}
+  .drop{display:flex;align-items:center;gap:14px;padding:18px 18px;border-bottom:1px dashed var(--border)}
+  .drop .ic{width:42px;height:42px;border-radius:3px;background:var(--bg);border:1px solid var(--border);color:var(--primary);display:grid;place-items:center;flex:none}
+  .drop .h{font-weight:700;font-size:.92rem}.drop .p{font-size:.78rem;color:var(--text2);margin-top:2px}
+  .drop-actions{margin-left:auto;display:flex;gap:10px}
+  .btn{background:var(--primary);color:#fff;border:none;border-radius:3px;padding:10px 16px;font-weight:700;font-size:.82rem}
+  .btn.ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .import .linkrow{display:flex;align-items:center;gap:10px;padding:14px 18px}
+  .import .linkrow .lbl{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);white-space:nowrap}
+  .import .linkrow input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:3px;color:var(--text);padding:9px 11px;font-size:.8rem}
+  .import .linkrow button{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:3px;padding:9px 14px;font-size:.8rem}
+
+  /* preview shelf (illustrative) */
+  .preview{position:relative}
+  .preview .ptag{position:absolute;top:8px;right:8px;z-index:5;font-family:var(--mono);font-size:.56rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);background:var(--bg);border:1px solid var(--border);padding:3px 7px;border-radius:3px}
+  .pshelf{display:flex;gap:4px;height:300px;opacity:.96}
+  .psp{flex:1 1 0;position:relative;overflow:hidden}
+  .psp.open{flex:0 0 150px}
+  .pcv{position:absolute;inset:0;background:var(--c1)}
+  .pcv .band{position:absolute;left:0;right:0;height:32%;background:var(--c2)}
+  .pcv .ttl{position:absolute;left:12px;right:12px;top:14%;font-weight:900;font-size:1.5rem;line-height:.86;letter-spacing:-.02em;text-transform:uppercase;color:var(--ct,#fff)}
+  .preview .cae{margin-top:12px;font-family:var(--mono);font-size:.68rem;color:var(--muted);text-align:center}
+
+  /* ---------- shared: colophon + footer ---------- */
+  .colophon{margin:0 30px;border-top:1px solid var(--border);display:grid;grid-template-columns:repeat(3,1fr)}
+  .col{padding:22px 26px 24px;border-left:1px solid var(--border)}
+  .col:first-child{border-left:none;padding-left:0}
+  .col .kick{font-family:var(--mono);font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);display:flex;gap:8px;align-items:center}
+  .col .kick .n{color:var(--primary)}
+  .col h5{margin:12px 0 6px;font-size:1rem;font-weight:750;letter-spacing:-.01em}
+  .col p{margin:0;font-size:.82rem;line-height:1.5;color:var(--text2)}
+  footer{margin-top:6px;padding:26px 30px 20px;border-top:1px solid var(--border);text-align:center;color:var(--muted)}
+  footer .cp{font-size:.8rem}footer .pw{margin-top:6px;font-size:.72rem;opacity:.8}footer .pw a{color:var(--primary);text-decoration:none}
+
+  /* ---------- SETTINGS ---------- */
+  .settings{display:grid;grid-template-columns:184px 1fr;min-height:520px}
+  .snav{border-right:1px solid var(--border);padding:22px 0}
+  .snav a{display:block;padding:10px 22px;border-left:2px solid transparent;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2);text-decoration:none}
+  .snav a:hover{color:var(--text)}
+  .snav a.active{color:var(--text);border-left-color:var(--primary)}
+  .scontent{padding:26px 30px 34px}
+  .shead{margin-bottom:22px}
+  .shead h2{margin:0 0 4px;font-size:1.35rem;font-weight:800;letter-spacing:-.02em}
+  .shead p{margin:0;color:var(--text2);font-size:.86rem}
+
+  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:26px}
+  .chip{display:flex;align-items:center;gap:9px;padding:8px 12px;border:1px solid var(--border);border-radius:3px;background:var(--bg);cursor:pointer}
+  .chip.active{border-color:var(--primary);box-shadow:inset 0 0 0 1px var(--primary)}
+  .chip.new{border-style:dashed;color:var(--text2)}
+  .chip .sws{display:flex;gap:3px}.chip .sw{width:11px;height:11px;border-radius:2px;border:1px solid rgba(0,0,0,.12)}
+  .chip .nm{font-size:.82rem;font-weight:600}
+  .chip .tg{font-family:var(--mono);font-size:.54rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+
+  .editor{border:1px solid var(--border);border-radius:4px;background:var(--surface);padding:20px}
+  .etop{display:flex;gap:12px;align-items:center;margin-bottom:20px}
+  .name-input{flex:1;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:10px 12px;color:var(--text);font-size:.95rem;font-weight:600}
+  .modetabs{display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden}
+  .modetabs button{background:transparent;border:none;border-left:1px solid var(--border);padding:9px 16px;color:var(--text2);font-size:.78rem;cursor:pointer}
+  .modetabs button:first-child{border-left:none}.modetabs button.sel{background:var(--primary);color:#fff}
+  .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px 28px}
+  .grp .gt{font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+  .pick{display:flex;align-items:center;gap:10px;padding:5px 0}
+  .pick .pl{flex:1;color:var(--text2);font-size:.82rem}
+  .pick .col-sw{width:26px;height:22px;border-radius:3px;border:1px solid var(--border)}
+  .pick .hex{width:82px;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:6px 8px;color:var(--text);font-family:var(--mono);font-size:.72rem}
+  .fontrow{margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+  .fontrow select{width:100%;max-width:280px;background:var(--bg);border:1px solid var(--border);border-radius:3px;padding:9px;color:var(--text)}
+  .fontrow .samp{margin:10px 0 0;color:var(--text2);font-size:.9rem}
+  .eactions{display:flex;align-items:center;gap:10px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)}
+  .ghost-sm{background:transparent;border:1px solid var(--border);color:var(--text2);border-radius:3px;padding:8px 14px;font-size:.8rem;cursor:pointer}
+  .spacer{flex:1}
+  .danger{background:transparent;border:1px solid var(--color-status-error,#ef4444);color:var(--color-status-error,#ef4444);border-radius:3px;padding:8px 14px;font-size:.8rem}
+
+  /* reader + filters */
+  .glabel{font-family:var(--mono);font-size:.66rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 12px}
+  .radio-list{display:flex;flex-direction:column;gap:8px;max-width:440px;margin-bottom:26px}
+  .radio-row{display:flex;align-items:center;gap:13px;padding:13px 15px;border:1px solid var(--border);border-radius:3px;background:var(--bg);cursor:pointer}
+  .radio-row.sel{border-color:var(--primary)}
+  .radio{width:15px;height:15px;border-radius:50%;border:2px solid var(--muted);flex:none}
+  .radio.on{border-color:var(--primary);background:radial-gradient(circle,var(--primary) 42%,transparent 46%)}
+  .radio-row .rl{font-weight:600;font-size:.88rem}
+  .radio-row .rd{font-size:.8rem;color:var(--text2)}
+  .segmented{display:flex;gap:8px;max-width:440px;margin-bottom:8px}
+  .segmented button{flex:1;padding:10px;border:1px solid var(--border);border-radius:3px;background:var(--bg);color:var(--text2);cursor:pointer;font-size:.82rem}
+  .segmented button.sel{background:var(--primary);color:#fff;border-color:var(--primary)}
+  .fgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+  .fcard{border:1px solid var(--border);border-radius:4px;background:var(--bg);padding:14px}
+  .fcard .fn{font-weight:650;font-size:.88rem}
+  .fcard .fd{font-size:.76rem;color:var(--text2);margin-top:3px}
+  .fcard .fa{margin-top:12px;display:flex;gap:14px}
+  .fcard .fa button{background:transparent;border:none;color:var(--text2);font-size:.78rem;cursor:pointer;padding:0}
+  .fcard .fa button:hover{color:var(--primary)}
+  .btn-primary{background:var(--primary);color:#fff;border:none;border-radius:3px;padding:9px 15px;font-weight:650;font-size:.82rem}
+  .fhead{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+  .divide{height:1px;background:var(--border);margin:30px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Empty-state Home + Settings</h1>
+  <p class="pagesub">Two remaining screens in the locked language. Home (no comics) keeps the same top bar, feature colophon, and footer — only the middle changes to explain the product and get you importing. Settings restyles the existing Themes / Reader / Filters into flat, ruled, token-only controls.</p>
+
+  <!-- EMPTY HOME -->
+  <div class="cap"><span class="tag">Home</span><h2>First run — no comics yet</h2><p>Explains what this is; import is the focal action; a preview shows what the shelf becomes.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#" class="active">Home</a><a href="#">Library</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><button class="menubtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+      </div>
+      <div class="rule"></div>
+
+      <div class="intro">
+        <div>
+          <div class="eye">Offline · Private · In your browser</div>
+          <h1>Your comic library, read right in the browser.</h1>
+          <p class="lead">Import a CBZ or CBR and start reading instantly. Everything stays on your device — no account, no server, works offline once loaded.</p>
+          <div class="import">
+            <div class="drop">
+              <div class="ic">⤓</div>
+              <div><div class="h">Drop a comic here, or choose a file</div><div class="p">CBZ · CBR</div></div>
+              <div class="drop-actions"><button class="btn">Choose file</button><button class="btn ghost">Sync a folder</button></div>
+            </div>
+            <div class="linkrow"><span class="lbl">or link</span><input placeholder="https://…/comic.cbz"><button>Add</button></div>
+          </div>
+        </div>
+        <div class="preview">
+          <span class="ptag">Preview</span>
+          <div class="pshelf">
+            <div class="psp open"><div class="pcv" style="--c1:#111;--c2:#ff6600"><div class="band" style="top:32%"></div><div class="ttl">Ember Circuit</div></div></div>
+            <div class="psp"><div class="pcv" style="--c1:#123a2a;--c2:#e8d24a"><div class="band" style="bottom:0"></div><div class="ttl">Verdant</div></div></div>
+            <div class="psp"><div class="pcv" style="--c1:#0d1526;--c2:#4f9cf9"><div class="band" style="top:44%"></div><div class="ttl">Tide</div></div></div>
+            <div class="psp"><div class="pcv" style="--c1:#3d1020;--c2:#ff5a7a"><div class="band" style="bottom:0;height:22%"></div><div class="ttl">Rose</div></div></div>
+            <div class="psp"><div class="pcv" style="--c1:#241a3a;--c2:#a06bff"><div class="band" style="top:50%"></div><div class="ttl">Night</div></div></div>
+            <div class="psp"><div class="pcv" style="--c1:#5c1400;--c2:#ffb020"><div class="band" style="bottom:0;height:30%"></div><div class="ttl">Kiln</div></div></div>
+          </div>
+          <div class="cae">Point at a comic to open it — this is your shelf.</div>
+        </div>
+      </div>
+
+      <div class="colophon">
+        <div class="col"><div class="kick"><span class="n">01</span>Offline</div><h5>Reads without a connection</h5><p>Your whole library lives in the browser and works on a plane. Install it as an app for a native feel.</p></div>
+        <div class="col"><div class="kick"><span class="n">02</span>Private</div><h5>Nothing leaves your device</h5><p>No accounts, no servers, no tracking. Comics are yours alone — reading stays personal.</p></div>
+        <div class="col"><div class="kick"><span class="n">03</span>Fast</div><h5>Instant pages, deduped storage</h5><p>WebAssembly extraction and smart caching keep turns instant and storage lean.</p></div>
+      </div>
+      <footer><div class="cp">© 2026 ComiKaiju. Built for readers.</div><div class="pw">Powered by <a href="#">Svelte</a>.</div></footer>
+    </div>
+  </div>
+
+  <!-- SETTINGS: THEMES -->
+  <div class="cap"><span class="tag">Settings</span><h2>Themes — the builder</h2><p>Section nav + live palette editor, restyled flat. This is where “Builder →” lands.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app / settings</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#">Home</a><a href="#">Library</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><button class="menubtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+      </div>
+      <div class="rule"></div>
+      <div class="settings">
+        <div class="snav"><a href="#" class="active">Themes</a><a href="#">Reader</a><a href="#">Filters</a></div>
+        <div class="scontent">
+          <div class="shead"><h2>Themes</h2><p>Pick a theme to edit. Changes apply live; presets can be edited and reset.</p></div>
+          <div class="chips">
+            <div class="chip active"><span class="sws"><span class="sw" style="background:#ff6600"></span><span class="sw" style="background:#4f9cf9"></span><span class="sw" style="background:#000"></span><span class="sw" style="background:#0a0a0a"></span><span class="sw" style="background:#fff"></span></span><span class="nm">Default</span><span class="tg">Preset</span></div>
+            <div class="chip"><span class="sws"><span class="sw" style="background:#a0522d"></span><span class="sw" style="background:#8a6d3b"></span><span class="sw" style="background:#f4ecd8"></span><span class="sw" style="background:#ede0c8"></span><span class="sw" style="background:#3b2f2f"></span></span><span class="nm">Sepia</span><span class="tg">Preset</span></div>
+            <div class="chip"><span class="sws"><span class="sw" style="background:#b34700"></span><span class="sw" style="background:#0033cc"></span><span class="sw" style="background:#fff"></span><span class="sw" style="background:#f0f0f0"></span><span class="sw" style="background:#000"></span></span><span class="nm">High Contrast</span><span class="tg">Preset</span></div>
+            <div class="chip"><span class="sws"><span class="sw" style="background:#7c5cff"></span><span class="sw" style="background:#22d3ee"></span><span class="sw" style="background:#0b0e1a"></span><span class="sw" style="background:#12172a"></span><span class="sw" style="background:#e6e8f0"></span></span><span class="nm">Midnight</span><span class="tg">Yours</span></div>
+            <div class="chip new"><span class="nm">+ New</span></div>
+          </div>
+          <div class="editor">
+            <div class="etop">
+              <input class="name-input" value="Default" />
+              <div class="modetabs"><button>Light</button><button class="sel">Dark</button></div>
+            </div>
+            <div class="groups">
+              <div class="grp"><div class="gt">Brand</div>
+                <div class="pick"><span class="pl">Primary (main)</span><span class="col-sw" style="background:#ff6600"></span><span class="hex">#ff6600</span></div>
+                <div class="pick"><span class="pl">Secondary (side)</span><span class="col-sw" style="background:#4f9cf9"></span><span class="hex">#4f9cf9</span></div>
+              </div>
+              <div class="grp"><div class="gt">Surfaces</div>
+                <div class="pick"><span class="pl">Background</span><span class="col-sw" style="background:#000"></span><span class="hex">#000000</span></div>
+                <div class="pick"><span class="pl">Surface</span><span class="col-sw" style="background:#0a0a0a"></span><span class="hex">#0a0a0a</span></div>
+                <div class="pick"><span class="pl">Inset</span><span class="col-sw" style="background:#111"></span><span class="hex">#111111</span></div>
+              </div>
+              <div class="grp"><div class="gt">Text</div>
+                <div class="pick"><span class="pl">Text</span><span class="col-sw" style="background:#fff"></span><span class="hex">#ffffff</span></div>
+                <div class="pick"><span class="pl">Text (secondary)</span><span class="col-sw" style="background:#a1a1aa"></span><span class="hex">#a1a1aa</span></div>
+                <div class="pick"><span class="pl">Text (muted)</span><span class="col-sw" style="background:#52525b"></span><span class="hex">#52525b</span></div>
+              </div>
+              <div class="grp"><div class="gt">Lines</div>
+                <div class="pick"><span class="pl">Border</span><span class="col-sw" style="background:#1f1f1f"></span><span class="hex">#1f1f1f</span></div>
+              </div>
+              <div class="grp"><div class="gt">Semantic</div>
+                <div class="pick"><span class="pl">Error / delete</span><span class="col-sw" style="background:#ef4444"></span><span class="hex">#ef4444</span></div>
+                <div class="pick"><span class="pl">Success / accept</span><span class="col-sw" style="background:#22c55e"></span><span class="hex">#22c55e</span></div>
+                <div class="pick"><span class="pl">Warning</span><span class="col-sw" style="background:#eab308"></span><span class="hex">#eab308</span></div>
+              </div>
+            </div>
+            <div class="fontrow">
+              <div class="gt" style="font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Font</div>
+              <select><option>System Sans</option><option>System Serif</option><option>Monospace</option><option>Rounded</option><option>Humanist</option></select>
+              <p class="samp">The quick brown fox jumps over the lazy dog</p>
+            </div>
+            <div class="eactions">
+              <button class="ghost-sm">Import</button><button class="ghost-sm">Export</button>
+              <span class="spacer"></span>
+              <button class="ghost-sm">Reset to default</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <footer><div class="cp">© 2026 ComiKaiju. Built for readers.</div><div class="pw">Powered by <a href="#">Svelte</a>.</div></footer>
+    </div>
+  </div>
+
+  <!-- SETTINGS: READER + FILTERS -->
+  <div class="cap"><span class="tag">Settings</span><h2>Reader &amp; Filters</h2><p>Same nav; the other two sections restyled.</p></div>
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app / settings</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#">Home</a><a href="#">Library</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><button class="menubtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+      </div>
+      <div class="rule"></div>
+      <div class="settings">
+        <div class="snav"><a href="#">Themes</a><a href="#" class="active">Reader</a><a href="#">Filters</a></div>
+        <div class="scontent">
+          <div class="shead"><h2>Reader</h2><p>Defaults for newly opened comics.</p></div>
+          <div class="glabel">Reading layout</div>
+          <div class="radio-list">
+            <div class="radio-row sel"><span class="radio on"></span><span><div class="rl">Left to right</div><div class="rd">Western comics — turn pages leftward to right</div></span></div>
+            <div class="radio-row"><span class="radio"></span><span><div class="rl">Right to left</div><div class="rd">Manga — turn pages rightward to left</div></span></div>
+            <div class="radio-row"><span class="radio"></span><span><div class="rl">Vertical scroll</div><div class="rd">Webtoon — continuous top-to-bottom</div></span></div>
+          </div>
+          <div class="glabel">Page fit</div>
+          <div class="segmented"><button class="sel">Fit width</button><button>Fit height</button><button>Original size</button></div>
+
+          <div class="divide"></div>
+
+          <div class="fhead"><div><div class="shead" style="margin:0"><h2>Filters</h2><p>Reusable image filters — custom ones show in the reader’s filter menu.</p></div></div><button class="btn-primary">+ Create filter</button></div>
+          <div class="glabel">Presets</div>
+          <div class="fgrid" style="margin-bottom:22px">
+            <div class="fcard"><div class="fn">Grayscale</div><div class="fd">Desaturate for e-ink comfort</div><div class="fa"><button>Duplicate</button></div></div>
+            <div class="fcard"><div class="fn">Warm paper</div><div class="fd">Soften whites toward sepia</div><div class="fa"><button>Duplicate</button></div></div>
+            <div class="fcard"><div class="fn">High contrast</div><div class="fd">Deepen blacks, lift lines</div><div class="fa"><button>Duplicate</button></div></div>
+          </div>
+          <div class="glabel">My Filters</div>
+          <div class="fgrid">
+            <div class="fcard"><div class="fn">Night ink</div><div class="fd">Custom · dimmed + warm</div><div class="fa"><button>Edit</button><button style="color:#ef4444">Delete</button></div></div>
+          </div>
+        </div>
+      </div>
+      <footer><div class="cp">© 2026 ComiKaiju. Built for readers.</div><div class="pw">Powered by <a href="#">Svelte</a>.</div></footer>
+    </div>
+  </div>
+</div>
+</body>
+</html>

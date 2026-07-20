@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Library — spine shelf</title>
+<style>
+  *{box-sizing:border-box}
+  body{margin:0;background:#1c1c1e;color:#e9e9ee;
+    font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;padding:30px 20px 70px}
+  .wrap{max-width:1200px;margin:0 auto}
+  .pagehead{margin:0 0 6px;font-size:1.45rem;font-weight:700;letter-spacing:-.02em}
+  .pagesub{margin:0 0 20px;color:#9a9aa4;font-size:.93rem;max-width:78ch;line-height:1.5}
+  .window{border:1px solid #3a3a3e;border-radius:6px;overflow:hidden}
+  .chrome{height:36px;background:#242428;display:flex;align-items:center;gap:8px;padding:0 14px;border-bottom:1px solid #3a3a3e}
+  .cdot{width:11px;height:11px;border-radius:50%}.cdot.r{background:#ff5f57}.cdot.y{background:#febc2e}.cdot.g{background:#28c840}
+  .chrome .addr{margin-left:12px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.72rem;color:#8b8b95}
+
+  /* ---- paper theme tokens ---- */
+  .app{--primary:#ff6600;--bg:#ffffff;--surface:#f9fafb;--inset:#f3f4f6;
+    --text:#0a0a0a;--text2:#4b5563;--muted:#9ca3af;--border:#e5e7eb;
+    --font:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Code",Menlo,Consolas,monospace;
+    background:var(--bg);color:var(--text);font-family:var(--font);padding:0 0 6px}
+
+  /* masthead */
+  .mast{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:22px 30px 18px}
+  .nav{display:flex;gap:24px;font-family:var(--mono);font-size:.72rem;letter-spacing:.12em;text-transform:uppercase;color:var(--text2)}
+  .nav.right{justify-content:flex-end}
+  .nav a{color:var(--text2);text-decoration:none}
+  .nav a.active{color:var(--text)}
+  .nav a.active::after{content:"";display:block;height:2px;background:var(--primary);margin-top:5px}
+  .word{font-family:var(--mono);font-weight:700;font-size:1.4rem;letter-spacing:.32em;text-transform:uppercase;text-indent:.32em;
+    /* pixel-ish evocation */text-shadow:1px 0 0 var(--text)}
+  .rule{height:1px;background:var(--border);margin:0 30px}
+
+  /* shelf */
+  .shelf-wrap{padding:26px 30px 22px}
+  .shelf{display:flex;height:380px;gap:0;position:relative;
+    background-image:repeating-linear-gradient(90deg,transparent 0,transparent calc(6.6% - 1px),var(--border) calc(6.6% - 1px),var(--border) 6.6%);
+    background-position:0 0}
+  .spine{flex:1 1 0;min-width:0;position:relative;overflow:hidden;cursor:pointer;
+    border-right:1px solid var(--bg);transition:flex-grow .4s cubic-bezier(.2,.7,.2,1)}
+  .spine.open{flex-grow:7}
+  .shelf:hover .spine{flex-grow:1}
+  .shelf:hover .spine:hover{flex-grow:7}
+  .art{position:absolute;top:0;left:0;height:100%;width:253px;overflow:hidden}
+  .art .idx{position:absolute;top:9px;left:9px;font-family:var(--mono);font-size:.6rem;letter-spacing:.14em;color:rgba(255,255,255,.85);z-index:3}
+  .spine .num{position:absolute;top:9px;right:0;left:0;text-align:center;font-family:var(--mono);font-size:.6rem;color:var(--muted);z-index:4;
+    opacity:1;transition:opacity .2s}
+  .shelf:hover .spine:hover .num{opacity:0}
+
+  /* generic flat "cover" composition (content art, not UI) */
+  .cv{position:absolute;inset:0;background:var(--c1)}
+  .cv .band{position:absolute;left:0;right:0;height:34%;background:var(--c2)}
+  .cv .ttl{position:absolute;left:14px;right:14px;font-weight:900;line-height:.86;letter-spacing:-.02em;
+    font-size:2.5rem;text-transform:uppercase;color:var(--ct,#fff)}
+  .cv .foot{position:absolute;left:14px;bottom:12px;font-family:var(--mono);font-size:.58rem;letter-spacing:.1em;color:var(--ct,#fff);opacity:.8}
+
+  footer{display:flex;align-items:center;justify-content:space-between;margin:0 30px;padding:16px 0 4px;border-top:1px solid var(--border);
+    font-family:var(--mono);font-size:.7rem;letter-spacing:.08em;color:var(--muted);text-transform:uppercase}
+  footer .r{display:flex;gap:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="pagehead">Library — spine shelf (hover a comic to open it)</h1>
+  <p class="pagesub">Each comic is shelved as a vertical sliver; point at one and it opens to the full cover while the rest yield. Numbered like a collection, hairline masthead + footer, flat light paper. Move your cursor across the shelf below — it’s live.</p>
+
+  <div class="window">
+    <div class="chrome"><span class="cdot r"></span><span class="cdot y"></span><span class="cdot g"></span><span class="addr">comikaiju.app / library</span></div>
+    <div class="app">
+      <div class="mast">
+        <div class="nav"><a href="#">Home</a><a href="#" class="active">Library</a><a href="#">Settings</a></div>
+        <div class="word">Comikaiju</div>
+        <div class="nav right"><a href="#">Search</a><a href="#">Add</a><a href="#">◐</a></div>
+      </div>
+      <div class="rule"></div>
+
+      <div class="shelf-wrap">
+        <div class="shelf">
+          <div class="spine open"><span class="num">01</span><div class="art"><div class="cv" style="--c1:#111;--c2:#ff6600;--ct:#fff"><div class="band" style="top:32%"></div><div class="ttl" style="top:16%">Ember Circuit</div><div class="foot">Vol.2 · 100p</div></div></div></div>
+          <div class="spine"><span class="num">02</span><div class="art"><div class="cv" style="--c1:#123a2a;--c2:#e8d24a;--ct:#eafff2"><div class="band" style="bottom:0"></div><div class="ttl" style="top:12%">Verdant Line</div><div class="foot">98p</div></div></div></div>
+          <div class="spine"><span class="num">03</span><div class="art"><div class="cv" style="--c1:#0d1526;--c2:#4f9cf9;--ct:#fff"><div class="band" style="top:44%"></div><div class="ttl" style="top:10%">Tidewatch</div><div class="foot">Issue #4</div></div></div></div>
+          <div class="spine"><span class="num">04</span><div class="art"><div class="cv" style="--c1:#3d1020;--c2:#ff5a7a;--ct:#fff"><div class="band" style="bottom:0;height:22%"></div><div class="ttl" style="top:18%">Rosewire</div><div class="foot">Vol.1</div></div></div></div>
+          <div class="spine"><span class="num">05</span><div class="art"><div class="cv" style="--c1:#f2ede0;--c2:#111;--ct:#111"><div class="band" style="top:0;height:20%"></div><div class="ttl" style="top:30%;color:#111">Paper Kite</div><div class="foot" style="color:#111">72p</div></div></div></div>
+          <div class="spine"><span class="num">06</span><div class="art"><div class="cv" style="--c1:#241a3a;--c2:#a06bff;--ct:#fff"><div class="band" style="top:50%"></div><div class="ttl" style="top:14%">Nightglass</div><div class="foot">#003</div></div></div></div>
+          <div class="spine"><span class="num">07</span><div class="art"><div class="cv" style="--c1:#5c1400;--c2:#ffb020;--ct:#fff"><div class="band" style="bottom:0;height:30%"></div><div class="ttl" style="top:12%">Kiln House</div><div class="foot">Vol.3</div></div></div></div>
+          <div class="spine"><span class="num">08</span><div class="art"><div class="cv" style="--c1:#08191d;--c2:#25c0c8;--ct:#eafeff"><div class="band" style="top:40%;height:10%"></div><div class="ttl" style="top:16%">Coldharbor</div><div class="foot">110p</div></div></div></div>
+          <div class="spine"><span class="num">09</span><div class="art"><div class="cv" style="--c1:#1a1708;--c2:#e8c33a;--ct:#fff"><div class="band" style="bottom:0"></div><div class="ttl" style="top:14%">Goldfall</div><div class="foot">#012</div></div></div></div>
+          <div class="spine"><span class="num">10</span><div class="art"><div class="cv" style="--c1:#101820;--c2:#ff6600;--ct:#fff"><div class="band" style="top:0;height:16%"></div><div class="ttl" style="top:26%">Dust &amp; Signal</div><div class="foot">Vol.1</div></div></div></div>
+          <div class="spine"><span class="num">11</span><div class="art"><div class="cv" style="--c1:#2a0f2a;--c2:#ff8fe0;--ct:#fff"><div class="band" style="top:56%"></div><div class="ttl" style="top:12%">Violet Hour</div><div class="foot">64p</div></div></div></div>
+          <div class="spine"><span class="num">12</span><div class="art"><div class="cv" style="--c1:#0a2417;--c2:#4ade80;--ct:#eafff2"><div class="band" style="bottom:0;height:26%"></div><div class="ttl" style="top:16%">Fernback</div><div class="foot">#007</div></div></div></div>
+          <div class="spine"><span class="num">13</span><div class="art"><div class="cv" style="--c1:#20140a;--c2:#ff6600;--ct:#fff"><div class="band" style="top:46%;height:8%"></div><div class="ttl" style="top:14%">Ashvale</div><div class="foot">Vol.2</div></div></div></div>
+          <div class="spine"><span class="num">14</span><div class="art"><div class="cv" style="--c1:#12203a;--c2:#7fd0ff;--ct:#fff"><div class="band" style="bottom:0;height:18%"></div><div class="ttl" style="top:18%">Harbor Bell</div><div class="foot">88p</div></div></div></div>
+          <div class="spine"><span class="num">15</span><div class="art"><div class="cv" style="--c1:#1c1c1c;--c2:#ff6600;--ct:#fff"><div class="band" style="top:0;height:12%"></div><div class="ttl" style="top:22%">Nocturne</div><div class="foot">#001</div></div></div></div>
+        </div>
+      </div>
+
+      <footer>
+        <span>48 comics · everything stays on your device</span>
+        <span class="r"><span>CBZ · CBR</span><span>Sort: recent</span></span>
+      </footer>
+    </div>
+  </div>
+</div>
+</body>
+</html>

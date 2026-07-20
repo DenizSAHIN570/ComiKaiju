@@ -1,0 +1,189 @@
+# Review package: a5c6e42..0fa843a
+
+## Commits
+0fa843a feat(theme): persist theme created/last-used meta in the store
+
+## Files changed
+ src/lib/theme/themeStorage.ts |  8 ++++++++
+ src/lib/theme/themeStore.ts   | 33 +++++++++++++++++++++++++++++----
+ 2 files changed, 37 insertions(+), 4 deletions(-)
+
+## Diff
+diff --git a/src/lib/theme/themeStorage.ts b/src/lib/theme/themeStorage.ts
+index 6bb6887..2eb25b3 100644
+--- a/src/lib/theme/themeStorage.ts
++++ b/src/lib/theme/themeStorage.ts
+@@ -1,17 +1,19 @@
+ import { comicStorage } from "$lib/storage/comicStorage";
+ import { themeValidator } from "./themeValidator";
+ import { DEFAULT_THEME_ID, type Theme, type ThemeMode } from "./themeSchema";
++import type { ThemeMeta } from "./themeOrder";
+ 
+ const K_THEMES = "themes";
+ const K_ACTIVE = "activeThemeId";
+ const K_MODE = "themeMode";
++const K_META = "themeMeta";
+ 
+ /** Persists the user theme library + active selection + mode in IndexedDB. */
+ export const themeStorage = {
+   async getThemes(): Promise<Theme[]> {
+     const raw = (await comicStorage.getSetting<unknown[]>(K_THEMES)) ?? [];
+     return raw.filter((t) => themeValidator.validate(t).valid) as Theme[];
+   },
+   saveThemes(themes: Theme[]): Promise<void> {
+     return comicStorage.saveSetting(K_THEMES, themes);
+   },
+@@ -22,11 +24,17 @@ export const themeStorage = {
+   },
+   setActiveThemeId(id: string): Promise<void> {
+     return comicStorage.saveSetting(K_ACTIVE, id);
+   },
+   async getMode(): Promise<ThemeMode> {
+     return (await comicStorage.getSetting<ThemeMode>(K_MODE)) ?? "system";
+   },
+   setMode(mode: ThemeMode): Promise<void> {
+     return comicStorage.saveSetting(K_MODE, mode);
+   },
++  async getThemeMeta(): Promise<ThemeMeta> {
++    return (await comicStorage.getSetting<ThemeMeta>(K_META)) ?? {};
++  },
++  saveThemeMeta(meta: ThemeMeta): Promise<void> {
++    return comicStorage.saveSetting(K_META, meta);
++  },
+ };
+diff --git a/src/lib/theme/themeStore.ts b/src/lib/theme/themeStore.ts
+index 74b44fd..e1204fc 100644
+--- a/src/lib/theme/themeStore.ts
++++ b/src/lib/theme/themeStore.ts
+@@ -10,25 +10,27 @@ import {
+ } from "./themeSchema";
+ import {
+   applyTheme,
+   resolvePalette,
+   startSystemWatch,
+   stopSystemWatch,
+ } from "./themeEngine";
+ import { deriveHover } from "./colorUtil";
+ import { themeValidator } from "./themeValidator";
+ import { themeStorage } from "./themeStorage";
++import type { ThemeMeta } from "./themeOrder";
+ 
+ interface State {
+   mode: ThemeMode;
+   activeThemeId: string;
+   userThemes: Theme[];
++  meta: ThemeMeta;
+ }
+ 
+ const BOOT_KEY = "ck-theme-boot";
+ 
+ export const PRESET_IDS = new Set(PRESETS.map((p) => p.id));
+ 
+ /**
+  * Presets are editable: a saved user theme whose id matches a preset id is an
+  * override that shadows the built-in constant. Merge so overrides replace the
+  * matching preset (keeping preset order), then append genuinely custom themes.
+@@ -69,76 +71,99 @@ function writeBoot(state: State) {
+       hovers: isDark ? darkHov : lightHov,
+     }),
+   );
+ }
+ 
+ function createThemeStore() {
+   const store = writable<State>({
+     mode: "system",
+     activeThemeId: DEFAULT_THEME_ID,
+     userThemes: [],
++    meta: {},
+   });
+   const { subscribe, set, update } = store;
+   let initialized = false;
+ 
+   function render(state: State) {
+     applyTheme(getActiveTheme(state), state.mode);
+     writeBoot(state);
+     if (state.mode === "system")
+       startSystemWatch(() => applyTheme(getActiveTheme(get(store)), "system"));
+     else stopSystemWatch();
+   }
+ 
+   return {
+     subscribe,
+     async init() {
+       if (!browser || initialized) return;
+       initialized = true;
+-      const [mode, activeThemeId, userThemes] = await Promise.all([
++      const [mode, activeThemeId, userThemes, meta] = await Promise.all([
+         themeStorage.getMode(),
+         themeStorage.getActiveThemeId(),
+         themeStorage.getThemes(),
++        themeStorage.getThemeMeta(),
+       ]);
+-      const state = { mode, activeThemeId, userThemes };
++      const state = { mode, activeThemeId, userThemes, meta };
+       set(state);
+       render(state);
+       logger.info(
+         "ThemeStore",
+         `Initialized mode=${mode} theme=${activeThemeId}`,
+       );
+     },
+     setMode(mode: ThemeMode) {
+       update((s) => {
+         const ns = { ...s, mode };
+         render(ns);
+         void themeStorage.setMode(mode);
+         return ns;
+       });
+     },
+     setActiveTheme(id: string) {
+       update((s) => {
+-        const ns = { ...s, activeThemeId: id };
++        const meta = {
++          ...s.meta,
++          [id]: { ...s.meta[id], lastUsedAt: Date.now() },
++        };
++        const ns = { ...s, activeThemeId: id, meta };
+         render(ns);
+         void themeStorage.setActiveThemeId(id);
++        void themeStorage.saveThemeMeta(meta);
+         return ns;
+       });
+     },
+     saveTheme(theme: Theme) {
+       themeValidator.validateOrThrow(theme);
+       update((s) => {
+         const userThemes = s.userThemes.some((t) => t.id === theme.id)
+           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
+           : [...s.userThemes, theme];
+-        const ns = { ...s, userThemes, activeThemeId: theme.id };
++        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
++        const meta =
++          isNew && !PRESET_IDS.has(theme.id)
++            ? {
++                ...s.meta,
++                [theme.id]: {
++                  ...s.meta[theme.id],
++                  createdAt: Date.now(),
++                  lastUsedAt: Date.now(),
++                },
++              }
++            : {
++                ...s.meta,
++                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
++              };
++        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
+         render(ns);
+         void themeStorage.saveThemes(userThemes);
+         void themeStorage.setActiveThemeId(theme.id);
++        void themeStorage.saveThemeMeta(meta);
+         return ns;
+       });
+     },
+     // Deletes a custom theme, or (for a preset id) drops the override so the
+     // built-in default is restored. A deleted preset id stays active because
+     // the constant still resolves; a deleted custom active theme falls back.
+     deleteTheme(id: string) {
+       update((s) => {
+         const userThemes = s.userThemes.filter((t) => t.id !== id);
+         const activeThemeId =
