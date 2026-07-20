@@ -178,7 +178,7 @@
     width: 264px;
     background: var(--color-bg-main);
     border: 1px solid var(--color-border);
-    border-radius: 4px;
+    border-radius: 3px;
     box-shadow: 0 10px 28px -12px color-mix(in srgb, var(--color-text-main) 20%, transparent);
     overflow: hidden;
     z-index: 20;
