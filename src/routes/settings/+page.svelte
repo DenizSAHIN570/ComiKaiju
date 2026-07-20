@@ -421,40 +421,42 @@
 				</div>
 			{/if}
 		{:else if section === 'reader'}
-			<div class="shead">
-				<h2>Reader</h2>
-				<p>Default reading layout for newly opened comics.</p>
-			</div>
+			<div class="reader-center">
+				<div class="shead">
+					<h2>Reader</h2>
+					<p>Default reading layout for newly opened comics.</p>
+				</div>
 
-			<h3 class="glabel">Reading layout</h3>
-			<div class="radio-list">
-				{#each LAYOUTS as l (l.id)}
-					<button
-						type="button"
-						class="radio-row"
-						class:sel={layout === l.id}
-						onclick={() => setLayout(l.id)}
-					>
-						<span class="radio" class:on={layout === l.id}></span>
-						<span>
-							<div class="rl">{l.label}</div>
-							<div class="rd">{l.desc}</div>
-						</span>
-					</button>
-				{/each}
-			</div>
+				<h3 class="glabel">Reading layout</h3>
+				<div class="radio-list">
+					{#each LAYOUTS as l (l.id)}
+						<button
+							type="button"
+							class="radio-row"
+							class:sel={layout === l.id}
+							onclick={() => setLayout(l.id)}
+						>
+							<span class="radio" class:on={layout === l.id}></span>
+							<span>
+								<div class="rl">{l.label}</div>
+								<div class="rd">{l.desc}</div>
+							</span>
+						</button>
+					{/each}
+				</div>
 
-			<h3 class="glabel">Page fit</h3>
-			<div class="segmented">
-				{#each FITS as f (f.id)}
-					<button
-						type="button"
-						class:sel={reader.fitMode === f.id}
-						onclick={() => readerSettings.update({ fitMode: f.id })}
-					>
-						{f.label}
-					</button>
-				{/each}
+				<h3 class="glabel">Page fit</h3>
+				<div class="segmented">
+					{#each FITS as f (f.id)}
+						<button
+							type="button"
+							class:sel={reader.fitMode === f.id}
+							onclick={() => readerSettings.update({ fitMode: f.id })}
+						>
+							{f.label}
+						</button>
+					{/each}
+				</div>
 			</div>
 		{:else if section === 'filters'}
 			<div class="fhead">
@@ -851,6 +853,17 @@
 	.empty {
 		color: var(--color-text-secondary);
 		font-size: 0.9rem;
+	}
+
+	/* Reader section: centre the heading and the control groups (scoped here so
+	   Themes and Filters keep their left alignment). The rows themselves stay
+	   left-aligned internally — only the blocks are centred. */
+	.reader-center {
+		text-align: center;
+	}
+	.reader-center .radio-list,
+	.reader-center .segmented {
+		margin-inline: auto;
 	}
 
 	/* Reader: layout radios + fit segmented */
