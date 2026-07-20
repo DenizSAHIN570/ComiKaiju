@@ -207,38 +207,44 @@
 		onadd={() => (addOpen = true)}
 	/>
 
-	{#if hasComics}
-		{#if lastRead && lastReadComic}
-			<ContinueBand
-				comic={lastReadComic}
-				pageImage={lastReadPageImage}
-				onresume={() => openById(lastRead.id)}
-				onlibrary={() => goto(resolve('/library'))}
-			/>
+	<div class="home-main">
+		{#if hasComics}
+			{#if lastRead && lastReadComic}
+				<ContinueBand
+					comic={lastReadComic}
+					pageImage={lastReadPageImage}
+					onresume={() => openById(lastRead.id)}
+					onlibrary={() => goto(resolve('/library'))}
+				/>
+			{/if}
+			{#if shelfComics.length > 0}
+				<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
+			{/if}
+		{:else}
+			<section class="home-hero">
+				<HeroCoverWall />
+				<div class="hero-scrim"></div>
+				<div class="hero-inner">
+					<h1 class="hero-title">
+						<span style="color:var(--color-secondary)">Read</span> your
+						<span style="color:var(--color-secondary)">comics</span> right in your browser
+					</h1>
+					<p class="hero-lead">
+						Import a CBZ or CBR and start reading instantly. Everything stays on your device — no
+						account, no server, works offline.
+					</p>
+					<ImportPanel oncomplete={loadComics} />
+				</div>
+			</section>
 		{/if}
-		{#if shelfComics.length > 0}
-			<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
-		{/if}
-	{:else}
-		<section class="home-hero">
-			<HeroCoverWall />
-			<div class="hero-scrim"></div>
-			<div class="hero-inner">
-				<h1 class="hero-title">
-					<span style="color:var(--color-secondary)">Read</span> your
-					<span style="color:var(--color-secondary)">comics</span> right in your browser
-				</h1>
-				<p class="hero-lead">
-					Import a CBZ or CBR and start reading instantly. Everything stays on your device — no
-					account, no server, works offline.
-				</p>
-				<ImportPanel oncomplete={loadComics} />
-			</div>
-		</section>
-	{/if}
+	</div>
 
-	<FeatureColophon />
-	<SiteFooter />
+	<!-- Colophon + footer ride together at the bottom: home-main fills the free
+	     space above, pinning this group to the bottom like the footer alone was. -->
+	<div class="tail">
+		<FeatureColophon />
+		<SiteFooter />
+	</div>
 </div>
 
 <AddSheet open={addOpen} onclose={() => (addOpen = false)} oncomplete={loadComics} />
@@ -263,10 +269,26 @@
 		flex-shrink: 0;
 	}
 
+	/* Main content fills the free space, so the colophon + footer group is pinned
+	   to the bottom (the sticky-footer treatment, extended to the colophon). */
+	.home-main {
+		flex-grow: 1;
+		display: flex;
+		flex-direction: column;
+	}
+	.home-main > :global(*) {
+		flex-shrink: 0;
+	}
+
 	/* Empty-state hero: drop a background photo (e.g. scattered comics on a table) via
 	   --home-hero-bg without touching markup. A theme-safe scrim keeps the headline and
-	   import panel legible over any photo, in either theme. */
+	   import panel legible over any photo, in either theme. It grows to fill home-main
+	   so the cover wall fills the viewport and the content sits centred. */
 	.home-hero {
+		flex-grow: 1;
+		display: flex;
+		flex-direction: column;
+		justify-content: center;
 		position: relative;
 		overflow: hidden;
 		padding: 76px 30px 80px;
