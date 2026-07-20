@@ -3,15 +3,34 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { comicStorage } from '$lib/storage/comicStorage';
-	import type { FileSystemItem } from '../../types/comic';
+	import type { ComicBook, FileSystemItem } from '../../types/comic';
 	import { setComic, setLoading, setError } from '$lib/store/session';
 	import ArchiveManager from '$lib/archive/archiveManager';
 	import { logger } from '$lib/services/logger';
 	import { directoryService, type DirectoryFile } from '$lib/services/directoryService';
+	import AppBar from '$lib/ui/AppBar.svelte';
+	import SiteFooter from '$lib/ui/SiteFooter.svelte';
+	import AddSheet from '$lib/ui/AddSheet.svelte';
+	import CoverCard from '$lib/ui/CoverCard.svelte';
 
 	let items = $state<FileSystemItem[]>([]);
 	let loading = $state(true);
-	
+	let metadataMap = $state<Record<string, ComicBook>>({});
+	let addOpen = $state(false);
+	let sort = $state<'recent' | 'name' | 'size'>('recent');
+
+	const sortedItems = $derived.by(() => {
+		const arr = [...items];
+		if (sort === 'name') {
+			arr.sort((a, b) => a.name.localeCompare(b.name));
+		} else if (sort === 'size') {
+			arr.sort((a, b) => (b.size ?? 0) - (a.size ?? 0));
+		} else {
+			arr.sort((a, b) => b.updatedAt - a.updatedAt);
+		}
+		return arr;
+	});
+
 	// Local Folder State
 	let folderHandle = $state<FileSystemDirectoryHandle | null>(null);
 	let folderFiles = $state<DirectoryFile[]>([]);
@@ -93,6 +112,14 @@
 		loading = true;
 		try {
 			items = await comicStorage.getAllFiles();
+			const entries = await Promise.all(
+				items.map(async (item) => [item.id, await comicStorage.getComicMetadata(item.id)] as const)
+			);
+			const map: Record<string, ComicBook> = {};
+			for (const [id, meta] of entries) {
+				if (meta) map[id] = meta;
+			}
+			metadataMap = map;
 		} catch (error) {
 			logger.error('Library', 'Failed to load library', error);
 			setError('Failed to load library', 'error');
@@ -144,9 +171,7 @@
 		}
 	}
 
-	async function deleteItem(item: FileSystemItem, e: MouseEvent) {
-        e.stopPropagation();
-        e.preventDefault();
+	async function deleteItem(item: FileSystemItem) {
 		if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
 		try {
 			await comicStorage.deleteComic(item.id);
@@ -165,6 +190,23 @@
 		const i = Math.floor(Math.log(bytes) / Math.log(k));
 		return Math.round((bytes / Math.pow(k, i)) * 10) / 10 + ' ' + sizes[i];
 	}
+
+	function stripExt(name: string) {
+		return name.replace(/\.(cbz|zip|cbr|rar)$/i, '');
+	}
+
+	function itemMeta(item: FileSystemItem) {
+		const meta = metadataMap[item.id];
+		const size = formatSize(item.size);
+		return meta?.totalPages ? `${meta.totalPages}p · ${size}` : size;
+	}
+
+	function itemProgress(item: FileSystemItem) {
+		const meta = metadataMap[item.id];
+		if (!meta?.totalPages) return 0;
+		const current = meta.currentPage ?? 0;
+		return Math.min(1, (current + 1) / meta.totalPages);
+	}
 </script>
 
 <svelte:head>
@@ -172,157 +214,133 @@
 	<meta name="description" content="Browse your imported comic book library. All comics are stored locally on your device." />
 </svelte:head>
 
-<div class="library-container">
-    <header class="library-header">
-        <div class="header-left">
-            <a href={resolve('/')} class="back-link">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                </svg>
-                Back
-            </a>
-            <h1>Full Library</h1>
-        </div>
-        <div class="header-right">
-            <button class="folder-btn" onclick={openFolder}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
-                </svg>
-                {folderHandle ? 'Change Folder' : 'Open Folder'}
-            </button>
-            <span class="count">{items.length} Imported</span>
-        </div>
-    </header>
+<AppBar active="library" onadd={() => (addOpen = true)} />
 
-    <div class="library-content">
-        {#if folderHandle}
-            <section class="folder-section">
-                <div class="section-header">
-                    <h2>Local: {folderHandle.name}</h2>
-                    <span class="count">{folderFiles.length} items</span>
-                </div>
-                
-                {#if folderLoading}
-                    <div class="loading">Scanning folder...</div>
-                {:else if folderFiles.length === 0}
-                     <div class="empty-folder">No comic files found in this folder.</div>
-                {:else}
-                    <div class="comic-grid">
-                        {#each folderFiles as file (file.name)}
-                             <div class="comic-card local" onclick={() => openLocalFile(file)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && openLocalFile(file)}>
-                                <div class="card-cover">
-                                    <div class="placeholder local-placeholder">
-                                        <span>{file.name.slice(0, 3)}</span>
-                                    </div>
-                                </div>
-                                <div class="card-info">
-                                    <div class="title" title={file.name}>{file.name}</div>
-                                    <div class="meta">Local File</div>
-                                </div>
-                            </div>
-                        {/each}
-                    </div>
-                {/if}
-            </section>
-            <hr class="divider" />
-        {/if}
-
-        <div class="section-header">
-            <h2>Imported Library</h2>
-        </div>
-
-        {#if loading}
-            <div class="loading">Loading...</div>
-        {:else if items.length === 0}
-            <div class="empty">
-                <p>No comics found.</p>
-                <a href={resolve('/')}>Go upload some!</a>
-            </div>
-        {:else}
-            <div class="comic-grid">
-                {#each items as item (item.id)}
-                    <div class="comic-card" onclick={() => openComic(item)} role="button" tabindex="0" onkeydown={(e) => e.key === 'Enter' && openComic(item)}>
-                        <div class="card-cover">
-                            {#if item.thumbnail}
-                                <img src={item.thumbnail} alt={item.name} />
-                            {:else}
-                                <div class="placeholder">
-                                    <span>{item.name.slice(0, 2)}</span>
-                                </div>
-                            {/if}
-                            <button class="delete-btn" onclick={(e) => deleteItem(item, e)} title="Delete">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                            </button>
-                        </div>
-                        <div class="card-info">
-                            <div class="title" title={item.name}>{item.name}</div>
-                            <div class="meta">{formatSize(item.size)}</div>
-                        </div>
-                    </div>
-                {/each}
-            </div>
-        {/if}
-    </div>
+<div class="lib-sub">
+    <span>{items.length} comics</span>
+    <label class="sort">
+        sorted by
+        <select bind:value={sort}>
+            <option value="recent">recent</option>
+            <option value="name">name</option>
+            <option value="size">size</option>
+        </select>
+    </label>
 </div>
 
+{#if folderHandle}
+    <div class="section-head">
+        <h2>Local · {folderHandle.name}</h2>
+        <button type="button" class="folder-btn" onclick={openFolder}>Change folder</button>
+    </div>
+    {#if folderLoading}
+        <div class="state-msg">Scanning folder…</div>
+    {:else if folderFiles.length === 0}
+        <div class="state-msg">No comic files found in this folder.</div>
+    {:else}
+        <div class="libgrid">
+            {#each folderFiles as file (file.name)}
+                <CoverCard
+                    title={stripExt(file.name)}
+                    meta="Local file"
+                    onopen={() => openLocalFile(file)}
+                />
+            {/each}
+        </div>
+    {/if}
+{:else}
+    <div class="section-head">
+        <h2>Local folder</h2>
+        <button type="button" class="folder-btn" onclick={openFolder}>Open folder</button>
+    </div>
+{/if}
+
+<div class="section-head">
+    <h2>Imported</h2>
+</div>
+
+{#if loading}
+    <div class="state-msg">Loading…</div>
+{:else if items.length === 0}
+    <div class="state-msg empty">
+        <p>No comics yet.</p>
+        <a href={resolve('/')}>Go upload some</a>
+    </div>
+{:else}
+    <div class="libgrid">
+        {#each sortedItems as item, i (item.id)}
+            <CoverCard
+                title={stripExt(item.name)}
+                thumbnail={item.thumbnail}
+                index={i + 1}
+                meta={itemMeta(item)}
+                progress={itemProgress(item)}
+                onopen={() => openComic(item)}
+                ondelete={() => deleteItem(item)}
+            />
+        {/each}
+    </div>
+{/if}
+
+<SiteFooter />
+
+<AddSheet open={addOpen} onclose={() => (addOpen = false)} oncomplete={loadLibrary} />
+
 <style>
-    .library-container {
-        min-height: 100vh;
-        background-color: var(--color-bg-main);
-        color: var(--color-text-main);
-        font-family: var(--font-base);
-        padding: 2rem;
-    }
-
-    .library-header {
+    .lib-sub {
         display: flex;
-        align-items: center;
+        align-items: baseline;
         justify-content: space-between;
-        margin-bottom: 2rem;
-        padding-bottom: 1rem;
-        border-bottom: 1px solid var(--color-border);
+        margin: 0 30px;
+        padding: 16px 0 0;
+        font-family: var(--font-base);
+        font-size: 0.72rem;
+        color: var(--color-text-muted);
+        letter-spacing: 0.04em;
     }
 
-    .header-left {
+    .sort {
         display: flex;
         align-items: center;
-        gap: 1.5rem;
+        gap: 6px;
     }
 
-    .back-link {
+    .sort select {
+        background: transparent;
+        color: var(--color-text-main);
+        border: 1px solid var(--color-border);
+        border-radius: 3px;
+        font-family: var(--font-base);
+        font-size: 0.72rem;
+        padding: 3px 6px;
+        cursor: pointer;
+    }
+
+    .section-head {
         display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        color: var(--color-text-secondary);
-        text-decoration: none;
-        font-weight: 500;
-        transition: color 0.2s;
+        align-items: baseline;
+        justify-content: space-between;
+        margin: 22px 30px 0;
     }
 
-    .back-link:hover {
-        color: var(--color-primary);
-    }
-
-    .header-right {
-        display: flex;
-        align-items: center;
-        gap: 1.5rem;
+    .section-head h2 {
+        font-family: var(--font-base);
+        font-size: 0.95rem;
+        font-weight: 700;
+        margin: 0;
+        color: var(--color-text-main);
     }
 
     .folder-btn {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        background: var(--color-bg-surface);
+        background: transparent;
         border: 1px solid var(--color-border);
-        border-radius: 6px;
-        color: var(--color-text-main);
-        font-size: 0.9rem;
+        border-radius: 3px;
+        color: var(--color-text-secondary);
+        font-family: var(--font-base);
+        font-size: 0.72rem;
+        padding: 6px 10px;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: border-color 0.15s, color 0.15s;
     }
 
     .folder-btn:hover {
@@ -330,148 +348,38 @@
         color: var(--color-primary);
     }
 
-    .section-header {
-        display: flex;
-        align-items: baseline;
-        gap: 1rem;
-        margin-bottom: 1.5rem;
-    }
-
-    .section-header h2 {
-        font-size: 1.25rem;
-        font-weight: 600;
-        margin: 0;
-    }
-
-    .folder-section {
-        margin-bottom: 3rem;
-    }
-
-    .divider {
-        border: 0;
-        border-top: 1px solid var(--color-border);
-        margin: 2rem 0;
-        opacity: 0.5;
-    }
-
-    .local-placeholder {
-        background: var(--color-bg-tertiary, var(--color-bg-secondary));
-        color: var(--color-primary);
-    }
-
-    .empty-folder {
-        color: var(--color-text-muted);
-        font-style: italic;
-    }
-
-    h1 {
-        font-size: 1.5rem;
-        font-weight: 700;
-        margin: 0;
-    }
-
-    .count {
-        color: var(--color-text-muted);
-        font-size: 0.9rem;
-    }
-
-    .comic-grid {
+    .libgrid {
+        padding: 20px 30px 30px;
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-        gap: 2rem;
+        grid-template-columns: repeat(6, 1fr);
+        gap: 24px 22px;
     }
 
-    .comic-card {
-        cursor: pointer;
-        transition: transform 0.2s;
-    }
-
-    .comic-card:hover {
-        transform: translateY(-5px);
-    }
-
-    .card-cover {
-        aspect-ratio: 2/3;
-        background: var(--color-bg-surface);
-        border: 1px solid var(--color-border);
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-        box-shadow: 0 4px 6px color-mix(in srgb, #000 10%, transparent);
-    }
-
-    .card-cover img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .placeholder {
-        width: 100%;
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: var(--color-bg-secondary);
-        color: var(--color-text-muted);
-        font-size: 2rem;
-        font-weight: 700;
-        text-transform: uppercase;
-    }
-
-    .delete-btn {
-        position: absolute;
-        top: 0.5rem;
-        right: 0.5rem;
-        width: 32px;
-        height: 32px;
-        background: color-mix(in srgb, #000 70%, transparent);
-        border: none;
-        border-radius: 4px;
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        opacity: 0;
-        transition: opacity 0.2s, background 0.2s;
-        cursor: pointer;
-    }
-
-    .comic-card:hover .delete-btn {
-        opacity: 1;
-    }
-
-    .delete-btn:hover {
-        background: var(--color-status-error);
-    }
-
-    .card-info {
-        margin-top: 0.75rem;
-    }
-
-    .title {
-        font-size: 0.9rem;
-        font-weight: 600;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        color: var(--color-text-main);
-    }
-
-    .meta {
-        font-size: 0.75rem;
-        color: var(--color-text-muted);
-        margin-top: 0.25rem;
-    }
-
-    .loading, .empty {
-        text-align: center;
-        padding: 4rem;
+    .state-msg {
+        margin: 20px 30px 30px;
         color: var(--color-text-secondary);
+        font-family: var(--font-base);
     }
 
-    .empty a {
+    .state-msg.empty {
+        text-align: center;
+        padding: 3rem 0;
+    }
+
+    .state-msg.empty a {
         color: var(--color-primary);
         text-decoration: underline;
+    }
+
+    @media (max-width: 1100px) {
+        .libgrid {
+            grid-template-columns: repeat(4, 1fr);
+        }
+    }
+
+    @media (max-width: 700px) {
+        .libgrid {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 </style>
