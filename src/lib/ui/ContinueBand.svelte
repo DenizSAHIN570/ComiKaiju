@@ -81,7 +81,9 @@
   .continue {
     position: relative;
     margin: 0 30px;
-    height: 280px;
+    height: 480px;
+    /* Parent is a flex column; without this the band compresses below its set height. */
+    flex-shrink: 0;
     border-bottom: 1px solid var(--color-border);
     overflow: hidden;
   }
@@ -154,8 +156,8 @@
   }
 
   .c-inner h2 {
-    margin: 9px 0 4px;
-    font-size: 1.9rem;
+    margin: 12px 0 7px;
+    font-size: 2.6rem;
     font-weight: 900;
     letter-spacing: -0.035em;
     line-height: 0.95;
@@ -168,7 +170,7 @@
   }
 
   .c-line {
-    margin: 16px 0 18px;
+    margin: 20px 0 22px;
     height: 2px;
     background: var(--color-bg-secondary);
     max-width: 340px;

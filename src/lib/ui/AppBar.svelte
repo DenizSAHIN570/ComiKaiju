@@ -4,10 +4,13 @@
 
   let {
     active = "home",
+    showLibrary = true,
     onadd,
     onsearch,
   }: {
     active?: "home" | "library" | "settings";
+    /** Hidden when the library is empty and no folder is synced. */
+    showLibrary?: boolean;
     onadd?: () => void;
     onsearch?: () => void;
   } = $props();
@@ -16,7 +19,9 @@
 <div class="mast">
   <div class="nav">
     <a href={resolve("/")} class:active={active === "home"}>Home</a>
-    <a href={resolve("/library")} class:active={active === "library"}>Library</a>
+    {#if showLibrary || active === "library"}
+      <a href={resolve("/library")} class:active={active === "library"}>Library</a>
+    {/if}
   </div>
   <div class="word">ComiKaiju</div>
   <div class="nav right">

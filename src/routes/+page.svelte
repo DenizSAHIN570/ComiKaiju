@@ -4,6 +4,7 @@
 	import { setLoading, setError, setComic } from '$lib/store/session.js';
 	import { handleUrlImport, isHttpUrl } from '$lib/services/comicProcessor.js';
 	import { logger } from '$lib/services/logger';
+	import { directoryService } from '$lib/services/directoryService';
 	import ArchiveManager from '$lib/archive/archiveManager.js';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -20,6 +21,7 @@
 	let addOpen = $state(false);
 	let pendingImportUrl = $state<string | null>(null);
 	let recentComics = $state<(FileSystemItem & { metadata?: ComicBook })[]>([]);
+	let hasSyncedFolder = $state(false);
 
 	onMount(async () => {
 		const urlParam = new URL(window.location.href).searchParams.get('url');
@@ -33,6 +35,8 @@
 		try {
 			await comicStorage.init();
 			await loadComics();
+			// Library stays reachable if a folder is synced, even with nothing imported.
+			hasSyncedFolder = (await directoryService.getStoredFolder()) !== null;
 		} catch (error) {
 			logger.error('Home', 'Failed to initialize', error);
 			setError('Failed to initialize application', 'error');
@@ -196,7 +200,11 @@
 </svelte:head>
 
 <div class="page">
-	<AppBar active="home" onadd={() => (addOpen = true)} />
+	<AppBar
+		active="home"
+		showLibrary={hasComics || hasSyncedFolder}
+		onadd={() => (addOpen = true)}
+	/>
 
 	{#if hasComics}
 		{#if lastRead && lastReadComic}
@@ -237,12 +245,18 @@
 
 <style>
 	.page {
-		min-height: 100vh;
+		/* Fills <main>'s flex column so SiteFooter's auto margin reaches the bottom. */
+		flex: 1;
 		display: flex;
 		flex-direction: column;
 		background-color: var(--color-bg-main);
 		color: var(--color-text-main);
 		font-family: var(--font-base);
+	}
+
+	/* Sections keep their natural height instead of being squashed to fit the column. */
+	.page > :global(*) {
+		flex-shrink: 0;
 	}
 
 	/* Empty-state hero: drop a background photo (e.g. scattered comics on a table) via

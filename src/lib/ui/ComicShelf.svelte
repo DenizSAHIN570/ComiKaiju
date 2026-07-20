@@ -140,7 +140,10 @@
   .shelf {
     display: flex;
     gap: 5px;
-    height: 360px;
+    /* 30px inset on every side, matching the Continue band's horizontal margin.
+       Height carries the padding so the spines keep their 360px. */
+    padding: 30px;
+    height: 420px;
   }
 
   .spine {

@@ -245,7 +245,7 @@ function structuredCloneComic(comic: ComicBook): ComicBook {
 			<div class="file-reload-actions">
 				<input
 					type="file"
-					accept=".cbz,.zip,.cbr,.rar"
+					accept=".cbz,.cbr"
 					on:change={handleFileReload}
 					id="file-reload-input"
 				/>

@@ -122,10 +122,19 @@
 {/if}
 
 <style>
+	/* Flex column so pages can push their footer to the bottom on short content. */
 	main {
+		display: flex;
+		flex-direction: column;
 		min-height: 100vh;
+		min-height: 100dvh;
 		background-color: var(--color-bg-main);
 		color: var(--color-text-main);
+	}
+
+	/* Keep page sections at their natural height instead of squashing to fit. */
+	main > :global(*) {
+		flex-shrink: 0;
 	}
 
 	.loading-overlay {

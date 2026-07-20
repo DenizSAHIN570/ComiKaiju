@@ -19,9 +19,35 @@
 		type FilterConfig
 	} from '$lib/store/filterStore';
 	import { readerSettings, type FitMode } from '$lib/reader/readerSettings';
+	import { comicStorage } from '$lib/storage/comicStorage';
+	import { directoryService } from '$lib/services/directoryService';
+	import { logger } from '$lib/services/logger';
+	import { formatBytes } from '$lib/utils/format';
 
 	type Section = 'themes' | 'reader' | 'filters';
 	let section = $state<Section>('themes');
+
+	// ---------- Storage usage (masthead-adjacent readout) ----------
+	let storage = $state({ usage: 0, quota: 0, percentage: 0 });
+	let hasLibrary = $state(false);
+
+	async function loadStorage() {
+		try {
+			await comicStorage.init();
+			const items = await comicStorage.getAllFiles();
+			// Sum real file sizes so the readout matches what the library shows.
+			const usage = items.reduce((sum, item) => sum + (item.size || 0), 0);
+			const estimate = await comicStorage.getStorageEstimate();
+			storage = {
+				usage,
+				quota: estimate.quota,
+				percentage: estimate.quota > 0 ? (usage / estimate.quota) * 100 : 0
+			};
+			hasLibrary = items.length > 0 || (await directoryService.getStoredFolder()) !== null;
+		} catch (err) {
+			logger.error('Settings', 'Failed to read storage usage', err);
+		}
+	}
 
 	// ---------- Themes ----------
 	const themeState = $derived($themeStore);
@@ -87,6 +113,7 @@
 		editMode = isDarkNow(get(themeStore).mode) ? 'dark' : 'light';
 		reseed();
 		previewNow();
+		void loadStorage();
 	});
 	// Leaving settings: restore the active theme in the app's real mode.
 	onDestroy(() => themeStore.restore());
@@ -234,7 +261,23 @@
 	onClose={() => (filterEditorOpen = false)}
 />
 
-<AppBar active="settings" />
+<AppBar active="settings" showLibrary={hasLibrary} />
+
+{#if storage.quota > 0}
+	<div class="storage-row">
+		<div class="storage-widget">
+			<div class="storage-stats">
+				<span class="storage-label">Storage</span>
+				<span class="storage-numbers">
+					{formatBytes(storage.usage)} / {formatBytes(storage.quota)}
+				</span>
+			</div>
+			<div class="storage-track">
+				<div class="storage-bar" style="width: {Math.min(storage.percentage, 100)}%"></div>
+			</div>
+		</div>
+	</div>
+{/if}
 
 <div class="settings">
 	<nav class="snav">
@@ -465,9 +508,52 @@
 <SiteFooter />
 
 <style>
+	.storage-row {
+		display: flex;
+		justify-content: flex-end;
+		padding: 14px 30px 0;
+	}
+
+	.storage-widget {
+		width: 208px;
+	}
+
+	.storage-stats {
+		display: flex;
+		align-items: baseline;
+		justify-content: space-between;
+		gap: 10px;
+		margin-bottom: 6px;
+	}
+
+	.storage-label {
+		font-size: 0.62rem;
+		letter-spacing: 0.16em;
+		text-transform: uppercase;
+		color: var(--color-text-muted);
+	}
+
+	.storage-numbers {
+		font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+		font-size: 0.68rem;
+		color: var(--color-text-secondary);
+	}
+
+	.storage-track {
+		height: 3px;
+		background: var(--color-bg-secondary);
+		overflow: hidden;
+	}
+
+	.storage-bar {
+		height: 100%;
+		background: var(--color-primary);
+		transition: width 0.3s ease;
+	}
+
 	.settings {
 		display: grid;
-		grid-template-columns: 184px 1fr;
+		grid-template-columns: 184px minmax(0, 1fr);
 		min-height: 60vh;
 	}
 
@@ -501,7 +587,9 @@
 
 	.scontent {
 		padding: 26px 30px 40px;
+		width: 100%;
 		max-width: 52rem;
+		margin-inline: auto;
 	}
 
 	.shead {

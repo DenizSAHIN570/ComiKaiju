@@ -13,7 +13,8 @@
 
 <style>
   footer {
-    margin-top: 6px;
+    /* Sticky-footer: fills the gap when the page is shorter than the viewport. */
+    margin-top: auto;
     padding: 26px 30px 20px;
     border-top: 1px solid var(--color-border);
     text-align: center;
