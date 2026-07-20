@@ -186,10 +186,26 @@ function createThemeStore() {
         const userThemes = s.userThemes.some((t) => t.id === theme.id)
           ? s.userThemes.map((t) => (t.id === theme.id ? theme : t))
           : [...s.userThemes, theme];
-        const ns = { ...s, userThemes, activeThemeId: theme.id };
+        const isNew = !s.userThemes.some((tt) => tt.id === theme.id);
+        const meta =
+          isNew && !PRESET_IDS.has(theme.id)
+            ? {
+                ...s.meta,
+                [theme.id]: {
+                  ...s.meta[theme.id],
+                  createdAt: Date.now(),
+                  lastUsedAt: Date.now(),
+                },
+              }
+            : {
+                ...s.meta,
+                [theme.id]: { ...s.meta[theme.id], lastUsedAt: Date.now() },
+              };
+        const ns = { ...s, userThemes, activeThemeId: theme.id, meta };
         writeBoot(ns);
         void themeStorage.saveThemes(userThemes);
         void themeStorage.setActiveThemeId(theme.id);
+        void themeStorage.saveThemeMeta(meta);
         return ns;
       });
     },
