@@ -8,19 +8,47 @@
   // errors we can fall back on. CORS is open (access-control-allow-origin: *),
   // so we can fetch the bytes and cache them in IndexedDB.
   //
-  // NOTE: the title after each ISBN is what Open Library ACTUALLY returns for it
-  // (verified 2026-07-20), not necessarily the edition the ISBN nominally names.
-  // Two resolve to a blank/404 and fall back to a generated cover. All are real
-  // comic covers, which is all the blurred background needs.
+  // NOTE: Open Library's ISBN->cover data is unreliable. Every ISBN below was
+  // verified on 2026-07-20 to return a genuine comic/manga cover, but the cover
+  // Open Library serves is often NOT the book the ISBN nominally names — the
+  // comment after each is the title Open Library ACTUALLY returns. That is fine:
+  // this is a blurred decorative wall, so what matters is "looks like a comic".
+  // ISBNs that returned a blank or a non-comic (e.g. a novel/game guide) were
+  // dropped during verification.
   const ISBNS = [
-    "9781401263409", // Batman: Arkham Knight
-    "9781401238964", // Watchmen
-    "9781302911140", // (no cover — 404)
+    "9780785115601", // Uncanny X-Men
+    "9780785121794", // Civil War
+    "9780785134978", // Thor (Marvel Masterworks)
+    "9780785145387", // Essential Fantastic Four
+    "9780785156598", // Infinity Gauntlet
+    "9780785157151", // Ultimate Comics Spider-Man
+    "9780785160441", // Villains for Hire
+    "9780785190165", // Revolutionary War: Alpha
     "9780785190219", // Ms. Marvel: No Normal
-    "9781607066019", // Saga, Vol. 1
+    "9781401216542", // (real comic cover)
     "9781401223175", // Batman: Hush
-    "9781302928185", // (no cover — 404)
+    "9781401223595", // Bad Girls
+    "9781401225759", // The Sandman: Preludes & Nocturnes
+    "9781401230005", // Fables: Rose Red
+    "9781401232597", // Batman: The Long Halloween
     "9781401235420", // Batman: The Court of Owls
+    "9781401235444", // Suicide Squad
+    "9781401235468", // Superman: Action Comics
+    "9781401238124", // Tiny Titans
+    "9781401246983", // Justice League
+    "9781401248192", // Watchmen
+    "9781401263171", // Prez
+    "9781421561325", // Uzumaki
+    "9781434248350", // Green Lantern: The Animated Series
+    "9781569319000", // Naruto, Vol. 1
+    "9781607062158", // Echoes
+    "9781607066019", // Saga, Vol. 1
+    "9781607066552", // (real comic cover)
+    "9781616554316", // Soupy Leaves Home
+    "9781616558697", // The Savage Sword of Conan
+    "9781632150400", // Rat Queens
+    "9781632152329", // Nailbiter
+    "9781632156778", // Sex
   ];
   const coverUrl = (isbn: string) =>
     `https://covers.openlibrary.org/b/isbn/${isbn}-L.jpg?default=false`;
