@@ -20,8 +20,12 @@
   </div>
   <div class="word">ComiKaiju</div>
   <div class="nav right">
-    <button type="button" onclick={() => onsearch?.()}>Search</button>
-    <button type="button" onclick={() => onadd?.()}>Add</button>
+    {#if onsearch}
+      <button type="button" onclick={() => onsearch?.()}>Search</button>
+    {/if}
+    {#if onadd}
+      <button type="button" onclick={() => onadd?.()}>Add</button>
+    {/if}
     <AppMenu />
   </div>
 </div>

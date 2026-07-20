@@ -71,13 +71,14 @@
 	});
 
 	onDestroy(() => {
-		void saveProgress();
+		void saveProgress().finally(() => {
+			if (archiveManager) {
+				archiveManager.cleanup();
+			}
+		});
 		unsubscribeComic();
 		unsubscribeFile();
 		unsubscribePage();
-		if (archiveManager) {
-			archiveManager.cleanup();
-		}
 	});
 
 async function saveProgress(): Promise<void> {

@@ -125,7 +125,7 @@
                 e.stopPropagation();
                 ondelete?.(comic.id);
               }}
-              aria-label="More options"
+              aria-label="Delete"
             >
               ⋯
             </button>

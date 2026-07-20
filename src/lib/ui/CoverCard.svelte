@@ -44,7 +44,7 @@
   <div class="cover">
     <CoverArt {title} {thumbnail} {index} />
     {#if ondelete}
-      <button type="button" class="menu" onclick={handleDelete} aria-label="More options">
+      <button type="button" class="menu" onclick={handleDelete} aria-label="Delete">
         ⋯
       </button>
     {/if}

@@ -11,11 +11,22 @@
     onlibrary?: () => void;
   } = $props();
 
-  const progressPercent = $derived(
-    comic.totalPages > 0
-      ? Math.min(100, Math.max(0, ((comic.currentPage + 1) / comic.totalPages) * 100))
-      : 0,
-  );
+  function progressCaption(current: number, total: number): string {
+    if (!total) return "";
+    if (current != null && current + 1 >= total) return "finished";
+    if (current == null || current === 0) return "not started";
+    return `page ${current + 1} of ${total}`;
+  }
+
+  function progressPct(current: number, total: number): number {
+    if (!total) return 0;
+    if (current != null && current + 1 >= total) return 100;
+    if (current == null || current === 0) return 0;
+    return Math.min(100, Math.max(0, ((current + 1) / total) * 100));
+  }
+
+  const caption = $derived(progressCaption(comic.currentPage, comic.totalPages));
+  const progressPercent = $derived(progressPct(comic.currentPage, comic.totalPages));
 
   function relativeTime(ms?: number): string {
     if (ms == null) return "";
@@ -33,6 +44,10 @@
   }
 
   const leftOff = $derived(relativeTime(comic.updatedAt));
+
+  const subLine = $derived(
+    [caption, leftOff ? `left off ${leftOff}` : ""].filter(Boolean).join(" · "),
+  );
 </script>
 
 <div class="continue">
@@ -53,9 +68,7 @@
   <div class="c-inner">
     <div class="eye">Continue reading</div>
     <h2>{comic.title}</h2>
-    <div class="c-sub">
-      page {comic.currentPage + 1} of {comic.totalPages}{leftOff ? ` · left off ${leftOff}` : ""}
-    </div>
+    <div class="c-sub">{subLine}</div>
     <div class="c-line"><i style="width:{progressPercent}%"></i></div>
     <div class="c-cta">
       <button type="button" class="btn" onclick={() => onresume?.()}>▶ Resume</button>

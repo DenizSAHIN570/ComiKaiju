@@ -4,12 +4,17 @@
   // Deterministic hue from title (placeholder art only — content, not chrome)
   const hue = $derived([...title].reduce((h, c) => (h * 31 + c.charCodeAt(0)) % 360, 7));
   const idx = $derived(index != null ? "#" + String(index).padStart(3, "0") : "");
+
+  const bg = $derived(`hsl(${hue} 45% 18%)`);
+  const band = $derived(`hsl(${hue} 60% 42%)`);
+  const text = $derived(`hsl(${hue} 30% 92%)`);
+  const coverStyle = $derived(`--bg:${bg};--band:${band};--text:${text}`);
 </script>
 
 {#if thumbnail}
   <img src={thumbnail} alt={title} style="width:100%;height:100%;object-fit:cover" />
 {:else}
-  <div class="cover" style="--hue:{hue}">
+  <div class="cover" style={coverStyle}>
     <div class="band"></div>
     <div class="title">{title}</div>
     {#if idx}
@@ -19,12 +24,6 @@
 {/if}
 
 <style>
-  :global([style*="--hue"]) {
-    --bg: hsl(var(--hue) 45% 18%);
-    --band: hsl(var(--hue) 60% 42%);
-    --text: hsl(var(--hue) 30% 92%);
-  }
-
   .cover {
     position: absolute;
     inset: 0;

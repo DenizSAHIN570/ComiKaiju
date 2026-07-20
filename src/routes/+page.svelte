@@ -156,15 +156,18 @@
 	const hasComics = $derived(recentComics.length > 0);
 
 	const lastRead = $derived.by(() => {
-		if (recentComics.length === 0) return null;
-		return recentComics.reduce((best, item) => {
+		const candidates = recentComics.filter((item) => (item.metadata?.currentPage ?? 0) > 0);
+		if (candidates.length === 0) return null;
+		return candidates.reduce((best, item) => {
 			const itemTime = item.metadata?.lastRead ? new Date(item.metadata.lastRead).getTime() : item.updatedAt;
 			const bestTime = best.metadata?.lastRead ? new Date(best.metadata.lastRead).getTime() : best.updatedAt;
 			return itemTime > bestTime ? item : best;
 		});
 	});
 
-	const shelfComics = $derived(recentComics.filter((c) => c.id !== lastRead?.id));
+	const shelfComics = $derived(
+		lastRead ? recentComics.filter((c) => c.id !== lastRead.id) : recentComics
+	);
 
 	const lastReadComic = $derived(
 		lastRead
@@ -195,13 +198,15 @@
 <div class="page">
 	<AppBar active="home" onadd={() => (addOpen = true)} />
 
-	{#if hasComics && lastRead && lastReadComic}
-		<ContinueBand
-			comic={lastReadComic}
-			pageImage={lastReadPageImage}
-			onresume={() => openById(lastRead.id)}
-			onlibrary={() => goto(resolve('/library'))}
-		/>
+	{#if hasComics}
+		{#if lastRead && lastReadComic}
+			<ContinueBand
+				comic={lastReadComic}
+				pageImage={lastReadPageImage}
+				onresume={() => openById(lastRead.id)}
+				onlibrary={() => goto(resolve('/library'))}
+			/>
+		{/if}
 		<ComicShelf comics={shelfComics} autoOpenFirst onopen={openById} ondelete={deleteById} />
 	{:else}
 		<section class="home-hero">
