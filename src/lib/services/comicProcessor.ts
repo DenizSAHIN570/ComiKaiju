@@ -45,15 +45,17 @@ function cleanPages(pages: any[]) {
   }));
 }
 
-async function createThumbnail(blob: Blob): Promise<string> {
+export async function createThumbnail(
+  blob: Blob,
+  maxWidth = 200,
+  maxHeight = 300,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     const canvas = document.createElement("canvas");
     const ctx = canvas.getContext("2d");
 
     img.onload = () => {
-      const maxWidth = 200;
-      const maxHeight = 300;
       let width = img.width;
       let height = img.height;
 
