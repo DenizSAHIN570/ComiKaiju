@@ -16,6 +16,7 @@
 	import SiteFooter from '$lib/ui/SiteFooter.svelte';
 	import AddSheet from '$lib/ui/AddSheet.svelte';
 	import ImportPanel from '$lib/ui/ImportPanel.svelte';
+	import HeroCoverWall from '$lib/ui/HeroCoverWall.svelte';
 	import UrlImportConfirm from '$lib/ui/UrlImportConfirm.svelte';
 
 	let addOpen = $state(false);
@@ -220,6 +221,7 @@
 		{/if}
 	{:else}
 		<section class="home-hero">
+			<HeroCoverWall />
 			<div class="hero-scrim"></div>
 			<div class="hero-inner">
 				<h1 class="hero-title">
@@ -275,10 +277,19 @@
 		background-position: center;
 	}
 
+	/* Radial scrim: most opaque at the centre so the headline and import panel
+	   stay crisp, lighter at the edges so the blurred cover wall breathes.
+	   Derived from --color-bg-main, so it tints correctly in every theme. */
 	.hero-scrim {
 		position: absolute;
 		inset: 0;
-		background: color-mix(in srgb, var(--color-bg-main) 78%, transparent);
+		z-index: 1;
+		background: radial-gradient(
+			ellipse 70% 75% at center,
+			color-mix(in srgb, var(--color-bg-main) 90%, transparent) 0%,
+			color-mix(in srgb, var(--color-bg-main) 78%, transparent) 52%,
+			color-mix(in srgb, var(--color-bg-main) 62%, transparent) 100%
+		);
 	}
 
 	.hero-inner {
