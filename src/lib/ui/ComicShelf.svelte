@@ -25,6 +25,7 @@
     ondelete?: (id: string) => void;
   } = $props();
 
+  // svelte-ignore state_referenced_locally
   let openId = $state<string | null>(autoOpenFirst ? (comics[0]?.id ?? null) : null);
 
   function open(id: string) {
@@ -50,16 +51,18 @@
   }
 
   function progressCaption(current?: number, total?: number): string {
-    if (!total) return "not started";
-    if (!current) return "not started";
-    if (current + 1 >= total) return "finished";
-    const pct = Math.round((current / total) * 100);
-    return `page ${current} / ${total} · ${pct}%`;
+    if (!total) return "";
+    if (current != null && current + 1 >= total) return "finished";
+    if (current == null || current === 0) return "not started";
+    const pct = Math.round(((current + 1) / total) * 100);
+    return `page ${current + 1} / ${total} · ${pct}%`;
   }
 
   function progressPercent(current?: number, total?: number): number {
-    if (!total || !current) return 0;
-    return Math.min(100, Math.round((current / total) * 100));
+    if (!total) return 0;
+    if (current != null && current + 1 >= total) return 100;
+    if (current == null || current === 0) return 0;
+    return Math.min(100, Math.round(((current + 1) / total) * 100));
   }
 </script>
 
@@ -272,7 +275,7 @@
   .info .read {
     flex: 1;
     background: var(--color-primary);
-    color: white;
+    color: var(--color-bg-main);
     border: none;
     border-radius: 3px;
     padding: 10px;
