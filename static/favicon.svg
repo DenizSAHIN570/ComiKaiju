@@ -1,8 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
-  <rect width="100" height="100" fill="#4299e1"/>
-  <rect x="20" y="30" width="60" height="50" fill="white" rx="2"/>
-  <line x1="35" y1="30" x2="35" y2="80" stroke="#4299e1" stroke-width="2"/>
-  <line x1="50" y1="40" x2="70" y2="40" stroke="#4299e1" stroke-width="2"/>
-  <line x1="50" y1="50" x2="70" y2="50" stroke="#4299e1" stroke-width="2"/>
-  <line x1="50" y1="60" x2="70" y2="60" stroke="#4299e1" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="446.63 553.04 1121.65 640.88">
+  <!-- ComiKaiju mark: a kaiju eye peering through a torn comic panel.
+       Traced from the official logo1.svg / logo1beyaz.svg source.
+       "paper" / "ink" swap on prefers-color-scheme so the tab icon holds
+       contrast in both browser themes; the iris stays fixed brand orange. -->
+  <style>
+    .ck-paper { fill: #ffffff; }
+    .ck-ink { fill: #000000; }
+    @media (prefers-color-scheme: dark) {
+      .ck-paper { fill: #000000; }
+      .ck-ink { fill: #ffffff; }
+    }
+  </style>
+  <rect class="ck-paper" x="446.63" y="553.04" width="1121.65" height="640.88" />
+  <path fill="#f60" d="M1069.02,759.92c15.13,82.1,13.78,184.15-49.51,269.01-63.29-84.87-64.63-186.92-49.51-269.01-58.56,20.46-100.58,76.18-100.58,141.72,0,82.89,67.2,150.09,150.09,150.09s150.09-67.2,150.09-150.09c0-65.54-42.02-121.26-100.58-141.72Z" />
+  <path class="ck-ink" d="M823.18,950.06c117.3-49.4,273.38-111.26,405.74-150.51,93.36-27.69,151.77-36.56,190.33-39.22h149.04v-207.3h-745.11v397.02Z" />
+  <path class="ck-ink" d="M691.69,1007.04c28.07-12.52,110.91-49.7,110.91-49.7v-404.3h-355.97v454h245.06Z" />
+  <path class="ck-ink" d="M1445.77,780.91c-15.64,37.49-57.76,119.95-147.47,192.89v220.12h269.99v-413.01h-122.52Z" />
+  <path class="ck-ink" d="M1277.72,989.73c-35.87,26.99-130.46,95.01-220.24,126.9-67.14,23.85-411.31-89.01-411.31-89.01h-199.54v166.31h831.09v-204.19Z" />
 </svg>
