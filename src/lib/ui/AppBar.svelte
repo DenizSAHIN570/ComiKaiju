@@ -1,6 +1,7 @@
 <script lang="ts">
   import { resolve } from "$app/paths";
   import AppMenu from "$lib/ui/AppMenu.svelte";
+  import Logo from "$lib/ui/Logo.svelte";
 
   let {
     active = "home",
@@ -20,10 +21,14 @@
   <div class="nav">
     <a href={resolve("/")} class:active={active === "home"}>Home</a>
     {#if showLibrary || active === "library"}
-      <a href={resolve("/library")} class:active={active === "library"}>Library</a>
+      <a href={resolve("/library")} class:active={active === "library"}
+        >Library</a
+      >
     {/if}
   </div>
-  <div class="word">ComiKaiju</div>
+  <a href={resolve("/")} class="word" aria-label="ComiKaiju home">
+    <Logo size={80} />
+  </a>
   <div class="nav right">
     {#if onsearch}
       <button type="button" onclick={() => onsearch?.()}>Search</button>
@@ -41,7 +46,7 @@
     display: grid;
     grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    padding: 22px 30px 18px;
+    padding: 10px 30px 8px;
   }
 
   .nav {
@@ -85,13 +90,9 @@
   }
 
   .word {
-    font-family: var(--font-base);
-    font-weight: 700;
-    font-size: 1.4rem;
-    letter-spacing: 0.32em;
-    text-transform: uppercase;
-    text-indent: 0.32em;
-    color: var(--color-text-main);
+    display: flex;
+    align-items: center;
+    text-decoration: none;
   }
 
   .rule {
